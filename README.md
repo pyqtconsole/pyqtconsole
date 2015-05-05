@@ -5,7 +5,7 @@ and comes with some examples that shows how this can be done. The interpreter ca
 
 ## Embedding
 
-* *Separate thread* - Runs the interpreter in a separate thread, see the example [threaded.py] (https://github.com/marcus-oscarsson/pyqtconsole/blob/master/threaded.py). Running the interpreter in a separate thread obviously limits the interaction with the Qt application. The parts of Qt that needs to be called from the main thread will not work properly, but is excellent way for having a 'plain' python console in yout Qt app.
+* *Separate thread* - Runs the interpreter in a separate thread, see the example [threaded.py] (https://github.com/marcus-oscarsson/pyqtconsole/blob/master/threaded.py). Running the interpreter in a separate thread obviously limits the interaction with the Qt application. The parts of Qt that needs to be called from the main thread will not work properly, but is excellent way for having a 'plain' python console in your Qt app.
 
 * *main thread* - Runs the interpreter in the main thread, see the example [inuithread.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/inuithread.py). Makes full interaction with Qt possible, lenghty operations will of course freeze the UI (as any lenghty operation that is called from the main thread). This is a great alternative for people who does not want to use the gevent based approach but still wants full interactivity with Qt.
 
