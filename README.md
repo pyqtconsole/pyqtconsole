@@ -7,7 +7,7 @@ and comes with some examples that shows how this can be done. The interpreter ca
 
 * *Separate thread* - Runs the interpreter in a separate thread, see the example [threaded.py] (https://github.com/marcus-oscarsson/pyqtconsole/blob/master/threaded.py). Running the interpreter in a separate thread obviously limits the interaction with the Qt application. The parts of Qt that needs to be called from the main thread to execute will not work properly. But is excellent for a 'plain' python console.
 
-* *main thread* - Runs the interpreter in the main thread, see the example [inuithread.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/inuithread.py). Makes full interaction with Qt possible, lenghty operations will of course freeze the UI (as any lenghty operation that is called from the main thread). This is a great alternative for people who does want to use the gevent based approach but still wants full interactivity with Qt.
+* *main thread* - Runs the interpreter in the main thread, see the example [inuithread.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/inuithread.py). Makes full interaction with Qt possible, lenghty operations will of course freeze the UI (as any lenghty operation that is called from the main thread). This is a great alternative for people who does not want to use the gevent based approach but still wants full interactivity with Qt.
 
 * *gevent* - Runs the interpreter in a gevent task, see the example [coroutine.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/coroutine.py). Allows for full interactivity with Qt without special consideration (at least to some extent) for longer running processes. The best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
  
