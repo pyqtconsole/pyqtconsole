@@ -22,12 +22,12 @@ class Stream(QtCore.QObject):
         with self._line_cond:
             data = self._reset_buffer()
             self._line_cond.notify()
-        
+
         return data
-        
+
     def readline(self, timeout = None):
         data = ''
-        
+
         with self._line_cond:
             first_linesep = self._buffer.find(os.linesep)
 
@@ -40,7 +40,6 @@ class Stream(QtCore.QObject):
             # Check if there really is something in the buffer after waiting
             # for line_cond. There might have been a timeout, and there is
             # still no data available
-            
             if first_linesep > -1:
                 data = self._buffer[0:first_linesep+1]
 
@@ -50,7 +49,7 @@ class Stream(QtCore.QObject):
                     self._buffer = ''
             else:
                 data = ''
-                
+
         return data
 
     def write(self, data):
