@@ -9,4 +9,4 @@ and comes with some examples that shows how this can be done. The interpreter ca
 
 * *main thread* - Runs the interpreter in the main thread, see the example inuithread.py. Makes full interaction with Qt possible, lenghty operations will ofcourse freezze the UI (as any lenghty operation that is called from the main thread). This is a great allternative for people who does want to use the gevent based approach but still wants full interactivity with Qt.
 
-* *gevent* - Runs the interpreter in a gevent task, see the example coroutine.py.
+* *gevent* - Runs the interpreter in a gevent task, see the example coroutine.py. Allows for full interactivity with Qt without special consideration (at least to some extent) for logner running processes. The best method if you want to use pyQtgraph, Matplotlib, PyMca or similair.
