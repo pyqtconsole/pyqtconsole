@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import os
-from threading import Thread
 
 from .qt import QtCore
 from .qt.QtWidgets import (QTextEdit, QCompleter)
@@ -80,9 +79,11 @@ class BaseConsole(QTextEdit):
                 self._keep_cursor_in_buffer()
 
         if not intercepted:
+            event.ignore()
             super(BaseConsole, self).keyPressEvent(event)
             self._cmd_history[-1] = self._get_buffer()
         else:
+            event.accept()
             return
 
     def _keep_cursor_in_buffer(self):
@@ -203,17 +204,19 @@ class PythonConsole(BaseConsole):
     def repl(self):
         return self.shell.repl()
 
-if __name__ == '__main__':
-    import sys
-    from .qt.QtWidgets import (QApplication)
-    
-    app = QApplication([])
+# if __name__ == '__main__':
+#     import sys
 
-    console = PythonConsole()
-    console.show()
+#     from threading import Thread
+#     from .qt.QtWidgets import (QApplication)
     
-    ct = Thread(target = console.repl)
-    ct.start()
+#     app = QApplication([])
 
-    sys.exit(app.exec_())
+#     console = PythonConsole()
+#     console.show()
+    
+#     ct = Thread(target = console.repl)
+#     ct.start()
+
+#     sys.exit(app.exec_())
     
