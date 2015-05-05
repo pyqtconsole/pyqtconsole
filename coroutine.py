@@ -10,7 +10,10 @@ from pyqtconsole.qt.QtWidgets import (QApplication)
 from pyqtconsole.console import PythonConsole
 
 def gevent_wait():
-    gevent.wait(timeout=0.01)
+    try:
+        gevent.wait(0.01)
+    except:
+        gevent.sleep(0.01)
 
 if __name__ == '__main__':
     from PyMca5.PyMca import PlotWindow
