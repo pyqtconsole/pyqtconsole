@@ -13,9 +13,10 @@ See the examples directory for more examples
 
     import sys
     from threading import Thread
-    from PyQt5.QtWidgets import (QApplication)
+    from PyQt5.QtWidgets import QApplication
     
     from pyqtconsole.console import PythonConsole
+    
     app = QApplication([])
     console = PythonConsole()
     console.show()
