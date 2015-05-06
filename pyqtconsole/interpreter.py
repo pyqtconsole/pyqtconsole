@@ -2,6 +2,12 @@
 import sys
 import os
 
+try:
+    import jedi
+except ImportError as ex:
+    print(ex.message)
+    print('No completion available')
+
 from code import InteractiveConsole
 
 class PythonConsoleProxy(InteractiveConsole):
@@ -119,3 +125,12 @@ class PythonConsoleProxy(InteractiveConsole):
 
     def set_buffer(self, _buffer):
         self._current_eval_buffer = _buffer.strip(os.linesep)
+
+    def get_completions(self, line):
+        script = jedi.Interpreter(line, [self.local_ns])
+        words = []
+        
+        for completion in script.completions():
+            words.append(completion.name)
+
+        return words
