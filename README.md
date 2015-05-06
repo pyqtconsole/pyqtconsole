@@ -9,12 +9,20 @@ Simply type :
     python setup.py install
 
 ### Simple usage
+See the examples directory for more examples
 
+    import sys
+    from threading import Thread
+    from PyQt5.QtWidgets import (QApplication)
+    
+    from pyqtconsole.console import PythonConsole
     app = QApplication([])
     console = PythonConsole()
     console.show()
+    
     ct = Thread(target = console.repl)
     ct.start()
+
     sys.exit(app.exec_())
 
 ## Embedding
