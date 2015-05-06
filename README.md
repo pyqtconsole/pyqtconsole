@@ -4,10 +4,18 @@ pyqtconosle is a light weight python console for Qt applications. Its made to be
 and comes with some examples that shows how this can be done. The interpreter can run in a separate thread, in the UI main thread or in a gevent task. Support for asyncio might also be added in the future
 
 ## Installing
-Simply type :)
+Simply type :
 
     python setup.py install
 
+### Simple usage
+
+    app = QApplication([])
+    console = PythonConsole()
+    console.show()
+    ct = Thread(target = console.repl)
+    ct.start()
+    sys.exit(app.exec_())
 
 ## Embedding
 
