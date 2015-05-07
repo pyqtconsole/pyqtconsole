@@ -1,7 +1,7 @@
 # pyqtconsole
 
 pyqtconosle is a light weight python console for Qt applications. Its made to be easy to embed in other Qt applications
-and comes with some examples that shows how this can be done. The interpreter can run in a separate thread, in the UI main thread or in a gevent task. Support for asyncio might also be added in the future
+and comes with some examples that shows how this can be done. The interpreter can run in a separate thread, in the UI main thread or in a gevent task. There is also support for asyncio using trollius, however this is still in the experimental stage.
 
 ## Installing
 Simply type :
@@ -32,7 +32,9 @@ See the examples directory for more examples
 
 * *main thread* - Runs the interpreter in the main thread, see the example [inuithread.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/inuithread.py). Makes full interaction with Qt possible, lenghty operations will of course freeze the UI (as any lenghty operation that is called from the main thread). This is a great alternative for people who does not want to use the gevent based approach but still wants full interactivity with Qt.
 
-* *gevent* - Runs the interpreter in a gevent task, see the example [coroutine.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_gevent.py). Allows for full interactivity with Qt without special consideration (at least to some extent) for longer running processes. The best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
+* *gevent* - Runs the interpreter in a gevent task, see the example [_gevent.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_gevent.py). Allows for full interactivity with Qt without special consideration (at least to some extent) for longer running processes. The best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
+
+* *trollius (asyncio)* - Runs the interpreter in a asyncio coroutine [_trollius.py](https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_trollius.py). Still experimental
  
 ## Credits
 
