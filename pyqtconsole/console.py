@@ -81,7 +81,6 @@ class BaseConsole(QTextEdit):
             self._cmd_history[-1] = self._get_buffer()
         else:
             event.accept()
-            return
 
     def handle_enter_key(self, event):
         if self._completing():
@@ -133,7 +132,7 @@ class BaseConsole(QTextEdit):
 
     def handle_d_key(self, event):
         if event.modifiers() == QtCore.Qt.ControlModifier:
-            self._close_cmd()
+            self._close()
 
         return False
 
@@ -273,7 +272,8 @@ class BaseConsole(QTextEdit):
     def _stdout_data_handler(self, data):
         self._insert_prompt(data)
 
-    def _close_cmd(self):
+    # Abstract
+    def _close(self):
         self.stdin.write('EOF\n')
 
     def _evaluate_buffer(self):
@@ -291,12 +291,12 @@ class PythonConsole(BaseConsole):
         self.highlighter = PythonHighlighter(self.document())
         self.shell = PythonConsoleProxy(self.stdin, self.stdout, local = local)
 
-    def _close_cmd(self):
+    def _close(self):
         self.shell.exit()
         self.close()
 
     def closeEvent(self, event):
-        self._close_cmd()
+        self._close()
         event.accept()
 
     def evaluate_buffer(self, _buffer):
