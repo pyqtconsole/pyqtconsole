@@ -127,10 +127,12 @@ class PythonConsoleProxy(InteractiveConsole):
         self._current_eval_buffer = _buffer.strip(os.linesep)
 
     def get_completions(self, line):
-        script = jedi.Interpreter(line, [self.local_ns])
         words = []
         
-        for completion in script.completions():
-            words.append(completion.name)
+        if jedi:
+            script = jedi.Interpreter(line, [self.local_ns])
+        
+            for completion in script.completions():
+                words.append(completion.name)
 
         return words
