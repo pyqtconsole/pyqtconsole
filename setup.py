@@ -2,7 +2,7 @@
 import pyqtconsole
 from distutils.core import setup
 
-setup(name='pyqtconosle',
+setup(name='pyqtconsole',
     version=pyqtconsole.__version__,
     description=pyqtconsole.__description__,
     author=pyqtconsole.__author__,
