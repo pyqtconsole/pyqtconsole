@@ -7,6 +7,10 @@ and comes with some examples that shows how this can be done. The interpreter ca
 Simply type :
 
     python setup.py install
+    
+or:
+
+    pip install pyqtconsole
 
 ### Simple usage
 See the examples directory for more examples
