@@ -47,8 +47,6 @@ class Stream(QtCore.QObject):
                     self._buffer = self._buffer[first_linesep+2:]
                 else:
                     self._buffer = ''
-            else:
-                data = ''
 
         return data
 
