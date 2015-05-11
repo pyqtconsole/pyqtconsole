@@ -5,7 +5,7 @@ import os
 try:
     import jedi
 except ImportError as ex:
-    print(ex.message)
+    print(str(ex))
     print('No completion available')
 
 from code import InteractiveConsole
