@@ -3,7 +3,7 @@ import os
 
 from .qt import QtCore
 from .qt.QtWidgets import (QTextEdit, QCompleter)
-from .qt.QtGui import (QTextCursor, QFontMetrics)
+from .qt.QtGui import QFontMetrics
 
 from .interpreter import PythonConsoleProxy
 from .stream import Stream
@@ -59,11 +59,6 @@ class BaseConsole(QTextEdit):
         elif key == QtCore.Qt.Key_D:
             intercepted = self.handle_d_key(event)
 
-        # Regardless of key pressed, if we are completing a word, highlight
-        # the first match !
-        if self._completing():
-            self._highlight_current_completion()
-
         # Make sure that we can't move the cursor outside of the editing buffer
         if not self._in_buffer():
              self._keep_cursor_in_buffer()
@@ -81,6 +76,12 @@ class BaseConsole(QTextEdit):
             self._cmd_history[-1] = self._get_buffer()
         else:
             event.accept()
+            
+        # Regardless of key pressed, if we are completing a word, highlight
+        # the first match !
+        if self._completing():
+            self._highlight_current_completion()
+
 
     def handle_enter_key(self, event):
         if self._completing():
@@ -156,7 +157,7 @@ class BaseConsole(QTextEdit):
 
     def _get_buffer(self):
         buffer_pos = self.textCursor().position()
-        return self.toPlainText()[self._prompt_pos:buffer_pos]
+        return str(self.toPlainText()[self._prompt_pos:buffer_pos])
 
     def _clear_buffer(self):
         self.textCursor().clearSelection()
@@ -206,14 +207,11 @@ class BaseConsole(QTextEdit):
         return ['No completion support available']
 
     def _update_completion(self, key):
-        if key == QtCore.Qt.Key_Backspace:
-            if self._completing():
-                if len(self._get_buffer()) > 2:
-                    self._show_completion_suggestions()
-                else:
-                    self._update_completion_suggestions()
-        else:
-            self._update_completion_suggestions()
+        if self._completing():
+            if len(self._get_buffer()) > 1:
+                self._show_completion_suggestions()
+            else:
+                self.completer.popup().hide()
 
     def _show_completion_suggestions(self):
         if self.completer.popup().isVisible():
@@ -228,19 +226,7 @@ class BaseConsole(QTextEdit):
         sbar_w = self.completer.popup().verticalScrollBar().sizeHint().width()
         popup_wdith = self.completer.popup().sizeHintForColumn(0) + sbar_w
         cr.setWidth(popup_wdith)
-
         self.completer.complete(cr)
-
-    def _update_completion_suggestions(self):
-        _buffer = self._get_buffer()
-
-        if len(_buffer) < 3:
-            self.completer.popup().hide()
-        elif (_buffer != self.completer.completionPrefix()):
-            self.completer.setCompletionPrefix(_buffer)
-            popup = self.completer.popup()
-            model = self.completer.completionModel()
-            popup.setCurrentIndex(model.index(0,0))
 
     def _completing(self):
         return self.completer.popup().isVisible()
@@ -263,7 +249,7 @@ class BaseConsole(QTextEdit):
         self.completer.popup().hide()
 
     def _parse_buffer(self):
-        cmd = self._get_buffer()
+        cmd = self._get_buffer()    
         self.stdin.write(cmd + os.linesep)
 
         if cmd != os.linesep:
