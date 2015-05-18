@@ -129,8 +129,8 @@ class PythonConsoleProxy(InteractiveConsole):
 
     def get_completions(self, line):
         words = []
-        
-        if jedi:
+
+        if 'jedi' in globals():
             script = jedi.Interpreter(line, [self.local_ns])
         
             for completion in script.completions():
