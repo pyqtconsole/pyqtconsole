@@ -219,25 +219,30 @@ class BaseConsole(QTextEdit):
 
     def _update_completion(self, key):
         if self._completing():
-            if len(self._get_buffer()) > 1:
-                self._show_completion_suggestions()
+            _buffer = self._get_buffer()
+
+            if len(_buffer) > 1:
+                self._show_completion_suggestions(_buffer)
             else:
                 self.completer.popup().hide()
 
-    def _show_completion_suggestions(self):
+    def _show_completion_suggestions(self, _buffer):
         if self.completer.popup().isVisible():
             self.completer.popup().hide()
 
-        _buffer = self._get_buffer()
-
         words = self.get_completions(_buffer)
-        self.init_completion_list(words)
 
-        cr = self.cursorRect()
-        sbar_w = self.completer.popup().verticalScrollBar().sizeHint().width()
-        popup_wdith = self.completer.popup().sizeHintForColumn(0) + sbar_w
-        cr.setWidth(popup_wdith)
-        self.completer.complete(cr)
+        if len(words) == 1:
+            self._insert_completion(words[0])
+        else:
+            self.init_completion_list(words)
+            self.completer.setCompletionPrefix(_buffer)
+
+            cr = self.cursorRect()
+            sbar_w = self.completer.popup().verticalScrollBar().sizeHint().width()
+            popup_width = self.completer.popup().sizeHintForColumn(0) + sbar_w
+            cr.setWidth(popup_width)
+            self.completer.complete(cr)
 
     def _completing(self):
         return self.completer.popup().isVisible()
