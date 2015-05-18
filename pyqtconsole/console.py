@@ -17,6 +17,7 @@ class BaseConsole(QTextEdit):
         self._history_size = 100
         self._cmd_history = ['']
         self._history_index = 1
+        self._tab_chars = 4 * ' '
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -106,11 +107,21 @@ class BaseConsole(QTextEdit):
 
         if not self._in_buffer():
             intercepted = True
+        else:
+            if self._get_buffer().endswith(self._tab_chars):
+                for i in range(len(self._tab_chars) - 1):
+                    self.textCursor().deletePreviousChar()
 
         return intercepted
 
     def handle_tab_key(self, event):
-        self._show_completion_suggestions()
+        _buffer = self._get_buffer().strip(' ')
+
+        if len(_buffer):
+            self._show_completion_suggestions(_buffer)
+        else:
+            self._insert_in_buffer(self._tab_chars)
+
         return True
 
     def handle_up_key(self, event):
