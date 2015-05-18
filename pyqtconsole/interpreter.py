@@ -4,6 +4,8 @@ import os
 
 try:
     import jedi
+    from jedi import settings
+    settings.case_insensitive_completion = False
 except ImportError as ex:
     print(str(ex))
     print('No completion available')
