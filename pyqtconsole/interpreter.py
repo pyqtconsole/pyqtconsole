@@ -7,8 +7,7 @@ try:
     from jedi import settings
     settings.case_insensitive_completion = False
 except ImportError as ex:
-    print(str(ex))
-    print('No completion available')
+    print(str(ex) + ', No completion available')
 
 from code import InteractiveConsole
 
