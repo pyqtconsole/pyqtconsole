@@ -91,7 +91,6 @@ class BaseConsole(QTextEdit):
         if self._completing():
             self._highlight_current_completion()
 
-
     def handle_enter_key(self, event):
         if self._completing():
             self._complete()
@@ -171,7 +170,7 @@ class BaseConsole(QTextEdit):
 
     def _keep_cursor_in_buffer(self):
         cursor = self.textCursor()
-        cursor.setPosition(self._prompt_pos, 0)
+        cursor.setPosition(self._prompt_pos)
         self.setTextCursor(cursor)        
         self.ensureCursorVisible()
 
@@ -180,7 +179,6 @@ class BaseConsole(QTextEdit):
         return buffer_pos > self._prompt_pos
 
     def _insert_prompt(self, prompt):
-        self._keep_cursor_in_buffer()
         cursor = self.textCursor()
         cursor.insertText(prompt)
         self._prompt_pos = cursor.position()
