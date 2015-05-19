@@ -35,6 +35,10 @@ class BaseConsole(QTextEdit):
 
         self.init_completion_list([])
 
+    # Disable pasting code for the moment
+    def insertFromMimeData(self, mime_data):
+        return
+
     def keyPressEvent(self, event):
         key = event.key()
         intercepted = False
