@@ -35,8 +35,22 @@ class BaseConsole(QTextEdit):
 
         self.init_completion_list([])
 
-    # Disable pasting code for the moment
+    # Simple paste handling, until we know exactly how to present pasted
+    # code to the user. Also slightly ugly because the ... symbol should be taken
+    # from the interpreter.
     def insertFromMimeData(self, mime_data):
+        if mime_data.hasText():
+            self._keep_cursor_in_buffer()
+            text = mime_data.text()
+            lines = text.split('\n')
+
+            self._insert_in_buffer(lines[0] + os.linesep)
+            
+            for line in lines[1:]:
+                self._insert_in_buffer('   ...:' + line + os.linesep)
+            
+            self.evaluate_buffer(text)
+            
         return
 
     def keyPressEvent(self, event):
