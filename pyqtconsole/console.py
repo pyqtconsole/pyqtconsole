@@ -70,7 +70,7 @@ class BaseConsole(QTextEdit):
             
         # Make sure that we can't move the cursor outside of the editing buffer
         if not self._in_buffer():
-             self._keep_cursor_in_buffer()
+            self._keep_cursor_in_buffer()
 
         # Call the TextEdit keyPressEvent for the events that are not
         # intercepted
@@ -168,9 +168,12 @@ class BaseConsole(QTextEdit):
             intercepted = True
 
         return intercepted
+
     def _keep_cursor_in_buffer(self):
         cursor = self.textCursor()
-        cursor.setPosition(self._prompt_pos)
+        cursor.setPosition(self._prompt_pos, 0)
+        self.setTextCursor(cursor)        
+        self.ensureCursorVisible()
 
     def _in_buffer(self):
         buffer_pos = self.textCursor().position()
