@@ -39,8 +39,14 @@ class PythonConsoleProxy(InteractiveConsole):
         sys.stderr = sys.__stderr__
 
     def _update_in_prompt(self, _more, _input):
+        # We need to show the more prompt of the input was incomplete
+        # If the input is complete increase the input number and show
+        # the in prompt
         if not _more:
-            if _input != os.linesep:
+            # Only increase the input number if the input was complete
+            # last prompt was the more prompt (and we know that we don't have
+            # more input to expect). Obviously do not increase for CR
+            if _input != os.linesep or self._p == self._morep:
                 self._current_line += 1
 
             self._p = self._inp % self._current_line
@@ -84,34 +90,47 @@ class PythonConsoleProxy(InteractiveConsole):
     def interact(self, banner=None):
         return InteractiveConsole.interact(self, '')
 
-    def _rep_line(self, timeout = None):
-        line = self.raw_input(timeout = timeout)
+    def _rep_line(self, line):
+        self._last_input = line
 
-        if line:
-            self._last_input = line
+        if line == 'exit' or line == 'exit()':
+            self._running = False
+        elif line == 'eval_buffer':
+            line = self.eval_buffer()
+        elif line == 'eval_lines':
+            self._more = self.eval_lines()
 
-            if line == 'exit' or line == 'exit()':
-                self._running = False
-            elif line == 'eval_buffer':
-                line = self.eval_buffer()
-            else:
-                self._more = self.push(line)
+            # We don't want to make recursive call here, self.eval_lines
+            # calls _rep_line so we return to start from scratch to not
+            # 'save' the state of the current evaluation.
+            return
+        else:
+            self._more = self.push(line)
 
-            self._update_in_prompt(self._more, self._last_input)
-            self.stdout.write(os.linesep)
-            self._print_in_prompt()
+        self._update_in_prompt(self._more, self._last_input)
+        self.stdout.write(os.linesep)
+        self._print_in_prompt()
 
     def repl(self):
         self._running = True
 
         while self._running:
-            self._rep_line()
+            line = self.raw_input(timeout = None)
+
+            if line:
+                self._rep_line(line)
 
     def repl_nonblock(self):
-        self._rep_line(timeout = 0)
+        line = self.raw_input(timeout = 0)
+
+        if line:
+            self._rep_line(line)
 
     def exit(self):
         self.stdin.write('exit\n')
+
+    def set_buffer(self, _buffer):
+        self._current_eval_buffer = _buffer.strip(os.linesep)
 
     def eval_buffer(self):
         if self._current_eval_buffer:
@@ -124,8 +143,14 @@ class PythonConsoleProxy(InteractiveConsole):
 
         return False
 
-    def set_buffer(self, _buffer):
-        self._current_eval_buffer = _buffer.strip(os.linesep)
+    def eval_lines(self):
+        if self._current_eval_buffer:
+            lines = self._current_eval_buffer.split(os.linesep)
+            
+            for line in lines:
+                if line:
+                    self.stdout.write(line)
+                    self._rep_line(line + os.linesep)
 
     def get_completions(self, line):
         words = []

@@ -35,23 +35,10 @@ class BaseConsole(QTextEdit):
 
         self.init_completion_list([])
 
-    # Simple paste handling, until we know exactly how to present pasted
-    # code to the user. Also slightly ugly because the ... symbol should be taken
-    # from the interpreter.
     def insertFromMimeData(self, mime_data):
         if mime_data.hasText():
             self._keep_cursor_in_buffer()
-            text = mime_data.text()
-            lines = text.split('\n')
-
-            self._insert_in_buffer(lines[0] + os.linesep)
-            
-            for line in lines[1:]:
-                self._insert_in_buffer('   ...:' + line + os.linesep)
-            
-            self.evaluate_buffer(text)
-            
-        return
+            self.evaluate_buffer(mime_data.text(), echo_lines = True)
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -318,7 +305,7 @@ class BaseConsole(QTextEdit):
         self.evaluate_buffer(_buffer)
 
     # Abstract
-    def evaluate_buffer(self, _buffer):
+    def evaluate_buffer(self, _buffer, echo_lines = False):
         print(_buffer)
 
 
@@ -333,16 +320,19 @@ class PythonConsole(BaseConsole):
         self.close()
 
     def _handle_ctrl_c(self):
-        print('ctrl C')
         self.shell.send_keyboard_interrupt()
 
     def closeEvent(self, event):
         self._close()
         event.accept()
 
-    def evaluate_buffer(self, _buffer):
+    def evaluate_buffer(self, _buffer, echo_lines = False):
         self.shell.set_buffer(_buffer)
-        self.stdin.write('eval_buffer\n')
+        
+        if echo_lines:
+            self.stdin.write('eval_lines\n')   
+        else:
+            self.stdin.write('eval_buffer\n')
 
     def get_completions(self, line):
         return self.shell.get_completions(line)
