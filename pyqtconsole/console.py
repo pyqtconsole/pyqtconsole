@@ -65,7 +65,9 @@ class BaseConsole(QTextEdit):
             pass
         elif key == QtCore.Qt.Key_D:
             intercepted = self.handle_d_key(event)
-
+        elif key == QtCore.Qt.Key_C:
+            intercepted = self.handle_d_key(event)
+            
         # Make sure that we can't move the cursor outside of the editing buffer
         if not self._in_buffer():
              self._keep_cursor_in_buffer()
@@ -158,6 +160,14 @@ class BaseConsole(QTextEdit):
 
         return False
 
+    def handle_c_key(self, event):
+        intercepted = False
+        
+        if event.modifiers() == QtCore.Qt.ControlModifier:
+            self._handle_ctrl_c()
+            intercepted = True
+
+        return intercepted
     def _keep_cursor_in_buffer(self):
         cursor = self.textCursor()
         cursor.setPosition(self._prompt_pos)
@@ -306,6 +316,10 @@ class PythonConsole(BaseConsole):
     def _close(self):
         self.shell.exit()
         self.close()
+
+    def _handle_ctrl_c(self):
+        print('ctrl C')
+        self.shell.send_keyboard_interrupt()
 
     def closeEvent(self, event):
         self._close()
