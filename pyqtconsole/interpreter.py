@@ -139,5 +139,4 @@ class PythonConsoleProxy(InteractiveConsole):
         return words
 
     def send_keyboard_interrupt(self):
-        print(dir(self))
-        #self.push('raise KeyboardInterrupt()')
+        self.push('raise KeyboardInterrupt()')
