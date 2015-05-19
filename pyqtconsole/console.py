@@ -3,7 +3,7 @@ import os
 
 from .qt import QtCore
 from .qt.QtWidgets import (QTextEdit, QCompleter)
-from .qt.QtGui import QFontMetrics
+from .qt.QtGui import (QFontMetrics, QTextCursor)
 
 from .interpreter import PythonConsoleProxy
 from .stream import Stream
@@ -15,7 +15,7 @@ class BaseConsole(QTextEdit):
         self._buffer_pos = 0
         self._prompt_pos = 0
         self._history_size = 100
-        self._cmd_history = ['']
+        self._cmd_history = []
         self._history_index = 1
         self._tab_chars = 4 * ' '
 
@@ -83,7 +83,8 @@ class BaseConsole(QTextEdit):
             self._update_completion(key)
 
             # Append the current buffer to the history
-            self._cmd_history[-1] = self._get_buffer()
+            if self._cmd_history:
+                self._cmd_history[-1] = self._get_buffer()
         else:
             event.accept()
             
@@ -96,8 +97,11 @@ class BaseConsole(QTextEdit):
         if self._completing():
             self._complete()
         else:
+            # Move to end of line before parsing the current line
+            cursor = self.textCursor()
+            cursor.movePosition(QTextCursor.EndOfLine)
+            self.setTextCursor(cursor)
             self._parse_buffer()
-            self._history_index = len(self._cmd_history) - 1
 
         return True
 
@@ -218,6 +222,7 @@ class BaseConsole(QTextEdit):
     def _add_history_entry(self, cmd):
         if len(self._cmd_history) <= self._history_size:
             self._cmd_history.append(cmd)
+            self._cmd_history.append('')
 
     def _insert_history_entry(self):
         if self._history_index < len(self._cmd_history):
@@ -290,7 +295,8 @@ class BaseConsole(QTextEdit):
         cmd = self._get_buffer()    
         self.stdin.write(cmd + os.linesep)
 
-        if cmd != os.linesep:
+        if cmd != '':
+            self._history_index = len(self._cmd_history)
             self._add_history_entry(cmd)
 
     def _stdout_data_handler(self, data):
