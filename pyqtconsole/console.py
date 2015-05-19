@@ -51,6 +51,8 @@ class BaseConsole(QTextEdit):
             intercepted = self.handle_backspace_key(event)
         elif key == QtCore.Qt.Key_Escape:
             pass
+        elif key == QtCore.Qt.Key_Home:
+            intercepted = self.handle_home_key(event)
         elif key == QtCore.Qt.Key_Tab:
             intercepted = self.handle_tab_key(event)
         elif key == QtCore.Qt.Key_Up:
@@ -128,6 +130,10 @@ class BaseConsole(QTextEdit):
 
         return True
 
+    def handle_home_key(self, event):
+        self._keep_cursor_in_buffer()
+        return True
+    
     def handle_up_key(self, event):
         self._dec_history_index()
         self._insert_history_entry()
