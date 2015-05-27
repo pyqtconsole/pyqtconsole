@@ -339,7 +339,7 @@ class PythonConsole(BaseConsole):
     def evaluate_buffer(self, _buffer, echo_lines = False):
         self.interpreter.set_buffer(_buffer)
         if echo_lines:
-            self.stdin.write('eval_lines\n')   
+            self.stdin.write('eval_lines\n')
         else:
             self.stdin.write('eval_buffer\n')
 
