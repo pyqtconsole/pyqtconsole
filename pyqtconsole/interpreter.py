@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
-
 import ctypes
 import os
 import threading
-import os
-import signal
 import sys
 
 try:
@@ -184,8 +181,5 @@ class PythonConsoleProxy(InteractiveConsole):
             _id = threading.current_thread().ident
 
         if self._executing:
-            #tstate = ctypes.pythonapi.PyThreadState_Get()
-            #ctypes.pythonapi.PyEval_ReleaseThread(tstate)
             _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
             ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
-            #os.kill(os.getpid(), signal.SIGINT)
