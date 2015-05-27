@@ -18,6 +18,7 @@ class BaseConsole(QTextEdit):
         self._cmd_history = []
         self._history_index = 1
         self._tab_chars = 4 * ' '
+        self._ctrl_d_exits = False
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -161,8 +162,11 @@ class BaseConsole(QTextEdit):
         return intercepted
 
     def handle_d_key(self, event):
-        if event.modifiers() == QtCore.Qt.ControlModifier:
+        if event.modifiers() == QtCore.Qt.ControlModifier and self._ctrl_d_exits:
             self._close()
+        else:
+            msg = "\nCan't use CTRL-D to exit, you have to exit the application !\n"
+            self._insert_prompt(msg)
 
         return False
 
@@ -317,6 +321,15 @@ class BaseConsole(QTextEdit):
     def evaluate_buffer(self, _buffer, echo_lines = False):
         print(_buffer)
 
+    def set_tab(self, chars):
+        self._tab_chars = chars
+
+    def ctrl_d_exits_console(self, b):
+        self._ctrl_d_exits = b
+
+    # Abstract
+    def _handle_ctrl_c(self):
+        pass
 
 class PythonConsole(BaseConsole):
     def __init__(self, parent = None, local = {}):
