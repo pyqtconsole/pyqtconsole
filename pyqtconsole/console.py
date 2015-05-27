@@ -70,7 +70,9 @@ class BaseConsole(QTextEdit):
             intercepted = self.handle_c_key(event)
             
         # Make sure that we can't move the cursor outside of the editing buffer
-        if not self._in_buffer():
+        # If outside buffer and no modifiers used move the cursor back into to
+        # the buffer
+        if not event.modifiers() and not self._in_buffer():
             self._keep_cursor_in_buffer()
 
         # Call the TextEdit keyPressEvent for the events that are not
@@ -336,7 +338,6 @@ class PythonConsole(BaseConsole):
 
     def evaluate_buffer(self, _buffer, echo_lines = False):
         self.interpreter.set_buffer(_buffer)
-        
         if echo_lines:
             self.stdin.write('eval_lines\n')   
         else:
