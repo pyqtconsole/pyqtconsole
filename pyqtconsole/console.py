@@ -67,7 +67,7 @@ class BaseConsole(QTextEdit):
         elif key == QtCore.Qt.Key_D:
             intercepted = self.handle_d_key(event)
         elif key == QtCore.Qt.Key_C:
-            intercepted = self.handle_d_key(event)
+            intercepted = self.handle_c_key(event)
             
         # Make sure that we can't move the cursor outside of the editing buffer
         if not self._in_buffer():
@@ -169,7 +169,6 @@ class BaseConsole(QTextEdit):
         
         if event.modifiers() == QtCore.Qt.ControlModifier:
             self._handle_ctrl_c()
-            intercepted = True
 
         return intercepted
 
@@ -319,21 +318,24 @@ class PythonConsole(BaseConsole):
     def __init__(self, parent = None, local = {}):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
-        self.shell = PythonConsoleProxy(self.stdin, self.stdout, local = local)
+        self.interpreter = PythonConsoleProxy(self.stdin, self.stdout, local = local)
 
     def _close(self):
-        self.shell.exit()
+        self.interpreter.exit()
         self.close()
 
     def _handle_ctrl_c(self):
-        self.shell.send_keyboard_interrupt()
+        if self.interpreter.executing():
+            self.interpreter.raise_keyboard_interrupt()
+        #else:
+        #    self.copy()
 
     def closeEvent(self, event):
         self._close()
         event.accept()
 
     def evaluate_buffer(self, _buffer, echo_lines = False):
-        self.shell.set_buffer(_buffer)
+        self.interpreter.set_buffer(_buffer)
         
         if echo_lines:
             self.stdin.write('eval_lines\n')   
@@ -341,30 +343,16 @@ class PythonConsole(BaseConsole):
             self.stdin.write('eval_buffer\n')
 
     def get_completions(self, line):
-        return self.shell.get_completions(line)
+        return self.interpreter.get_completions(line)
 
     def push_local_ns(self, name, value):
-        self.shell.local_ns[name] = value
+        self.interpreter.local_ns[name] = value
 
     def repl_nonblock(self):
-        return self.shell.repl_nonblock()
+        return self.interpreter.repl_nonblock()
 
     def repl(self):
-        return self.shell.repl()
+        return self.interpreter.repl()
 
-# if __name__ == '__main__':
-#     import sys
-
-#     from threading import Thread
-#     from .qt.QtWidgets import (QApplication)
-
-#     app = QApplication([])
-
-#     console = PythonConsole()
-#     console.show()
-
-#     ct = Thread(target = console.repl)
-#     ct.start()
-
-#     sys.exit(app.exec_())
-
+    def set_thread_id(self, _id):
+        self.interpreter._thread_id = _id

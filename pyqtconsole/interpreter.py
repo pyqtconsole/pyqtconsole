@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
-import sys
+
+import ctypes
 import os
+import threading
+import os
+import signal
+import sys
 
 try:
     import jedi
@@ -23,6 +28,8 @@ class PythonConsoleProxy(InteractiveConsole):
         self._more = False
         self._current_line = 0
         self._current_eval_buffer = ''
+        self._thread_id = None
+        self._executing = False
 
         self._inp = 'IN [%s]: '
         self._morep = '   ...:'
@@ -43,7 +50,7 @@ class PythonConsoleProxy(InteractiveConsole):
         # If the input is complete increase the input number and show
         # the in prompt
         if not _more:
-            # Only increase the input number if the input was complete
+             # Only increase the input number if the input was complete
             # last prompt was the more prompt (and we know that we don't have
             # more input to expect). Obviously do not increase for CR
             if _input != os.linesep or self._p == self._morep:
@@ -54,6 +61,7 @@ class PythonConsoleProxy(InteractiveConsole):
             self._p = self._morep
 
     def _print_in_prompt(self):
+        self.stdout.write(os.linesep)
         self.stdout.write(self._p)
 
     def _format_result(self):
@@ -64,16 +72,21 @@ class PythonConsoleProxy(InteractiveConsole):
         if self._last_input != os.linesep or eof_cblock: 
             self.stdout.write(os.linesep)
 
+    def executing(self):
+        return self._executing
+
     def push(self, line):
         return InteractiveConsole.push(self, line)
 
     def runcode(self, code):
+        self._executing = True
         self.stdout.write(os.linesep)
         # Redirect IO, this is the only place were we redirect IO, since we
         # don't how IO is handled within the code we are running
         self._redirect_io()
         exec_res = InteractiveConsole.runcode(self, code)
         self._reset_io()
+        self._executing = False
         return exec_res
 
     def raw_input(self, prompt=None, timeout=None):
@@ -87,9 +100,6 @@ class PythonConsoleProxy(InteractiveConsole):
     def write(self, data):
         self.stdout.write(data)
 
-    def interact(self, banner=None):
-        return InteractiveConsole.interact(self, '')
-
     def _rep_line(self, line):
         self._last_input = line
 
@@ -98,7 +108,7 @@ class PythonConsoleProxy(InteractiveConsole):
         elif line == 'eval_buffer':
             line = self.eval_buffer()
         elif line == 'eval_lines':
-            self._more = self.eval_lines()
+            self.eval_lines()
 
             # We don't want to make recursive call here, self.eval_lines
             # calls _rep_line so we return to start from scratch to not
@@ -108,7 +118,6 @@ class PythonConsoleProxy(InteractiveConsole):
             self._more = self.push(line)
 
         self._update_in_prompt(self._more, self._last_input)
-        self.stdout.write(os.linesep)
         self._print_in_prompt()
 
     def repl(self):
@@ -162,6 +171,16 @@ class PythonConsoleProxy(InteractiveConsole):
                 words.append(completion.name)
 
         return words
+    
+    def raise_keyboard_interrupt(self):
+        if self._thread_id:
+            _id = self._thread_id
+        else:
+            _id = threading.current_thread().ident
 
-    def send_keyboard_interrupt(self):
-        self.push('raise KeyboardInterrupt()')
+        if self._executing:
+            #tstate = ctypes.pythonapi.PyThreadState_Get()
+            #ctypes.pythonapi.PyEval_ReleaseThread(tstate)
+            _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
+            #os.kill(os.getpid(), signal.SIGINT)

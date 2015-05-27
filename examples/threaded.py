@@ -15,5 +15,5 @@ if __name__ == '__main__':
 
     ct = Thread(target = console.repl)
     ct.start()
-
+    console.set_thread_id(ct.ident)
     sys.exit(app.exec_())
