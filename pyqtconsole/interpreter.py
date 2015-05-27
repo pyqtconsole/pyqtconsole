@@ -155,9 +155,14 @@ class PythonConsoleProxy(InteractiveConsole):
     def eval_lines(self):
         if self._current_eval_buffer:
             lines = self._current_eval_buffer.split(os.linesep)
-            
+        
             for line in lines:
                 if line:
+                    # Remove the any remaining more prompt, to make it easier
+                    # to copy/paste within the interpreter.
+                    if line.startswith(self._morep):
+                        line = line[len(self._morep):]
+                    
                     self.stdout.write(line)
                     self._rep_line(line + os.linesep)
 
