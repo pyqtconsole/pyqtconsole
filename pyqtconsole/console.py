@@ -70,7 +70,9 @@ class BaseConsole(QTextEdit):
             intercepted = self.handle_c_key(event)
             
         # Make sure that we can't move the cursor outside of the editing buffer
-        if not self._in_buffer():
+        # If outside buffer and no modifiers used move the cursor back into to
+        # the buffer
+        if not event.modifiers() and not self._in_buffer():
             self._keep_cursor_in_buffer()
 
         # Call the TextEdit keyPressEvent for the events that are not
@@ -166,7 +168,9 @@ class BaseConsole(QTextEdit):
 
     def handle_c_key(self, event):
         intercepted = False
-        
+
+        # Do not intercept so that the event is forwarded to the base class
+        # can handle it. In this case for copy that is: CTRL-C
         if event.modifiers() == QtCore.Qt.ControlModifier:
             self._handle_ctrl_c()
 
@@ -327,8 +331,6 @@ class PythonConsole(BaseConsole):
     def _handle_ctrl_c(self):
         if self.interpreter.executing():
             self.interpreter.raise_keyboard_interrupt()
-        #else:
-        #    self.copy()
 
     def closeEvent(self, event):
         self._close()
@@ -336,7 +338,6 @@ class PythonConsole(BaseConsole):
 
     def evaluate_buffer(self, _buffer, echo_lines = False):
         self.interpreter.set_buffer(_buffer)
-        
         if echo_lines:
             self.stdin.write('eval_lines\n')   
         else:
