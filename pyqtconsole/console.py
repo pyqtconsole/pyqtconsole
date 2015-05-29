@@ -164,7 +164,7 @@ class BaseConsole(QTextEdit):
     def handle_d_key(self, event):
         if event.modifiers() == QtCore.Qt.ControlModifier and self._ctrl_d_exits:
             self._close()
-        else:
+        elif event.modifiers() == QtCore.Qt.ControlModifier:
             msg = "\nCan't use CTRL-D to exit, you have to exit the application !\n"
             self._insert_prompt(msg)
 
