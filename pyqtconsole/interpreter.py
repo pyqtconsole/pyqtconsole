@@ -13,6 +13,7 @@ except ImportError as ex:
 
 from code import InteractiveConsole
 
+
 class PythonConsoleProxy(InteractiveConsole):
     def __init__(self, stdin, stdout, local = {}):
         InteractiveConsole.__init__(self, local)
@@ -102,9 +103,9 @@ class PythonConsoleProxy(InteractiveConsole):
 
         if line == 'exit' or line == 'exit()':
             self._running = False
-        elif line == 'eval_buffer':
+        elif line == '%%eval_buffer':
             line = self.eval_buffer()
-        elif line == 'eval_lines':
+        elif line == '%%eval_lines':
             self.eval_lines()
 
             # We don't want to make recursive call here, self.eval_lines

@@ -314,7 +314,7 @@ class BaseConsole(QTextEdit):
         self.stdin.write('EOF\n')
 
     def _evaluate_buffer(self):
-        _buffer = self.sender().parent().parent().toPlainText()
+        _buffer = str(self.sender().parent().parent().toPlainText())
         self.evaluate_buffer(_buffer)
 
     # Abstract
@@ -352,9 +352,9 @@ class PythonConsole(BaseConsole):
     def evaluate_buffer(self, _buffer, echo_lines = False):
         self.interpreter.set_buffer(_buffer)
         if echo_lines:
-            self.stdin.write('eval_lines\n')
+            self.stdin.write('%%eval_lines\n')
         else:
-            self.stdin.write('eval_buffer\n')
+            self.stdin.write('%%eval_buffer\n')
 
     def get_completions(self, line):
         return self.interpreter.get_completions(line)
