@@ -8,8 +8,16 @@ from .qt.QtGui import (QFontMetrics, QTextCursor)
 from .interpreter import PythonConsoleProxy
 from .stream import Stream
 from .syntaxhighlighter import PythonHighlighter
+from .text import columnize, long_substr
+
+
+class COMPLETE_MODE(object):
+    DROPDOWN = '1'
+    INLINE = '2'
+
 
 class BaseConsole(QTextEdit):
+
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
         self._buffer_pos = 0
@@ -19,6 +27,8 @@ class BaseConsole(QTextEdit):
         self._history_index = 1
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False
+        self._complete_mode = COMPLETE_MODE.INLINE
+        self._copy_buffer = ''
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -69,7 +79,7 @@ class BaseConsole(QTextEdit):
             intercepted = self.handle_d_key(event)
         elif key == QtCore.Qt.Key_C:
             intercepted = self.handle_c_key(event)
-            
+
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
         # the buffer
@@ -90,7 +100,7 @@ class BaseConsole(QTextEdit):
                 self._cmd_history[-1] = self._get_buffer()
         else:
             event.accept()
-            
+
         # Regardless of key pressed, if we are completing a word, highlight
         # the first match !
         if self._completing():
@@ -132,17 +142,20 @@ class BaseConsole(QTextEdit):
     def handle_tab_key(self, event):
         _buffer = self._get_buffer().strip(' ')
 
-        if len(_buffer):
-            self._show_completion_suggestions(_buffer)
+        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
+            if len(_buffer):
+                self._show_completion_suggestions(_buffer)
+            else:
+                self._insert_in_buffer(self._tab_chars)
         else:
-            self._insert_in_buffer(self._tab_chars)
+            self._show_completion_suggestions(_buffer)
 
         return True
 
     def handle_home_key(self, event):
         self._keep_cursor_in_buffer()
         return True
-    
+
     def handle_up_key(self, event):
         self._dec_history_index()
         self._insert_history_entry()
@@ -165,7 +178,8 @@ class BaseConsole(QTextEdit):
         if event.modifiers() == QtCore.Qt.ControlModifier and self._ctrl_d_exits:
             self._close()
         elif event.modifiers() == QtCore.Qt.ControlModifier:
-            msg = "\nCan't use CTRL-D to exit, you have to exit the application !\n"
+            msg = "\nCan't use CTRL-D to exit, you have to exit the "
+            msg += "application !\n"
             self._insert_prompt(msg)
 
         return False
@@ -183,18 +197,24 @@ class BaseConsole(QTextEdit):
     def _keep_cursor_in_buffer(self):
         cursor = self.textCursor()
         cursor.setPosition(self._prompt_pos)
-        self.setTextCursor(cursor)        
+        self.setTextCursor(cursor)
         self.ensureCursorVisible()
 
     def _in_buffer(self):
         buffer_pos = self.textCursor().position()
         return buffer_pos > self._prompt_pos
 
-    def _insert_prompt(self, prompt):
+    def _insert_prompt(self, prompt, lf=False, keep_buffer=False):
+        if keep_buffer:
+            self._copy_buffer = self._get_buffer()
+
         cursor = self.textCursor()
         cursor.insertText(prompt)
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
+
+        if lf:
+            self.stdin.write(os.linesep)
 
     def _insert_welcome_message(self, message):
         self._insert_prompt(message)
@@ -241,11 +261,18 @@ class BaseConsole(QTextEdit):
 
     def init_completion_list(self, words):
         self.completer = QCompleter(words, self)
+        self.completer.setCompletionPrefix(self._get_buffer())
         self.completer.setWidget(self)
-        self.completer.setCompletionMode(QCompleter.PopupCompletion)
-        self.completer.setCaseSensitivity(QtCore.Qt.CaseSensitive)
-        self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
-        self.completer.activated.connect(self._insert_completion)
+
+        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
+            self.completer.setCompletionMode(QCompleter.PopupCompletion)
+            self.completer.setCaseSensitivity(QtCore.Qt.CaseSensitive)
+            self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
+            self.completer.activated.connect(self._insert_completion)
+        else:
+            self.completer.setCompletionMode(QCompleter.InlineCompletion)
+            self.completer.setCaseSensitivity(QtCore.Qt.CaseSensitive)
+            self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
 
     # Asbtract
     def get_completions(self, line):
@@ -261,25 +288,42 @@ class BaseConsole(QTextEdit):
                 self.completer.popup().hide()
 
     def _show_completion_suggestions(self, _buffer):
-        if self.completer.popup().isVisible():
-            self.completer.popup().hide()
-
         words = self.get_completions(_buffer)
 
-        if len(words) == 1:
-            self._insert_completion(words[0])
-        else:
-            self.init_completion_list(words)
-            self.completer.setCompletionPrefix(_buffer)
+        # No words to show, just return
+        if len(words) == 0:
+            return
 
+        # Close any popups before creating a new one
+        if self.completer.popup():
+            self.completer.popup().close()
+
+        self.init_completion_list(words)
+
+        leastcmn = long_substr(words)
+        self._insert_completion(leastcmn)
+
+        # If only one word to complete, just return and don't display options
+        if len(words) == 1:
+            return
+
+        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
             cr = self.cursorRect()
-            sbar_w = self.completer.popup().verticalScrollBar().sizeHint().width()
-            popup_width = self.completer.popup().sizeHintForColumn(0) + sbar_w
+            sbar_w = self.completer.popup().verticalScrollBar()
+            popup_width = self.completer.popup().sizeHintForColumn(0)
+            popup_width += sbar_w.sizeHint().width()
             cr.setWidth(popup_width)
             self.completer.complete(cr)
 
+        elif self._complete_mode == COMPLETE_MODE.INLINE:
+            cl = columnize(words, colsep = '  |  ')
+            self._insert_prompt('\n\n' + cl + '\n', lf=True, keep_buffer = True)
+
     def _completing(self):
-        return self.completer.popup().isVisible()
+        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
+            return self.completer.popup() and self.completer.popup().isVisible()
+        else:
+            return False
 
     def _highlight_current_completion(self):
         self.completer.setCurrentRow(0)
@@ -289,17 +333,30 @@ class BaseConsole(QTextEdit):
     def _insert_completion(self, completion):
         _buffer = self._get_buffer()
         cursor = self.textCursor()
+
+        # Handling the . operator in object oriented languages so we don't
+        # overwrite the . when we are inserting the completion. Its not the .
+        # operator If the buffer starts with a . (dot), but something else
+        # perhaps terminal specific so do nothing.
+        if '.' in _buffer and _buffer[0] != '.':
+            idx = _buffer.rfind('.') + 1
+            _buffer = _buffer[idx:]
+
         cursor.insertText(completion[len(_buffer):])
 
     def _complete(self):
-        index = self.completer.popup().currentIndex()
-        model = self.completer.completionModel()
-        word = model.itemData(index)[0]
-        self._insert_completion(word)
-        self.completer.popup().hide()
+        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
+            index = self.completer.popup().currentIndex()
+            model = self.completer.completionModel()
+            word = model.itemData(index)[0]
+            self._insert_completion(word)
+            self.completer.popup().hide()
+
+    def set_auto_complete_mode(self, mode):
+        self._complete_mode = mode
 
     def _parse_buffer(self):
-        cmd = self._get_buffer()    
+        cmd = self._get_buffer()
         self.stdin.write(cmd + os.linesep)
 
         if cmd != '':
@@ -308,6 +365,10 @@ class BaseConsole(QTextEdit):
 
     def _stdout_data_handler(self, data):
         self._insert_prompt(data)
+
+        if len(self._copy_buffer) > 0:
+            self._insert_in_buffer(self._copy_buffer)
+            self._copy_buffer = ''
 
     # Abstract
     def _close(self):
@@ -336,6 +397,7 @@ class PythonConsole(BaseConsole):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
         self.interpreter = PythonConsoleProxy(self.stdin, self.stdout, local = local)
+        self._complete_mode = COMPLETE_MODE.DROPDOWN
 
     def _close(self):
         self.interpreter.exit()
