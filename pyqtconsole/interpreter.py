@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import ctypes
 import os
-import threading
 import sys
 
 try:
@@ -25,7 +23,6 @@ class PythonInterpreter(InteractiveConsole):
         self._more = False
         self._current_line = 0
         self._current_eval_buffer = ''
-        self._thread_id = None
         self._executing = False
 
         self._inp = 'IN [%s]: '
@@ -176,13 +173,3 @@ class PythonInterpreter(InteractiveConsole):
                 words.append(completion.name)
 
         return words
-    
-    def raise_keyboard_interrupt(self):
-        if self._thread_id:
-            _id = self._thread_id
-        else:
-            _id = threading.current_thread().ident
-
-        if self._executing:
-            _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)    
