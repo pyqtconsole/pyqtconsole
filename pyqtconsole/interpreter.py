@@ -121,10 +121,13 @@ class PythonInterpreter(InteractiveConsole):
         self._running = True
 
         while self._running:
-            line = self.raw_input(timeout = None)
+            try:
+                line = self.raw_input(timeout = None)
 
-            if line:
-                self._rep_line(line)
+                if line:
+                    self._rep_line(line)
+            except KeyboardInterrupt:
+                pass
 
     def repl_nonblock(self):
         line = self.raw_input(timeout = 0)

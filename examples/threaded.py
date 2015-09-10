@@ -3,7 +3,6 @@
 import sys
 import _phome
 
-from threading import Thread
 from pyqtconsole.qt.QtWidgets import (QApplication)
 from pyqtconsole.console import PythonConsole
 
@@ -12,8 +11,5 @@ if __name__ == '__main__':
 
     console = PythonConsole()
     console.show()
-
-    ct = Thread(target = console.repl)
-    ct.start()
-    console.set_thread_id(ct.ident)
+    console.eval_in_thread()
     sys.exit(app.exec_())

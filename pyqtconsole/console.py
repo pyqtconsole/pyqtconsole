@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
+import threading
+import ctypes
+import time
+
 
 from .qt import QtCore
 from .qt.QtWidgets import (QTextEdit, QCompleter)
@@ -398,15 +402,26 @@ class PythonConsole(BaseConsole):
         self.highlighter = PythonHighlighter(self.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, local=local)
         self._complete_mode = COMPLETE_MODE.DROPDOWN
+        self._thread = None
 
     def _close(self):
         self.interpreter.exit()
         self.close()
 
     def _handle_ctrl_c(self):
-        if self.interpreter.executing():
-            self.interpreter.raise_keyboard_interrupt()
+        _id = threading.current_thread().ident
+        
+        if self._thread:
+            _id = self._thread.ident
 
+        if _id:
+            self.stdout.write('\n\nKeyboardInterrupt')
+            _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
+            time.sleep(0.1)
+            
+            self.stdin.write('\n\n')
+        
     def closeEvent(self, event):
         self._close()
         event.accept()
@@ -430,5 +445,7 @@ class PythonConsole(BaseConsole):
     def repl(self):
         return self.interpreter.repl()
 
-    def set_thread_id(self, _id):
-        self.interpreter._thread_id = _id
+    def eval_in_thread(self):
+        self._thread = threading.Thread(target = self.repl)
+        self._thread.start()
+        return self._thread
