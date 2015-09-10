@@ -13,8 +13,7 @@ except ImportError as ex:
 
 from code import InteractiveConsole
 
-
-class PythonConsoleProxy(InteractiveConsole):
+class PythonInterpreter(InteractiveConsole):
     def __init__(self, stdin, stdout, local = {}):
         InteractiveConsole.__init__(self, local)
         self.local_ns = local
@@ -183,4 +182,4 @@ class PythonConsoleProxy(InteractiveConsole):
 
         if self._executing:
             _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)    

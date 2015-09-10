@@ -5,7 +5,7 @@ from .qt import QtCore
 from .qt.QtWidgets import (QTextEdit, QCompleter)
 from .qt.QtGui import (QFontMetrics, QTextCursor)
 
-from .interpreter import PythonConsoleProxy
+from .interpreter import PythonInterpreter
 from .stream import Stream
 from .syntaxhighlighter import PythonHighlighter
 from .text import columnize, long_substr
@@ -396,7 +396,7 @@ class PythonConsole(BaseConsole):
     def __init__(self, parent = None, local = {}):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
-        self.interpreter = PythonConsoleProxy(self.stdin, self.stdout, local = local)
+        self.interpreter = PythonInterpreter(self.stdin, self.stdout, local=local)
         self._complete_mode = COMPLETE_MODE.DROPDOWN
 
     def _close(self):
