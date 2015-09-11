@@ -24,9 +24,7 @@ See the examples directory for more examples
     app = QApplication([])
     console = PythonConsole()
     console.show()
-    
-    ct = Thread(target = console.repl)
-    ct.start()
+    console.eval_in_thread()
 
     sys.exit(app.exec_())
 
