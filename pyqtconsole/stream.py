@@ -28,25 +28,38 @@ class Stream(QtCore.QObject):
     def readline(self, timeout = None):
         data = ''
 
-        with self._line_cond:
-            first_linesep = self._buffer.find(os.linesep)
-
-            # Is there already some lines in the buffer, write might have
-            # been called before we read !
-            if not first_linesep > -1:
-                self._line_cond.wait(timeout)
+        try:
+            with self._line_cond:
                 first_linesep = self._buffer.find(os.linesep)
+                
+                # Is there already some lines in the buffer, write might have
+                # been called before we read !
+                while first_linesep == -1:
+                    notfied = self._line_cond.wait(timeout)
+                    first_linesep = self._buffer.find(os.linesep)
 
-            # Check if there really is something in the buffer after waiting
-            # for line_cond. There might have been a timeout, and there is
-            # still no data available
-            if first_linesep > -1:
-                data = self._buffer[0:first_linesep+1]
+                    # We had a timeout, break !
+                    if not notfied:
+                        break
 
-                if len(self._buffer) > len(data):
-                    self._buffer = self._buffer[first_linesep+2:]
-                else:
-                    self._buffer = ''
+                # Check if there really is something in the buffer after waiting
+                # for line_cond. There might have been a timeout, and there is
+                # still no data available
+                if first_linesep > -1:
+                    data = self._buffer[0:first_linesep+1]
+
+                    if len(self._buffer) > len(data):
+                        self._buffer = self._buffer[first_linesep+2:]
+                    else:
+                        self._buffer = ''
+
+        # Tricky RuntimeError !, wait releases the lock and waits for notify
+        # and then acquire the lock again !. There might be an exception, i.e
+        # KeyboardInterupt which interrupts the wait. The cleanup of the with
+        # statement then tries to release the lock which is not acquired,
+        # causing a RuntimeError. puh ! If its the case just try again !
+        except RuntimeError:
+            data = self.readline(timeout)
 
         return data
 
