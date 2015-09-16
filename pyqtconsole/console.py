@@ -200,7 +200,7 @@ class BaseConsole(QTextEdit):
 
     def _keep_cursor_in_buffer(self):
         cursor = self.textCursor()
-        cursor.setPosition(self._prompt_pos)
+        cursor.movePosition(QTextCursor.End)
         self.setTextCursor(cursor)
         self.ensureCursorVisible()
 
@@ -213,6 +213,7 @@ class BaseConsole(QTextEdit):
             self._copy_buffer = self._get_buffer()
 
         cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.End)
         cursor.insertText(prompt)
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
