@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
+import contextlib
 
 try:
     import jedi
@@ -75,11 +76,13 @@ class PythonInterpreter(InteractiveConsole):
     def runcode(self, code):
         self._executing = True
         self.stdout.write(os.linesep)
-        # Redirect IO, this is the only place were we redirect IO, since we
-        # don't how IO is handled within the code we are running
-        self._redirect_io()
-        exec_res = InteractiveConsole.runcode(self, code)
-        self._reset_io()
+
+        # Redirect IO and disable excepthook, this is the only place were we
+        # redirect IO, since we don't how IO is handled within the code we
+        # are running.
+        with redirected_io(self.stdout), disabled_excepthook():
+            exec_res = InteractiveConsole.runcode(self, code)
+
         self._executing = False
         return exec_res
 
@@ -160,14 +163,14 @@ class PythonInterpreter(InteractiveConsole):
     def eval_lines(self):
         if self._current_eval_buffer:
             lines = self._current_eval_buffer.split(os.linesep)
-        
+
             for line in lines:
                 if line:
                     # Remove the any remaining more prompt, to make it easier
                     # to copy/paste within the interpreter.
                     if line.startswith(self._morep):
                         line = line[len(self._morep):]
-                    
+
                     self.stdout.write(line)
                     self._rep_line(line + os.linesep)
 
@@ -176,8 +179,41 @@ class PythonInterpreter(InteractiveConsole):
 
         if 'jedi' in globals():
             script = jedi.Interpreter(line, [self.local_ns])
-        
+
             for completion in script.completions():
                 words.append(completion.name)
 
         return words
+
+
+@contextlib.contextmanager
+def disabled_excepthook():
+    """Run code with the exception hook temporarily disabled."""
+    old_excepthook = sys.excepthook
+    sys.excepthook = sys.__excepthook__
+
+    try:
+        yield
+    finally:
+        # If the code we did run did change sys.excepthook, we leave it
+        # unchanged. Otherwise, we reset it.
+        if sys.excepthook is sys.__excepthook__:
+            sys.excepthook = old_excepthook
+
+
+@contextlib.contextmanager
+def redirected_io(stdout):
+    sys.stdout = stdout
+    sys.stderr = stdout
+
+    try:
+        yield
+    finally:
+
+        # Only reset if stdout or stderr was unchanged in the code that was
+        # executed within the context
+        if sys.stdout == stdout:
+            sys.stdout = sys.__stdout__
+
+        if sys.stderr == stdout:
+            sys.stderr = sys.__stderr__
