@@ -94,6 +94,14 @@ class PythonInterpreter(InteractiveConsole):
     def write(self, data):
         self.stdout.write(data)
 
+    def showtraceback(self):
+        self.stdout.write('\n')
+        InteractiveConsole.showtraceback(self)
+
+    def showsyntaxerror(self, filename):
+        self.stdout.write('\n\n')
+        InteractiveConsole.showsyntaxerror(self, filename)
+
     def _rep_line(self, line):
         self._last_input = line
 
