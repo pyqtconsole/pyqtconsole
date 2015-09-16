@@ -26,7 +26,7 @@ class PythonInterpreter(InteractiveConsole):
         self._executing = False
 
         self._inp = 'IN [%s]: '
-        self._morep = '   ...:'
+        self._morep = '...: '
         self._outp = 'OUT[%s]: '
         self._p = self._inp % self._current_line
         self._print_in_prompt()
@@ -44,7 +44,7 @@ class PythonInterpreter(InteractiveConsole):
         # If the input is complete increase the input number and show
         # the in prompt
         if not _more:
-             # Only increase the input number if the input was complete
+            # Only increase the input number if the input was complete
             # last prompt was the more prompt (and we know that we don't have
             # more input to expect). Obviously do not increase for CR
             if _input != os.linesep or self._p == self._morep:
@@ -52,7 +52,7 @@ class PythonInterpreter(InteractiveConsole):
 
             self._p = self._inp % self._current_line
         else:
-            self._p = self._morep
+            self._p = (len(self._p) - len(self._morep)) * ' ' + self._morep
 
     def _print_in_prompt(self):
         self.stdout.write(os.linesep)
