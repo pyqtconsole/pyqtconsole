@@ -416,11 +416,9 @@ class PythonConsole(BaseConsole):
             _id = self._thread.ident
 
         if _id:
-            self.stdout.write('\n\nKeyboardInterrupt')
             _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
             ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
             time.sleep(0.1)            
-            self.stdin.write('\n\n')
         
     def closeEvent(self, event):
         self._close()

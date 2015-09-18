@@ -32,14 +32,6 @@ class PythonInterpreter(InteractiveConsole):
         self._p = self._inp % self._current_line
         self._print_in_prompt()
 
-    def _redirect_io(self):
-        sys.stdout = self.stdout
-        sys.stderr = self.stdout
-
-    def _reset_io(self):
-        sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
-
     def _update_in_prompt(self, _more, _input):
         # We need to show the more prompt of the input was incomplete
         # If the input is complete increase the input number and show
@@ -79,7 +71,8 @@ class PythonInterpreter(InteractiveConsole):
 
         # Redirect IO and disable excepthook, this is the only place were we
         # redirect IO, since we don't how IO is handled within the code we
-        # are running.
+        # are running. Same thing for the except hook, we don't know what the
+        # user are doing in it.
         with redirected_io(self.stdout), disabled_excepthook():
             exec_res = InteractiveConsole.runcode(self, code)
 
@@ -98,8 +91,13 @@ class PythonInterpreter(InteractiveConsole):
         self.stdout.write(data)
 
     def showtraceback(self):
+        type_, value, tb = sys.exc_info()
         self.stdout.write('\n')
-        InteractiveConsole.showtraceback(self)
+        
+        if type_ == KeyboardInterrupt:
+            self.stdout.write('KeyboardInterrupt \n')
+        else:
+            InteractiveConsole.showtraceback(self)
 
     def showsyntaxerror(self, filename):
         self.stdout.write('\n\n')
