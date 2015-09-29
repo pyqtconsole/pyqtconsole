@@ -13,6 +13,8 @@ from .interpreter import PythonInterpreter
 from .stream import Stream
 from .syntaxhighlighter import PythonHighlighter
 from .text import columnize, long_substr
+from .extensions.extension import ExtensionManager
+from .extensions.commandhistory import CommandHistory
 
 
 class COMPLETE_MODE(object):
@@ -21,14 +23,10 @@ class COMPLETE_MODE(object):
 
 
 class BaseConsole(QTextEdit):
-
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
         self._buffer_pos = 0
         self._prompt_pos = 0
-        self._history_size = 100
-        self._cmd_history = []
-        self._history_index = 1
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False
         self._complete_mode = COMPLETE_MODE.INLINE
@@ -36,7 +34,7 @@ class BaseConsole(QTextEdit):
 
         self.stdin = Stream()
         self.stdout = Stream()
-        self.stdout.write_event.connect(self._stdout_data_handler)
+        self.stdout.write_event.connect(self._stdout_data_handler)        
 
         font = self.document().defaultFont()
         font.setFamily("Courier New")
@@ -47,6 +45,10 @@ class BaseConsole(QTextEdit):
         geometry.setHeight(font_width*40)
         self.setGeometry(geometry)
         self.resize(font_width*80+20, font_width*40)
+
+        self.extensions = ExtensionManager(self)
+        self.extensions.install(CommandHistory)
+
 
         self.init_completion_list([])
 
@@ -99,9 +101,6 @@ class BaseConsole(QTextEdit):
             # has been added to the TextEdit
             self._update_completion(key)
 
-            # Append the current buffer to the history
-            if self._cmd_history:
-                self._cmd_history[-1] = self._get_buffer()
         else:
             event.accept()
 
@@ -161,13 +160,9 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_up_key(self, event):
-        self._dec_history_index()
-        self._insert_history_entry()
         return True
 
     def handle_down_key(self, event):
-        self._inc_history_index()
-        self._insert_history_entry()
         return True
 
     def handle_left_key(self, event):
@@ -238,31 +233,6 @@ class BaseConsole(QTextEdit):
     def _insert_in_buffer(self, text):
         self.ensureCursorVisible()
         self.textCursor().insertText(text)
-
-    def _inc_history_index(self):
-        if self._history_index < (len(self._cmd_history) -1):
-            self._history_index += 1
-        else:
-            self._history_index = len(self._cmd_history) -1
-
-    def _dec_history_index(self):
-        if self._history_index > 0:
-            self._history_index -= 1
-        else:
-            self._history_index = 0
-
-    def _add_history_entry(self, cmd):
-        if len(self._cmd_history) <= self._history_size:
-            self._cmd_history.append(cmd)
-            self._cmd_history.append('')
-
-    def _insert_history_entry(self):
-        if self._history_index < len(self._cmd_history):
-            self.textCursor().clearSelection()
-            cmd = self._cmd_history[self._history_index]
-            self._clear_buffer()
-            self._keep_cursor_in_buffer()
-            self._insert_in_buffer(cmd)
 
     def init_completion_list(self, words):
         self.completer = QCompleter(words, self)
@@ -363,10 +333,6 @@ class BaseConsole(QTextEdit):
     def _parse_buffer(self):
         cmd = self._get_buffer()
         self.stdin.write(cmd + os.linesep)
-
-        if cmd != '':
-            self._history_index = len(self._cmd_history)
-            self._add_history_entry(cmd)
 
     def _stdout_data_handler(self, data):
         self._insert_prompt(data)
