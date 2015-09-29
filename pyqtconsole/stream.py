@@ -31,7 +31,7 @@ class Stream(QtCore.QObject):
         try:
             with self._line_cond:
                 first_linesep = self._buffer.find(os.linesep)
-                
+
                 # Is there already some lines in the buffer, write might have
                 # been called before we read !
                 while first_linesep == -1:
@@ -49,7 +49,7 @@ class Stream(QtCore.QObject):
                     data = self._buffer[0:first_linesep+1]
 
                     if len(self._buffer) > len(data):
-                        self._buffer = self._buffer[first_linesep+2:]
+                        self._buffer = self._buffer[first_linesep+1:]
                     else:
                         self._buffer = ''
 
@@ -66,10 +66,11 @@ class Stream(QtCore.QObject):
     def write(self, data):
         with self._line_cond:
             self._buffer += data
-            self.write_event.emit(data)
 
             if os.linesep in self._buffer:
                 self._line_cond.notify()
+
+            self.write_event.emit(data)
 
     def flush(self):
         data = self._flush()
