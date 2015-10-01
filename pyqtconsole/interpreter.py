@@ -48,7 +48,6 @@ class PythonInterpreter(InteractiveConsole):
             self._p = (len(self._p) - len(self._morep)) * ' ' + self._morep
 
     def _print_in_prompt(self):
-        self.stdout.write(os.linesep)
         self.stdout.write(self._p)
 
     def _format_result(self):
@@ -67,7 +66,6 @@ class PythonInterpreter(InteractiveConsole):
 
     def runcode(self, code):
         self._executing = True
-        self.stdout.write(os.linesep)
 
         # Redirect IO and disable excepthook, this is the only place were we
         # redirect IO, since we don't how IO is handled within the code we
@@ -76,7 +74,7 @@ class PythonInterpreter(InteractiveConsole):
         with redirected_io(self.stdout), disabled_excepthook():
             exec_res = InteractiveConsole.runcode(self, code)
 
-        self._executing = False
+        self._executing = False        
         return exec_res
 
     def raw_input(self, prompt=None, timeout=None):
@@ -92,16 +90,19 @@ class PythonInterpreter(InteractiveConsole):
 
     def showtraceback(self):
         type_, value, tb = sys.exc_info()
-        self.stdout.write('\n')
+        self.stdout.write(os.linesep)
         
         if type_ == KeyboardInterrupt:
-            self.stdout.write('KeyboardInterrupt \n')
+            self.stdout.write('KeyboardInterrupt' + os.linesep)
         else:
             InteractiveConsole.showtraceback(self)
 
+        self.stdout.write(os.linesep)
+
     def showsyntaxerror(self, filename):
-        self.stdout.write('\n\n')
+        self.stdout.write(os.linesep)
         InteractiveConsole.showsyntaxerror(self, filename)
+        self.stdout.write(os.linesep)
 
     def _rep_line(self, line):
         self._last_input = line

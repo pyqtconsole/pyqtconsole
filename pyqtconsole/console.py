@@ -4,37 +4,34 @@ import threading
 import ctypes
 import time
 
-
 from .qt import QtCore
-from .qt.QtWidgets import (QTextEdit, QCompleter)
+from .qt.QtWidgets import (QTextEdit)
 from .qt.QtGui import (QFontMetrics, QTextCursor)
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
 from .syntaxhighlighter import PythonHighlighter
-from .text import columnize, long_substr
 from .extensions.extension import ExtensionManager
 from .extensions.commandhistory import CommandHistory
-
-
-class COMPLETE_MODE(object):
-    DROPDOWN = '1'
-    INLINE = '2'
+from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
 
 
 class BaseConsole(QTextEdit):
+    key_pressed_signal = QtCore.Signal(object)
+    post_key_pressed_signal = QtCore.Signal(object)
+    set_complete_mode_signal = QtCore.Signal(int)
+
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
         self._buffer_pos = 0
         self._prompt_pos = 0
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False
-        self._complete_mode = COMPLETE_MODE.INLINE
         self._copy_buffer = ''
 
         self.stdin = Stream()
         self.stdout = Stream()
-        self.stdout.write_event.connect(self._stdout_data_handler)        
+        self.stdout.write_event.connect(self._stdout_data_handler)
 
         font = self.document().defaultFont()
         font.setFamily("Courier New")
@@ -48,9 +45,7 @@ class BaseConsole(QTextEdit):
 
         self.extensions = ExtensionManager(self)
         self.extensions.install(CommandHistory)
-
-
-        self.init_completion_list([])
+        self.extensions.install(AutoComplete)
 
     def insertFromMimeData(self, mime_data):
         if mime_data.hasText():
@@ -59,16 +54,15 @@ class BaseConsole(QTextEdit):
 
     def keyPressEvent(self, event):
         key = event.key()
+        event.ignore()
         intercepted = False
+
+        self.key_pressed_signal.emit(event)
 
         if key in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
             intercepted = self.handle_enter_key(event)
-        elif key == QtCore.Qt.Key_Space:
-            intercepted = self.handle_space_key(event)
         elif key == QtCore.Qt.Key_Backspace:
             intercepted = self.handle_backspace_key(event)
-        elif key == QtCore.Qt.Key_Escape:
-            pass
         elif key == QtCore.Qt.Key_Home:
             intercepted = self.handle_home_key(event)
         elif key == QtCore.Qt.Key_Tab:
@@ -96,39 +90,19 @@ class BaseConsole(QTextEdit):
         # intercepted
         if not intercepted:
             super(BaseConsole, self).keyPressEvent(event)
-
-            # Show a new list of completion alternatives after the key
-            # has been added to the TextEdit
-            self._update_completion(key)
-
         else:
             event.accept()
 
-        # Regardless of key pressed, if we are completing a word, highlight
-        # the first match !
-        if self._completing():
-            self._highlight_current_completion()
+        self.post_key_pressed_signal.emit(event)
 
     def handle_enter_key(self, event):
-        if self._completing():
-            self._complete()
-        else:
-            # Move to end of line before parsing the current line
+        if not event.isAccepted():
             cursor = self.textCursor()
             cursor.movePosition(QTextCursor.EndOfLine)
             self.setTextCursor(cursor)
             self._parse_buffer()
 
-        return True
-
-    def handle_space_key(self, event):
-        intercepted = False
-
-        if self._completing():
-            self._complete()
-            intercepted = True
-
-        return intercepted
+        return False
 
     def handle_backspace_key(self, event):
         intercepted = False
@@ -143,15 +117,8 @@ class BaseConsole(QTextEdit):
         return intercepted
 
     def handle_tab_key(self, event):
-        _buffer = self._get_buffer().strip(' ')
-
-        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
-            if len(_buffer):
-                self._show_completion_suggestions(_buffer)
-            else:
-                self._insert_in_buffer(self._tab_chars)
-        else:
-            self._show_completion_suggestions(_buffer)
+        if not event.isAccepted():
+            self._insert_in_buffer(self._tab_chars)
 
         return True
 
@@ -234,101 +201,12 @@ class BaseConsole(QTextEdit):
         self.ensureCursorVisible()
         self.textCursor().insertText(text)
 
-    def init_completion_list(self, words):
-        self.completer = QCompleter(words, self)
-        self.completer.setCompletionPrefix(self._get_buffer())
-        self.completer.setWidget(self)
-
-        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
-            self.completer.setCompletionMode(QCompleter.PopupCompletion)
-            self.completer.setCaseSensitivity(QtCore.Qt.CaseSensitive)
-            self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
-            self.completer.activated.connect(self._insert_completion)
-        else:
-            self.completer.setCompletionMode(QCompleter.InlineCompletion)
-            self.completer.setCaseSensitivity(QtCore.Qt.CaseSensitive)
-            self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
-
     # Asbtract
     def get_completions(self, line):
         return ['No completion support available']
 
-    def _update_completion(self, key):
-        if self._completing():
-            _buffer = self._get_buffer()
-
-            if len(_buffer) > 1:
-                self._show_completion_suggestions(_buffer)
-            else:
-                self.completer.popup().hide()
-
-    def _show_completion_suggestions(self, _buffer):
-        words = self.get_completions(_buffer)
-
-        # No words to show, just return
-        if len(words) == 0:
-            return
-
-        # Close any popups before creating a new one
-        if self.completer.popup():
-            self.completer.popup().close()
-
-        self.init_completion_list(words)
-
-        leastcmn = long_substr(words)
-        self._insert_completion(leastcmn)
-
-        # If only one word to complete, just return and don't display options
-        if len(words) == 1:
-            return
-
-        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
-            cr = self.cursorRect()
-            sbar_w = self.completer.popup().verticalScrollBar()
-            popup_width = self.completer.popup().sizeHintForColumn(0)
-            popup_width += sbar_w.sizeHint().width()
-            cr.setWidth(popup_width)
-            self.completer.complete(cr)
-
-        elif self._complete_mode == COMPLETE_MODE.INLINE:
-            cl = columnize(words, colsep = '  |  ')
-            self._insert_prompt('\n\n' + cl + '\n', lf=True, keep_buffer = True)
-
-    def _completing(self):
-        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
-            return self.completer.popup() and self.completer.popup().isVisible()
-        else:
-            return False
-
-    def _highlight_current_completion(self):
-        self.completer.setCurrentRow(0)
-        model = self.completer.completionModel()
-        self.completer.popup().setCurrentIndex(model.index(0,0))
-
-    def _insert_completion(self, completion):
-        _buffer = self._get_buffer()
-        cursor = self.textCursor()
-
-        # Handling the . operator in object oriented languages so we don't
-        # overwrite the . when we are inserting the completion. Its not the .
-        # operator If the buffer starts with a . (dot), but something else
-        # perhaps terminal specific so do nothing.
-        if '.' in _buffer and _buffer[0] != '.':
-            idx = _buffer.rfind('.') + 1
-            _buffer = _buffer[idx:]
-
-        cursor.insertText(completion[len(_buffer):])
-
-    def _complete(self):
-        if self._complete_mode == COMPLETE_MODE.DROPDOWN:
-            index = self.completer.popup().currentIndex()
-            model = self.completer.completionModel()
-            word = model.itemData(index)[0]
-            self._insert_completion(word)
-            self.completer.popup().hide()
-
     def set_auto_complete_mode(self, mode):
-        self._complete_mode = mode
+        self.set_complete_mode_signal.emit(mode)
 
     def _parse_buffer(self):
         cmd = self._get_buffer()
@@ -368,7 +246,7 @@ class PythonConsole(BaseConsole):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, local=local)
-        self._complete_mode = COMPLETE_MODE.DROPDOWN
+        self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
 
     def _close(self):
@@ -377,15 +255,15 @@ class PythonConsole(BaseConsole):
 
     def _handle_ctrl_c(self):
         _id = threading.current_thread().ident
-        
+
         if self._thread:
             _id = self._thread.ident
 
         if _id:
             _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
             ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
-            time.sleep(0.1)            
-        
+            time.sleep(0.1)
+
     def closeEvent(self, event):
         self._close()
         event.accept()
