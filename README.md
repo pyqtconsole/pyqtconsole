@@ -1,6 +1,6 @@
 # pyqtconsole
 
-pyqtconosle is a light weight python console for Qt applications. Its made to be easy to embed in other Qt applications
+pyqtconsole is a light weight python console for Qt applications. Its made to be easy to embed in other Qt applications
 and comes with some examples that shows how this can be done. The interpreter can run in a separate thread, in the UI main thread or in a gevent task. There is also support for asyncio using trollius, however this is still in the experimental stage.
 
 ## Installing
