@@ -17,6 +17,6 @@ if __name__ == '__main__':
     
     pyconsole_input_timer = QtCore.QTimer()
     pyconsole_input_timer.timeout.connect(console.repl_nonblock)
-    pyconsole_input_timer.start(0)    
+    pyconsole_input_timer.start(10)
 
     sys.exit(app.exec_())
