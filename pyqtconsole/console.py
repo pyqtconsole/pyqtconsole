@@ -46,9 +46,25 @@ class BaseConsole(QTextEdit):
             QtCore.Qt.TextSelectableByMouse |
             QtCore.Qt.TextSelectableByKeyboard)
 
+        self._key_event_handlers = self._get_key_event_handlers()
+
         self.extensions = ExtensionManager(self)
         self.extensions.install(CommandHistory)
         self.extensions.install(AutoComplete)
+
+    def _get_key_event_handlers(self):
+        return {
+            QtCore.Qt.Key_Return:     self.handle_enter_key,
+            QtCore.Qt.Key_Enter:      self.handle_enter_key,
+            QtCore.Qt.Key_Backspace:  self.handle_backspace_key,
+            QtCore.Qt.Key_Home:       self.handle_home_key,
+            QtCore.Qt.Key_Tab:        self.handle_tab_key,
+            QtCore.Qt.Key_Up:         self.handle_up_key,
+            QtCore.Qt.Key_Down:       self.handle_down_key,
+            QtCore.Qt.Key_Left:       self.handle_left_key,
+            QtCore.Qt.Key_D:          self.handle_d_key,
+            QtCore.Qt.Key_C:          self.handle_c_key,
+        }
 
     def insertFromMimeData(self, mime_data):
         if mime_data.hasText():
@@ -58,30 +74,11 @@ class BaseConsole(QTextEdit):
     def keyPressEvent(self, event):
         key = event.key()
         event.ignore()
-        intercepted = False
 
         self.key_pressed_signal.emit(event)
 
-        if key in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
-            intercepted = self.handle_enter_key(event)
-        elif key == QtCore.Qt.Key_Backspace:
-            intercepted = self.handle_backspace_key(event)
-        elif key == QtCore.Qt.Key_Home:
-            intercepted = self.handle_home_key(event)
-        elif key == QtCore.Qt.Key_Tab:
-            intercepted = self.handle_tab_key(event)
-        elif key == QtCore.Qt.Key_Up:
-            intercepted = self.handle_up_key(event)
-        elif key == QtCore.Qt.Key_Down:
-            intercepted = self.handle_down_key(event)
-        elif key == QtCore.Qt.Key_Left:
-            intercepted = self.handle_left_key(event)
-        elif key == QtCore.Qt.Key_Right:
-            pass
-        elif key == QtCore.Qt.Key_D:
-            intercepted = self.handle_d_key(event)
-        elif key == QtCore.Qt.Key_C:
-            intercepted = self.handle_c_key(event)
+        handler = self._key_event_handlers.get(key)
+        intercepted = handler and handler(event)
 
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
