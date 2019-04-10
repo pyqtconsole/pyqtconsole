@@ -251,7 +251,7 @@ class PythonConsole(BaseConsole):
 
     def _close(self):
         self.interpreter.exit()
-        self.close()
+        self.window().close()
 
     def _handle_ctrl_c(self):
         _id = threading.current_thread().ident
