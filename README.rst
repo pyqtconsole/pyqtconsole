@@ -61,7 +61,8 @@ Embedding
 * *trollius (asyncio)* - Runs the interpreter in a asyncio coroutine
   `_trollius.py`_. Still experimental
 
-## Credits
+Credits
+~~~~~~~
 
 The .qt sub module was taken from the pyQode_. And provides Qt4 and Qt5
 compatibility, the console is tested under both Qt4 and Qt5. The .qt sub
