@@ -1,4 +1,9 @@
-*.pyc
+*.py[cod]
 .svn*
 *~
-
+MANIFEST
+*.egg
+*.egg-info
+.eggs
+dist
+build

@@ -8,4 +8,5 @@ setup(name='pyqtconsole',
     author=pyqtconsole.__author__,
     author_email=pyqtconsole.__author_email__,
     url=pyqtconsole.__url__,
-    packages=['pyqtconsole', 'pyqtconsole.qt'])
+    long_description=open('README.rst').read(),
+    packages=['pyqtconsole', 'pyqtconsole.qt', 'pyqtconsole.extensions'])
