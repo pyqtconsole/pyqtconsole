@@ -291,3 +291,7 @@ class PythonConsole(BaseConsole):
         self._thread = threading.Thread(target = self.repl)
         self._thread.start()
         return self._thread
+
+    def eval_queued(self):
+        return self.stdin.write_event.connect(
+            self.repl_nonblock, QtCore.Qt.ConnectionType.QueuedConnection)
