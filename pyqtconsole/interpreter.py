@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import sys
 import contextlib
 
@@ -40,7 +39,7 @@ class PythonInterpreter(InteractiveConsole):
             # Only increase the input number if the input was complete
             # last prompt was the more prompt (and we know that we don't have
             # more input to expect). Obviously do not increase for CR
-            if _input != os.linesep or self._p == self._morep:
+            if _input != '\n' or self._p == self._morep:
                 self._current_line += 1
 
             self._p = self._inp % self._current_line
@@ -53,10 +52,10 @@ class PythonInterpreter(InteractiveConsole):
     def _format_result(self):
         # Are we at the end of a code block, not a very elegant check
         # but it works for now
-        eof_cblock = self._last_input == os.linesep and self._more == True
+        eof_cblock = self._last_input == '\n' and self._more == True
 
-        if self._last_input != os.linesep or eof_cblock: 
-            self.stdout.write(os.linesep)
+        if self._last_input != '\n' or eof_cblock:
+            self.stdout.write('\n')
 
     def executing(self):
         return self._executing
@@ -80,8 +79,8 @@ class PythonInterpreter(InteractiveConsole):
     def raw_input(self, prompt=None, timeout=None):
         line = self.stdin.readline(timeout)
 
-        if line != os.linesep:
-            line = line.strip(os.linesep)
+        if line != '\n':
+            line = line.strip('\n')
 
         return line
 
@@ -90,19 +89,19 @@ class PythonInterpreter(InteractiveConsole):
 
     def showtraceback(self):
         type_, value, tb = sys.exc_info()
-        self.stdout.write(os.linesep)
+        self.stdout.write('\n')
         
         if type_ == KeyboardInterrupt:
-            self.stdout.write('KeyboardInterrupt' + os.linesep)
+            self.stdout.write('KeyboardInterrupt\n')
         else:
             InteractiveConsole.showtraceback(self)
 
-        self.stdout.write(os.linesep)
+        self.stdout.write('\n')
 
     def showsyntaxerror(self, filename):
-        self.stdout.write(os.linesep)
+        self.stdout.write('\n')
         InteractiveConsole.showsyntaxerror(self, filename)
-        self.stdout.write(os.linesep)
+        self.stdout.write('\n')
 
     def _rep_line(self, line):
         self._last_input = line
@@ -146,7 +145,7 @@ class PythonInterpreter(InteractiveConsole):
         self.stdin.write('exit\n')
 
     def set_buffer(self, _buffer):
-        self._current_eval_buffer = _buffer.strip(os.linesep)
+        self._current_eval_buffer = _buffer.strip('\n')
 
     def eval_buffer(self):
         if self._current_eval_buffer:
@@ -161,7 +160,7 @@ class PythonInterpreter(InteractiveConsole):
 
     def eval_lines(self):
         if self._current_eval_buffer:
-            lines = self._current_eval_buffer.split(os.linesep)
+            lines = self._current_eval_buffer.split('\n')
 
             for line in lines:
                 if line:
@@ -171,7 +170,7 @@ class PythonInterpreter(InteractiveConsole):
                         line = line[len(self._morep):]
 
                     self.stdout.write(line)
-                    self._rep_line(line + os.linesep)
+                    self._rep_line(line + '\n')
 
     def get_completions(self, line):
         words = []

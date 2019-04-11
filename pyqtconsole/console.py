@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import os
 import threading
 import ctypes
 import time
@@ -181,7 +180,7 @@ class BaseConsole(QTextEdit):
         self.ensureCursorVisible()
 
         if lf:
-            self.stdin.write(os.linesep)
+            self.stdin.write('\n')
 
     def _insert_welcome_message(self, message):
         self._insert_prompt(message)
@@ -210,7 +209,7 @@ class BaseConsole(QTextEdit):
 
     def _parse_buffer(self):
         cmd = self._get_buffer()
-        self.stdin.write(cmd + os.linesep)
+        self.stdin.write(cmd + '\n')
 
     def _stdout_data_handler(self, data):
         self._insert_prompt(data)
