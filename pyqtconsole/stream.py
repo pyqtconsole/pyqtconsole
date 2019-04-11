@@ -5,6 +5,7 @@ from .qt import QtCore
 class Stream(QtCore.QObject):
     write_event = QtCore.Signal(str)
     flush_event = QtCore.Signal(str)
+    close_event = QtCore.Signal()
 
     def __init__(self):
         super(Stream, self).__init__()
@@ -74,3 +75,6 @@ class Stream(QtCore.QObject):
         data = self._flush()
         self.flush_event.emit(data)
         return data
+
+    def close(self):
+        self.close_event.emit()

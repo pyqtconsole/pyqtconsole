@@ -31,6 +31,7 @@ class BaseConsole(QTextEdit):
         self.stdin = Stream()
         self.stdout = Stream()
         self.stdout.write_event.connect(self._stdout_data_handler)
+        self.stdout.close_event.connect(self._close)
 
         font = self.document().defaultFont()
         font.setFamily("Courier New")
@@ -141,7 +142,7 @@ class BaseConsole(QTextEdit):
 
     def handle_d_key(self, event):
         if event.modifiers() == QtCore.Qt.ControlModifier and self._ctrl_d_exits:
-            self._close()
+            self.exit()
         elif event.modifiers() == QtCore.Qt.ControlModifier:
             msg = "\nCan't use CTRL-D to exit, you have to exit the "
             msg += "application !\n"
@@ -219,8 +220,11 @@ class BaseConsole(QTextEdit):
             self._copy_buffer = ''
 
     # Abstract
-    def _close(self):
+    def exit(self):
         self.stdin.write('EOF\n')
+
+    def _close(self):
+        self.window().close()
 
     def _evaluate_buffer(self):
         _buffer = str(self.sender().parent().parent().toPlainText())
@@ -248,9 +252,8 @@ class PythonConsole(BaseConsole):
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
 
-    def _close(self):
+    def exit(self):
         self.interpreter.exit()
-        self.window().close()
 
     def _handle_ctrl_c(self):
         _id = threading.current_thread().ident
@@ -264,7 +267,7 @@ class PythonConsole(BaseConsole):
             time.sleep(0.1)
 
     def closeEvent(self, event):
-        self._close()
+        self.exit()
         event.accept()
 
     def evaluate_buffer(self, _buffer, echo_lines = False):

@@ -108,6 +108,7 @@ class PythonInterpreter(InteractiveConsole):
 
         if line == 'exit' or line == 'exit()':
             self._running = False
+            self.stdout.close()
         elif line == '%%eval_buffer':
             line = self.eval_buffer()
         elif line == '%%eval_lines':
