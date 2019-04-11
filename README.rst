@@ -12,11 +12,11 @@ Installing
 
 Simply type::
 
-    python setup.py install
-
-or::
-
     pip install pyqtconsole
+
+Or to install a development version from local checkout, type::
+
+    pip install -e .
 
 Simple usage
 ~~~~~~~~~~~~
