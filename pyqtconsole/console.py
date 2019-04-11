@@ -21,7 +21,6 @@ class BaseConsole(QTextEdit):
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
-        self._buffer_pos = 0
         self._prompt_pos = 0
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False

@@ -84,14 +84,7 @@ class AutoComplete(Extension, QtCore.QObject):
 
     def trigger_complete(self):
         _buffer = self.owner()._get_buffer().strip()
-
-        if self.mode == COMPLETE_MODE.DROPDOWN:
-            if len(_buffer):
-                self.show_completion_suggestions(_buffer)
-            else:
-                self.show_completion_suggestions(_buffer)
-        else:
-            self.show_completion_suggestions(_buffer)
+        self.show_completion_suggestions(_buffer)
 
     def show_completion_suggestions(self, _buffer):
         words = self.owner().get_completions(_buffer)
