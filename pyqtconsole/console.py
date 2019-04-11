@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import threading
 import ctypes
-import time
 
 from .qt import QtCore
 from .qt.QtWidgets import (QTextEdit)
@@ -256,15 +255,18 @@ class PythonConsole(BaseConsole):
         self.interpreter.exit()
 
     def _handle_ctrl_c(self):
-        _id = threading.current_thread().ident
-
         if self._thread:
             _id = self._thread.ident
-
-        if _id:
-            _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
-            time.sleep(0.1)
+            if _id and _id != threading.current_thread().ident:
+                # Raise exception in remote thread to stop execution of
+                # current commands (this only triggers once the thread
+                # executes any python bytecode):
+                _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
+                ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
+                # wake up thread in case it is currently waiting on input:
+                self.stdin.flush()
+        else:
+            self.interpreter.handle_ctrl_c()
 
     def closeEvent(self, event):
         self.exit()

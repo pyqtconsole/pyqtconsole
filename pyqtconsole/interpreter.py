@@ -134,7 +134,15 @@ class PythonInterpreter(InteractiveConsole):
                 if line:
                     self._rep_line(line)
             except KeyboardInterrupt:
-                pass
+                self.handle_ctrl_c()
+
+    def handle_ctrl_c(self):
+        self.resetbuffer()
+        self._last_input = '\n'
+        self._more = False
+        self.stdout.write('^C\n')
+        self._update_in_prompt(self._more, self._last_input)
+        self._print_in_prompt()
 
     def repl_nonblock(self):
         line = self.raw_input(timeout = 0)
