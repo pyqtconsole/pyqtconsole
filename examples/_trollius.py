@@ -13,12 +13,12 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     loop = QTrolliusEventLoop(app = app)
     asyncio.set_event_loop(loop)
-    
+
     console = PythonConsole()
     console.push_local_ns('PlotWindow', PlotWindow)
     console.show()
 
-    def repl(console):    
+    def repl(console):
         while console.isVisible():
             console.repl_nonblock()
             yield asyncio.From(asyncio.sleep(0.01))

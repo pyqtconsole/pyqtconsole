@@ -65,7 +65,7 @@ class PythonInterpreter(InteractiveConsole):
         with redirected_io(self.stdout), disabled_excepthook():
             exec_res = InteractiveConsole.runcode(self, code)
 
-        self._executing = False        
+        self._executing = False
         return exec_res
 
     def raw_input(self, prompt=None, timeout=None):
@@ -82,7 +82,7 @@ class PythonInterpreter(InteractiveConsole):
     def showtraceback(self):
         type_, value, tb = sys.exc_info()
         self.stdout.write('\n')
-        
+
         if type_ == KeyboardInterrupt:
             self.stdout.write('KeyboardInterrupt\n')
         else:
