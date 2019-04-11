@@ -236,10 +236,6 @@ class BaseConsole(QTextEdit):
         if self.window().isVisible():
             self.window().close()
 
-    def _evaluate_buffer(self):
-        _buffer = str(self.sender().parent().parent().toPlainText())
-        self.evaluate_buffer(_buffer)
-
     # Abstract
     def evaluate_buffer(self, _buffer, echo_lines = False):
         print(_buffer)

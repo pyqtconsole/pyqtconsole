@@ -49,14 +49,6 @@ class PythonInterpreter(InteractiveConsole):
     def _print_in_prompt(self):
         self.stdout.write(self._p)
 
-    def _format_result(self):
-        # Are we at the end of a code block, not a very elegant check
-        # but it works for now
-        eof_cblock = self._last_input == '\n' and self._more == True
-
-        if self._last_input != '\n' or eof_cblock:
-            self.stdout.write('\n')
-
     def executing(self):
         return self._executing
 
