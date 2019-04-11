@@ -202,17 +202,14 @@ def disabled_excepthook():
 
 @contextlib.contextmanager
 def redirected_io(stdout):
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
     sys.stdout = stdout
     sys.stderr = stdout
-
     try:
         yield
     finally:
-
-        # Only reset if stdout or stderr was unchanged in the code that was
-        # executed within the context
-        if sys.stdout == stdout:
-            sys.stdout = sys.__stdout__
-
-        if sys.stderr == stdout:
-            sys.stderr = sys.__stderr__
+        if sys.stdout is stdout:
+            sys.stdout = old_stdout
+        if sys.stderr is stdout:
+            sys.stderr = old_stderr
