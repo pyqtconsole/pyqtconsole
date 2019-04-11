@@ -1,6 +1,9 @@
 from .qt.QtCore import QRegExp
 from .qt.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter)
 
+import keyword
+
+
 def format(color, style=''):
     """Return a QTextCharFormat with the given attributes.
     """
@@ -36,14 +39,7 @@ class PythonHighlighter(QSyntaxHighlighter):
     """Syntax highlighter for the Python language.
     """
     # Python keywords
-    keywords = [
-        'and', 'assert', 'break', 'class', 'continue', 'def',
-        'del', 'elif', 'else', 'except', 'exec', 'finally',
-        'for', 'from', 'global', 'if', 'import', 'in',
-        'is', 'lambda', 'not', 'or', 'pass', 'print',
-        'raise', 'return', 'try', 'while', 'yield',
-        'None', 'True', 'False', 'self'
-    ]
+    keywords = keyword.kwlist
 
     def __init__(self, document):
         QSyntaxHighlighter.__init__(self, document)
