@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-import os
 import threading
 import ctypes
-import time
 
 from .qt import QtCore
 from .qt.QtWidgets import (QTextEdit)
@@ -32,6 +30,7 @@ class BaseConsole(QTextEdit):
         self.stdin = Stream()
         self.stdout = Stream()
         self.stdout.write_event.connect(self._stdout_data_handler)
+        self.stdout.close_event.connect(self._close)
 
         font = self.document().defaultFont()
         font.setFamily("Courier New")
@@ -142,7 +141,7 @@ class BaseConsole(QTextEdit):
 
     def handle_d_key(self, event):
         if event.modifiers() == QtCore.Qt.ControlModifier and self._ctrl_d_exits:
-            self._close()
+            self.exit()
         elif event.modifiers() == QtCore.Qt.ControlModifier:
             msg = "\nCan't use CTRL-D to exit, you have to exit the "
             msg += "application !\n"
@@ -181,7 +180,7 @@ class BaseConsole(QTextEdit):
         self.ensureCursorVisible()
 
         if lf:
-            self.stdin.write(os.linesep)
+            self.stdin.write('\n')
 
     def _insert_welcome_message(self, message):
         self._insert_prompt(message)
@@ -210,7 +209,7 @@ class BaseConsole(QTextEdit):
 
     def _parse_buffer(self):
         cmd = self._get_buffer()
-        self.stdin.write(cmd + os.linesep)
+        self.stdin.write(cmd + '\n')
 
     def _stdout_data_handler(self, data):
         self._insert_prompt(data)
@@ -220,8 +219,11 @@ class BaseConsole(QTextEdit):
             self._copy_buffer = ''
 
     # Abstract
-    def _close(self):
+    def exit(self):
         self.stdin.write('EOF\n')
+
+    def _close(self):
+        self.window().close()
 
     def _evaluate_buffer(self):
         _buffer = str(self.sender().parent().parent().toPlainText())
@@ -249,23 +251,25 @@ class PythonConsole(BaseConsole):
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
 
-    def _close(self):
+    def exit(self):
         self.interpreter.exit()
-        self.window().close()
 
     def _handle_ctrl_c(self):
-        _id = threading.current_thread().ident
-
         if self._thread:
             _id = self._thread.ident
-
-        if _id:
-            _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
-            ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
-            time.sleep(0.1)
+            if _id and _id != threading.current_thread().ident:
+                # Raise exception in remote thread to stop execution of
+                # current commands (this only triggers once the thread
+                # executes any python bytecode):
+                _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
+                ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
+                # wake up thread in case it is currently waiting on input:
+                self.stdin.flush()
+        else:
+            self.interpreter.handle_ctrl_c()
 
     def closeEvent(self, event):
-        self._close()
+        self.exit()
         event.accept()
 
     def evaluate_buffer(self, _buffer, echo_lines = False):
@@ -291,3 +295,7 @@ class PythonConsole(BaseConsole):
         self._thread = threading.Thread(target = self.repl)
         self._thread.start()
         return self._thread
+
+    def eval_queued(self):
+        return self.stdin.write_event.connect(
+            self.repl_nonblock, QtCore.Qt.ConnectionType.QueuedConnection)

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import os
-
 from threading import Condition
 from .qt import QtCore
 
 class Stream(QtCore.QObject):
     write_event = QtCore.Signal(str)
     flush_event = QtCore.Signal(str)
+    close_event = QtCore.Signal()
 
     def __init__(self):
         super(Stream, self).__init__()
@@ -30,13 +29,13 @@ class Stream(QtCore.QObject):
 
         try:
             with self._line_cond:
-                first_linesep = self._buffer.find(os.linesep)
+                first_linesep = self._buffer.find('\n')
 
                 # Is there already some lines in the buffer, write might have
                 # been called before we read !
                 while first_linesep == -1:
                     notfied = self._line_cond.wait(timeout)
-                    first_linesep = self._buffer.find(os.linesep)
+                    first_linesep = self._buffer.find('\n')
 
                     # We had a timeout, break !
                     if not notfied:
@@ -67,7 +66,7 @@ class Stream(QtCore.QObject):
         with self._line_cond:
             self._buffer += data
 
-            if os.linesep in self._buffer:
+            if '\n' in self._buffer:
                 self._line_cond.notify()
 
             self.write_event.emit(data)
@@ -76,3 +75,6 @@ class Stream(QtCore.QObject):
         data = self._flush()
         self.flush_event.emit(data)
         return data
+
+    def close(self):
+        self.close_event.emit()

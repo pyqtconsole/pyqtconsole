@@ -28,16 +28,12 @@ class CommandHistory(Extension, QtCore.QObject):
         else:
             self._insert_in_editor('')
 
-        print(self._idx)
-
     def dec(self):
         if len(self._cmd_history):
             if self._idx > 0:
                 self._idx -= 1
 
             self._insert_in_editor(self.current())
-
-        print(self._idx)
 
     def current(self):
         if len(self._cmd_history):
