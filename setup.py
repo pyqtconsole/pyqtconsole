@@ -1,12 +1,16 @@
-#!/usr/bin/env python
+import setuptools
 import pyqtconsole
-from distutils.core import setup
 
-setup(name='pyqtconsole',
-    version=pyqtconsole.__version__,
-    description=pyqtconsole.__description__,
-    author=pyqtconsole.__author__,
-    author_email=pyqtconsole.__author_email__,
-    url=pyqtconsole.__url__,
-    long_description=open('README.rst').read(),
-    packages=['pyqtconsole', 'pyqtconsole.qt', 'pyqtconsole.extensions'])
+
+with open("README.rst", "r") as fh:
+    long_description = fh.read()
+
+
+setuptools.setup(name='pyqtconsole',
+                 version=pyqtconsole.__version__,
+                 description=pyqtconsole.__description__,
+                 author=pyqtconsole.__author__,
+                 author_email=pyqtconsole.__author_email__,
+                 url=pyqtconsole.__url__,
+                 long_description=long_description,
+                 packages=['pyqtconsole', 'pyqtconsole.qt', 'pyqtconsole.extensions'])
