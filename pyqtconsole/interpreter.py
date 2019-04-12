@@ -18,7 +18,7 @@ class PythonInterpreter(InteractiveConsole):
         self.stdin = stdin
         self.stdout = stdout
 
-        self._running = False
+        self._running = True
         self._last_input = ''
         self._more = False
         self._current_line = 0
@@ -151,7 +151,8 @@ class PythonInterpreter(InteractiveConsole):
             self._rep_line(line)
 
     def exit(self):
-        self.stdin.write('exit\n')
+        if self._running:
+            self.stdin.write('exit\n')
 
     def set_buffer(self, _buffer):
         self._current_eval_buffer = _buffer.strip('\n')

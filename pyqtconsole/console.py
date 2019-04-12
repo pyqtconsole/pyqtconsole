@@ -223,7 +223,8 @@ class BaseConsole(QTextEdit):
         self.stdin.write('EOF\n')
 
     def _close(self):
-        self.window().close()
+        if self.window().isVisible():
+            self.window().close()
 
     def _evaluate_buffer(self):
         _buffer = str(self.sender().parent().parent().toPlainText())
