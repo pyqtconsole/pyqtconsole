@@ -82,7 +82,7 @@ class BaseConsole(QTextEdit):
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
         # the buffer
-        if not event.modifiers() and not self._in_buffer():
+        if not event.modifiers() and self._cursor_offset() < 0:
             self._keep_cursor_in_buffer()
 
         # Call the TextEdit keyPressEvent for the events that are not
@@ -104,11 +104,9 @@ class BaseConsole(QTextEdit):
         return False
 
     def handle_backspace_key(self, event):
-        intercepted = False
+        intercepted = self._cursor_offset() < 1
 
-        if not self._in_buffer():
-            intercepted = True
-        else:
+        if not intercepted:
             if self._get_buffer().endswith(self._tab_chars):
                 for i in range(len(self._tab_chars) - 1):
                     self.textCursor().deletePreviousChar()
@@ -132,11 +130,7 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_left_key(self, event):
-        intercepted = False
-
-        if not self._in_buffer():
-            intercepted = True
-
+        intercepted = self._cursor_offset() < 1
         return intercepted
 
     def handle_d_key(self, event):
@@ -165,9 +159,8 @@ class BaseConsole(QTextEdit):
         self.setTextCursor(cursor)
         self.ensureCursorVisible()
 
-    def _in_buffer(self):
-        buffer_pos = self.textCursor().position()
-        return buffer_pos > self._prompt_pos
+    def _cursor_offset(self):
+        return self.textCursor().position() - self._prompt_pos
 
     def _insert_prompt(self, prompt, lf=False, keep_buffer=False):
         if keep_buffer:
