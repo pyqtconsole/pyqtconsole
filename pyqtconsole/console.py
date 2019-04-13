@@ -82,7 +82,7 @@ class BaseConsole(QTextEdit):
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
         # the buffer
-        if not event.modifiers() and self._cursor_offset() < 0:
+        if not event.modifiers():
             self._keep_cursor_in_buffer()
 
         # Call the TextEdit keyPressEvent for the events that are not
@@ -120,7 +120,8 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_home_key(self, event):
-        self._keep_cursor_in_buffer()
+        select = event.modifiers() & QtCore.Qt.ShiftModifier
+        self._move_cursor(self._prompt_pos, select)
         return True
 
     def handle_up_key(self, event):
@@ -153,9 +154,22 @@ class BaseConsole(QTextEdit):
 
         return intercepted
 
+    def _move_cursor(self, position=None, select=False):
+        cursor = self.textCursor()
+        mode = QTextCursor.KeepAnchor if select else QTextCursor.MoveAnchor
+        if position is None:
+            cursor.movePosition(QTextCursor.End, mode)
+        else:
+            cursor.setPosition(position, mode)
+        self.setTextCursor(cursor)
+        self._keep_cursor_in_buffer()
+
     def _keep_cursor_in_buffer(self):
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.End)
+        if cursor.anchor() < self._prompt_pos:
+            cursor.setPosition(self._prompt_pos)
+        if cursor.position() < self._prompt_pos:
+            cursor.setPosition(self._prompt_pos, QTextCursor.KeepAnchor)
         self.setTextCursor(cursor)
         self.ensureCursorVisible()
 
