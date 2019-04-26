@@ -2,9 +2,9 @@
 import threading
 import ctypes
 
-from .qt import QtCore
-from .qt.QtWidgets import (QTextEdit)
-from .qt.QtGui import (QFontMetrics, QTextCursor)
+from .qt.QtCore import Qt, Signal
+from .qt.QtWidgets import QTextEdit
+from .qt.QtGui import QFontMetrics, QTextCursor
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
@@ -15,9 +15,9 @@ from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
 
 
 class BaseConsole(QTextEdit):
-    key_pressed_signal = QtCore.Signal(object)
-    post_key_pressed_signal = QtCore.Signal(object)
-    set_complete_mode_signal = QtCore.Signal(int)
+    key_pressed_signal = Signal(object)
+    post_key_pressed_signal = Signal(object)
+    set_complete_mode_signal = Signal(int)
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
@@ -43,8 +43,8 @@ class BaseConsole(QTextEdit):
         self.resize(font_width*80+20, font_width*40)
         self.setReadOnly(True)
         self.setTextInteractionFlags(
-            QtCore.Qt.TextSelectableByMouse |
-            QtCore.Qt.TextSelectableByKeyboard)
+            Qt.TextSelectableByMouse |
+            Qt.TextSelectableByKeyboard)
 
         self._key_event_handlers = self._get_key_event_handlers()
 
@@ -54,16 +54,16 @@ class BaseConsole(QTextEdit):
 
     def _get_key_event_handlers(self):
         return {
-            QtCore.Qt.Key_Return:     self.handle_enter_key,
-            QtCore.Qt.Key_Enter:      self.handle_enter_key,
-            QtCore.Qt.Key_Backspace:  self.handle_backspace_key,
-            QtCore.Qt.Key_Home:       self.handle_home_key,
-            QtCore.Qt.Key_Tab:        self.handle_tab_key,
-            QtCore.Qt.Key_Up:         self.handle_up_key,
-            QtCore.Qt.Key_Down:       self.handle_down_key,
-            QtCore.Qt.Key_Left:       self.handle_left_key,
-            QtCore.Qt.Key_D:          self.handle_d_key,
-            QtCore.Qt.Key_C:          self.handle_c_key,
+            Qt.Key_Return:      self.handle_enter_key,
+            Qt.Key_Enter:       self.handle_enter_key,
+            Qt.Key_Backspace:   self.handle_backspace_key,
+            Qt.Key_Home:        self.handle_home_key,
+            Qt.Key_Tab:         self.handle_tab_key,
+            Qt.Key_Up:          self.handle_up_key,
+            Qt.Key_Down:        self.handle_down_key,
+            Qt.Key_Left:        self.handle_left_key,
+            Qt.Key_D:           self.handle_d_key,
+            Qt.Key_C:           self.handle_c_key,
         }
 
     def insertFromMimeData(self, mime_data):
@@ -83,7 +83,7 @@ class BaseConsole(QTextEdit):
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
         # the buffer
-        if not event.modifiers() & QtCore.Qt.ControlModifier:
+        if not event.modifiers() & Qt.ControlModifier:
             self._keep_cursor_in_buffer()
 
             if not intercepted and event.text():
@@ -124,7 +124,7 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_home_key(self, event):
-        select = event.modifiers() & QtCore.Qt.ShiftModifier
+        select = event.modifiers() & Qt.ShiftModifier
         self._move_cursor(self._prompt_pos, select)
         return True
 
@@ -139,9 +139,9 @@ class BaseConsole(QTextEdit):
         return intercepted
 
     def handle_d_key(self, event):
-        if event.modifiers() == QtCore.Qt.ControlModifier and self._ctrl_d_exits:
+        if event.modifiers() == Qt.ControlModifier and self._ctrl_d_exits:
             self.exit()
-        elif event.modifiers() == QtCore.Qt.ControlModifier:
+        elif event.modifiers() == Qt.ControlModifier:
             msg = "\nCan't use CTRL-D to exit, you have to exit the "
             msg += "application !\n"
             self._insert_prompt(msg)
@@ -153,7 +153,7 @@ class BaseConsole(QTextEdit):
 
         # Do not intercept so that the event is forwarded to the base class
         # can handle it. In this case for copy that is: CTRL-C
-        if event.modifiers() == QtCore.Qt.ControlModifier:
+        if event.modifiers() == Qt.ControlModifier:
             self._handle_ctrl_c()
 
         return intercepted
@@ -310,4 +310,4 @@ class PythonConsole(BaseConsole):
 
     def eval_queued(self):
         return self.stdin.write_event.connect(
-            self.repl_nonblock, QtCore.Qt.ConnectionType.QueuedConnection)
+            self.repl_nonblock, Qt.ConnectionType.QueuedConnection)
