@@ -41,6 +41,10 @@ class BaseConsole(QTextEdit):
         geometry.setHeight(font_width*40)
         self.setGeometry(geometry)
         self.resize(font_width*80+20, font_width*40)
+        self.setReadOnly(True)
+        self.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse |
+            QtCore.Qt.TextSelectableByKeyboard)
 
         self.extensions = ExtensionManager(self)
         self.extensions.install(CommandHistory)
@@ -82,8 +86,12 @@ class BaseConsole(QTextEdit):
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
         # the buffer
-        if not event.modifiers():
+        if not event.modifiers() & QtCore.Qt.ControlModifier:
             self._keep_cursor_in_buffer()
+
+            if not intercepted and event.text():
+                intercepted = True
+                self.insertPlainText(event.text())
 
         # Call the TextEdit keyPressEvent for the events that are not
         # intercepted
@@ -104,14 +112,13 @@ class BaseConsole(QTextEdit):
         return False
 
     def handle_backspace_key(self, event):
-        intercepted = self._cursor_offset() < 1
-
-        if not intercepted:
+        if self._cursor_offset() >= 1:
             if self._get_buffer().endswith(self._tab_chars):
                 for i in range(len(self._tab_chars) - 1):
                     self.textCursor().deletePreviousChar()
-
-        return intercepted
+            else:
+                self.textCursor().deletePreviousChar()
+        return True
 
     def handle_tab_key(self, event):
         if not event.isAccepted():
