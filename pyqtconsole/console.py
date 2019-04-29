@@ -41,6 +41,10 @@ class BaseConsole(QTextEdit):
         geometry.setHeight(font_width*40)
         self.setGeometry(geometry)
         self.resize(font_width*80+20, font_width*40)
+        self.setReadOnly(True)
+        self.setTextInteractionFlags(
+            QtCore.Qt.TextSelectableByMouse |
+            QtCore.Qt.TextSelectableByKeyboard)
 
         self.extensions = ExtensionManager(self)
         self.extensions.install(CommandHistory)
@@ -82,8 +86,12 @@ class BaseConsole(QTextEdit):
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
         # the buffer
-        if not event.modifiers() and not self._in_buffer():
+        if not event.modifiers() & QtCore.Qt.ControlModifier:
             self._keep_cursor_in_buffer()
+
+            if not intercepted and event.text():
+                intercepted = True
+                self.insertPlainText(event.text())
 
         # Call the TextEdit keyPressEvent for the events that are not
         # intercepted
@@ -104,16 +112,13 @@ class BaseConsole(QTextEdit):
         return False
 
     def handle_backspace_key(self, event):
-        intercepted = False
-
-        if not self._in_buffer():
-            intercepted = True
-        else:
+        if self._cursor_offset() >= 1:
             if self._get_buffer().endswith(self._tab_chars):
                 for i in range(len(self._tab_chars) - 1):
                     self.textCursor().deletePreviousChar()
-
-        return intercepted
+            else:
+                self.textCursor().deletePreviousChar()
+        return True
 
     def handle_tab_key(self, event):
         if not event.isAccepted():
@@ -122,7 +127,8 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_home_key(self, event):
-        self._keep_cursor_in_buffer()
+        select = event.modifiers() & QtCore.Qt.ShiftModifier
+        self._move_cursor(self._prompt_pos, select)
         return True
 
     def handle_up_key(self, event):
@@ -132,11 +138,7 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_left_key(self, event):
-        intercepted = False
-
-        if not self._in_buffer():
-            intercepted = True
-
+        intercepted = self._cursor_offset() < 1
         return intercepted
 
     def handle_d_key(self, event):
@@ -159,15 +161,27 @@ class BaseConsole(QTextEdit):
 
         return intercepted
 
+    def _move_cursor(self, position=None, select=False):
+        cursor = self.textCursor()
+        mode = QTextCursor.KeepAnchor if select else QTextCursor.MoveAnchor
+        if position is None:
+            cursor.movePosition(QTextCursor.End, mode)
+        else:
+            cursor.setPosition(position, mode)
+        self.setTextCursor(cursor)
+        self._keep_cursor_in_buffer()
+
     def _keep_cursor_in_buffer(self):
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.End)
+        if cursor.anchor() < self._prompt_pos:
+            cursor.setPosition(self._prompt_pos)
+        if cursor.position() < self._prompt_pos:
+            cursor.setPosition(self._prompt_pos, QTextCursor.KeepAnchor)
         self.setTextCursor(cursor)
         self.ensureCursorVisible()
 
-    def _in_buffer(self):
-        buffer_pos = self.textCursor().position()
-        return buffer_pos > self._prompt_pos
+    def _cursor_offset(self):
+        return self.textCursor().position() - self._prompt_pos
 
     def _insert_prompt(self, prompt, lf=False, keep_buffer=False):
         if keep_buffer:
@@ -223,7 +237,8 @@ class BaseConsole(QTextEdit):
         self.stdin.write('EOF\n')
 
     def _close(self):
-        self.window().close()
+        if self.window().isVisible():
+            self.window().close()
 
     def _evaluate_buffer(self):
         _buffer = str(self.sender().parent().parent().toPlainText())
