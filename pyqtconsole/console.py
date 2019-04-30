@@ -3,8 +3,8 @@ import threading
 import ctypes
 
 from .qt.QtCore import Qt, Signal
-from .qt.QtWidgets import QTextEdit
-from .qt.QtGui import QFontMetrics, QTextCursor
+from .qt.QtWidgets import QTextEdit, QApplication
+from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
@@ -71,12 +71,22 @@ class BaseConsole(QTextEdit):
             Qt.Key_Left:        self.handle_left_key,
             Qt.Key_D:           self.handle_d_key,
             Qt.Key_C:           self.handle_c_key,
+            Qt.Key_V:           self.handle_v_key,
         }
 
     def insertFromMimeData(self, mime_data):
-        if mime_data.hasText():
+        if mime_data and mime_data.hasText():
             self._keep_cursor_in_buffer()
             self.evaluate_buffer(mime_data.text(), echo_lines = True)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            clipboard = QApplication.clipboard()
+            mime_data = clipboard.mimeData(QClipboard.Selection)
+            self.insertFromMimeData(mime_data)
+            event.accept()
+        else:
+            super(BaseConsole, self).mousePressEvent(event)
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -164,6 +174,14 @@ class BaseConsole(QTextEdit):
             self._handle_ctrl_c()
 
         return intercepted
+
+    def handle_v_key(self, event):
+        if event.modifiers() == Qt.ControlModifier:
+            clipboard = QApplication.clipboard()
+            mime_data = clipboard.mimeData(QClipboard.Clipboard)
+            self.insertFromMimeData(mime_data)
+            return True
+        return False
 
     def _move_cursor(self, position=None, select=False):
         cursor = self.textCursor()
