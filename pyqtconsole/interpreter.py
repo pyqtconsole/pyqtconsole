@@ -22,7 +22,6 @@ class PythonInterpreter(InteractiveConsole):
         self._last_input = ''
         self._more = False
         self._current_line = 0
-        self._current_eval_buffer = ''
         self._executing = False
 
         self._inp = 'IN [%s]: '
@@ -99,19 +98,7 @@ class PythonInterpreter(InteractiveConsole):
 
     def _rep_line(self, line):
         self._last_input = line
-
-        if line == '%%eval_buffer':
-            line = self.eval_buffer()
-        elif line == '%%eval_lines':
-            self.eval_lines()
-
-            # We don't want to make recursive call here, self.eval_lines
-            # calls _rep_line so we return to start from scratch to not
-            # 'save' the state of the current evaluation.
-            return
-        else:
-            self._more = self.push(line)
-
+        self._more = self.push(line)
         self._update_in_prompt(self._more, self._last_input)
         self._print_in_prompt()
 
@@ -145,36 +132,6 @@ class PythonInterpreter(InteractiveConsole):
         if self._running:
             self._running = False
             self.stdout.close()
-
-    def set_buffer(self, _buffer):
-        self._current_eval_buffer = _buffer.strip('\n')
-
-    def eval_buffer(self):
-        if self._current_eval_buffer:
-            try:
-                code = compile(self._current_eval_buffer,'<string>', 'exec')
-            except (OverflowError, SyntaxError):
-                InteractiveConsole.showsyntaxerror(self)
-            except SystemExit:
-                self.exit()
-            else:
-                self.runcode(code)
-
-        return False
-
-    def eval_lines(self):
-        if self._current_eval_buffer:
-            lines = self._current_eval_buffer.split('\n')
-
-            for line in lines:
-                if line:
-                    # Remove the any remaining more prompt, to make it easier
-                    # to copy/paste within the interpreter.
-                    if line.startswith(self._morep):
-                        line = line[len(self._morep):]
-
-                    self.stdout.write(line)
-                    self._rep_line(line + '\n')
 
 
 @contextlib.contextmanager
