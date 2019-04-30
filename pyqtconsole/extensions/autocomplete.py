@@ -20,7 +20,7 @@ class AutoComplete(Extension, QObject):
         self._last_key = None
 
     def install(self):
-        self.owner().installEventFilter(self)
+        self.owner().edit.installEventFilter(self)
         self.owner().set_complete_mode_signal.connect(self.mode_set_handler)
         self.init_completion_list([])
 
@@ -77,7 +77,7 @@ class AutoComplete(Extension, QObject):
     def init_completion_list(self, words):
         self.completer = QCompleter(words, self)
         self.completer.setCompletionPrefix(self.owner()._get_buffer())
-        self.completer.setWidget(self.owner())
+        self.completer.setWidget(self.owner().edit)
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
             self.completer.setCompletionMode(QCompleter.PopupCompletion)
@@ -114,7 +114,7 @@ class AutoComplete(Extension, QObject):
             return
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            cr = self.owner().cursorRect()
+            cr = self.owner().edit.cursorRect()
             sbar_w = self.completer.popup().verticalScrollBar()
             popup_width = self.completer.popup().sizeHintForColumn(0)
             popup_width += sbar_w.sizeHint().width()
@@ -122,7 +122,8 @@ class AutoComplete(Extension, QObject):
             self.completer.complete(cr)
         elif self.mode == COMPLETE_MODE.INLINE:
             cl = columnize(words, colsep = '  |  ')
-            self.owner()._insert_prompt('\n\n' + cl + '\n', lf=True, keep_buffer = True)
+            self.owner()._insert_output_text(
+                '\n\n' + cl + '\n', lf=True, keep_buffer=True)
 
     def hide_completion_suggestions(self):
         if self.completing():

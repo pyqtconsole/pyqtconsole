@@ -11,7 +11,7 @@ class CommandHistory(Extension, QObject):
         self._idx = 0
 
     def install(self):
-        self.owner().installEventFilter(self)
+        self.owner().edit.installEventFilter(self)
 
     def add(self, str_):
         if str_:
