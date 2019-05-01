@@ -13,6 +13,13 @@ from .extensions.extension import ExtensionManager
 from .extensions.commandhistory import CommandHistory
 from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
 
+try:
+    import jedi
+    from jedi import settings
+    settings.case_insensitive_completion = False
+except ImportError:
+    jedi = None
+
 
 class BaseConsole(QTextEdit):
     key_pressed_signal = Signal(object)
@@ -49,7 +56,8 @@ class BaseConsole(QTextEdit):
 
         self.extensions = ExtensionManager(self)
         self.extensions.install(CommandHistory)
-        self.extensions.install(AutoComplete)
+        if jedi is not None:
+            self.extensions.install(AutoComplete)
 
     def _get_key_event_handlers(self):
         return {
@@ -287,7 +295,8 @@ class PythonConsole(BaseConsole):
             self.stdin.write('%%eval_buffer\n')
 
     def get_completions(self, line):
-        return self.interpreter.get_completions(line)
+        script = jedi.Interpreter(line, [self.interpreter.local_ns])
+        return [comp.name for comp in script.completions()]
 
     def push_local_ns(self, name, value):
         self.interpreter.local_ns[name] = value

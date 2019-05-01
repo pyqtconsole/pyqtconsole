@@ -2,13 +2,6 @@
 import sys
 import contextlib
 
-try:
-    import jedi
-    from jedi import settings
-    settings.case_insensitive_completion = False
-except ImportError as ex:
-    print(str(ex) + ', No completion available')
-
 from code import InteractiveConsole
 
 class PythonInterpreter(InteractiveConsole):
@@ -173,17 +166,6 @@ class PythonInterpreter(InteractiveConsole):
 
                     self.stdout.write(line)
                     self._rep_line(line + '\n')
-
-    def get_completions(self, line):
-        words = []
-
-        if 'jedi' in globals():
-            script = jedi.Interpreter(line, [self.local_ns])
-
-            for completion in script.completions():
-                words.append(completion.name)
-
-        return words
 
 
 @contextlib.contextmanager
