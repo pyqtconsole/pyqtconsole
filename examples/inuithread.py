@@ -2,15 +2,19 @@
 #/usr/bin/python
 import sys
 
-from pyqtconsole.qt.QtWidgets import (QApplication)
+from pyqtconsole.qt.QtWidgets import QApplication
 from pyqtconsole.console import PythonConsole
 
+
+def greet():
+    print("hello world")
+
+
 if __name__ == '__main__':
-    from PyMca5.PyMca import PlotWindow
     app = QApplication([])
 
     console = PythonConsole()
-    console.push_local_ns('PlotWindow', PlotWindow)
+    console.push_local_ns('greet', greet)
     console.show()
 
     console.eval_queued()

@@ -4,12 +4,11 @@ from gevent import monkey; monkey.patch_all()
 
 import gevent
 import sys
-import _phome
 
-
-from pyqtconsole.qt import QtCore
-from pyqtconsole.qt.QtWidgets import (QApplication)
+from pyqtconsole.qt.QtCore import QTimer
+from pyqtconsole.qt.QtWidgets import QApplication
 from pyqtconsole.console import PythonConsole
+
 
 def gevent_wait():
     try:
@@ -17,15 +16,19 @@ def gevent_wait():
     except:
         gevent.sleep(0.01)
 
+
+def greet():
+    print("hello world")
+
+
 if __name__ == '__main__':
-    from PyMca5.PyMca import PlotWindow
     app = QApplication([])
 
     console = PythonConsole()
-    console.push_local_ns('PlotWindow', PlotWindow)
+    console.push_local_ns('greet', greet)
     console.show()
 
-    gevent_timer = QtCore.QTimer()
+    gevent_timer = QTimer()
     gevent_timer.timeout.connect(gevent_wait)
     gevent_timer.start(0)
 
