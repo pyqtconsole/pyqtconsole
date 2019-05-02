@@ -2,9 +2,9 @@
 import threading
 import ctypes
 
-from .qt import QtCore
-from .qt.QtWidgets import (QTextEdit)
-from .qt.QtGui import (QFontMetrics, QTextCursor)
+from .qt.QtCore import Qt, Signal
+from .qt.QtWidgets import QTextEdit
+from .qt.QtGui import QFontMetrics, QTextCursor
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
@@ -13,15 +13,21 @@ from .extensions.extension import ExtensionManager
 from .extensions.commandhistory import CommandHistory
 from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
 
+try:
+    import jedi
+    from jedi import settings
+    settings.case_insensitive_completion = False
+except ImportError:
+    jedi = None
+
 
 class BaseConsole(QTextEdit):
-    key_pressed_signal = QtCore.Signal(object)
-    post_key_pressed_signal = QtCore.Signal(object)
-    set_complete_mode_signal = QtCore.Signal(int)
+    key_pressed_signal = Signal(object)
+    post_key_pressed_signal = Signal(object)
+    set_complete_mode_signal = Signal(int)
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
-        self._buffer_pos = 0
         self._prompt_pos = 0
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False
@@ -43,12 +49,29 @@ class BaseConsole(QTextEdit):
         self.resize(font_width*80+20, font_width*40)
         self.setReadOnly(True)
         self.setTextInteractionFlags(
-            QtCore.Qt.TextSelectableByMouse |
-            QtCore.Qt.TextSelectableByKeyboard)
+            Qt.TextSelectableByMouse |
+            Qt.TextSelectableByKeyboard)
+
+        self._key_event_handlers = self._get_key_event_handlers()
 
         self.extensions = ExtensionManager(self)
         self.extensions.install(CommandHistory)
-        self.extensions.install(AutoComplete)
+        if jedi is not None:
+            self.extensions.install(AutoComplete)
+
+    def _get_key_event_handlers(self):
+        return {
+            Qt.Key_Return:      self.handle_enter_key,
+            Qt.Key_Enter:       self.handle_enter_key,
+            Qt.Key_Backspace:   self.handle_backspace_key,
+            Qt.Key_Home:        self.handle_home_key,
+            Qt.Key_Tab:         self.handle_tab_key,
+            Qt.Key_Up:          self.handle_up_key,
+            Qt.Key_Down:        self.handle_down_key,
+            Qt.Key_Left:        self.handle_left_key,
+            Qt.Key_D:           self.handle_d_key,
+            Qt.Key_C:           self.handle_c_key,
+        }
 
     def insertFromMimeData(self, mime_data):
         if mime_data.hasText():
@@ -58,35 +81,16 @@ class BaseConsole(QTextEdit):
     def keyPressEvent(self, event):
         key = event.key()
         event.ignore()
-        intercepted = False
 
         self.key_pressed_signal.emit(event)
 
-        if key in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
-            intercepted = self.handle_enter_key(event)
-        elif key == QtCore.Qt.Key_Backspace:
-            intercepted = self.handle_backspace_key(event)
-        elif key == QtCore.Qt.Key_Home:
-            intercepted = self.handle_home_key(event)
-        elif key == QtCore.Qt.Key_Tab:
-            intercepted = self.handle_tab_key(event)
-        elif key == QtCore.Qt.Key_Up:
-            intercepted = self.handle_up_key(event)
-        elif key == QtCore.Qt.Key_Down:
-            intercepted = self.handle_down_key(event)
-        elif key == QtCore.Qt.Key_Left:
-            intercepted = self.handle_left_key(event)
-        elif key == QtCore.Qt.Key_Right:
-            pass
-        elif key == QtCore.Qt.Key_D:
-            intercepted = self.handle_d_key(event)
-        elif key == QtCore.Qt.Key_C:
-            intercepted = self.handle_c_key(event)
+        handler = self._key_event_handlers.get(key)
+        intercepted = handler and handler(event)
 
         # Make sure that we can't move the cursor outside of the editing buffer
         # If outside buffer and no modifiers used move the cursor back into to
         # the buffer
-        if not event.modifiers() & QtCore.Qt.ControlModifier:
+        if not event.modifiers() & Qt.ControlModifier:
             self._keep_cursor_in_buffer()
 
             if not intercepted and event.text():
@@ -127,7 +131,7 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_home_key(self, event):
-        select = event.modifiers() & QtCore.Qt.ShiftModifier
+        select = event.modifiers() & Qt.ShiftModifier
         self._move_cursor(self._prompt_pos, select)
         return True
 
@@ -142,9 +146,9 @@ class BaseConsole(QTextEdit):
         return intercepted
 
     def handle_d_key(self, event):
-        if event.modifiers() == QtCore.Qt.ControlModifier and self._ctrl_d_exits:
+        if event.modifiers() == Qt.ControlModifier and self._ctrl_d_exits:
             self.exit()
-        elif event.modifiers() == QtCore.Qt.ControlModifier:
+        elif event.modifiers() == Qt.ControlModifier:
             msg = "\nCan't use CTRL-D to exit, you have to exit the "
             msg += "application !\n"
             self._insert_prompt(msg)
@@ -156,7 +160,7 @@ class BaseConsole(QTextEdit):
 
         # Do not intercept so that the event is forwarded to the base class
         # can handle it. In this case for copy that is: CTRL-C
-        if event.modifiers() == QtCore.Qt.ControlModifier:
+        if event.modifiers() == Qt.ControlModifier:
             self._handle_ctrl_c()
 
         return intercepted
@@ -240,10 +244,6 @@ class BaseConsole(QTextEdit):
         if self.window().isVisible():
             self.window().close()
 
-    def _evaluate_buffer(self):
-        _buffer = str(self.sender().parent().parent().toPlainText())
-        self.evaluate_buffer(_buffer)
-
     # Abstract
     def evaluate_buffer(self, _buffer, echo_lines = False):
         print(_buffer)
@@ -295,7 +295,8 @@ class PythonConsole(BaseConsole):
             self.stdin.write('%%eval_buffer\n')
 
     def get_completions(self, line):
-        return self.interpreter.get_completions(line)
+        script = jedi.Interpreter(line, [self.interpreter.local_ns])
+        return [comp.name for comp in script.completions()]
 
     def push_local_ns(self, name, value):
         self.interpreter.local_ns[name] = value
@@ -313,4 +314,4 @@ class PythonConsole(BaseConsole):
 
     def eval_queued(self):
         return self.stdin.write_event.connect(
-            self.repl_nonblock, QtCore.Qt.ConnectionType.QueuedConnection)
+            self.repl_nonblock, Qt.ConnectionType.QueuedConnection)

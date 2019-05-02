@@ -146,7 +146,4 @@ class PythonHighlighter(QSyntaxHighlighter):
             start = delimiter.indexIn(text, start + length)
 
         # Return True if still inside a multi-line string, False otherwise
-        if self.currentBlockState() == in_state:
-            return True
-        else:
-            return False
+        return self.currentBlockState() == in_state

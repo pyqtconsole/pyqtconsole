@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-import re
-
-def camel_to_underscore(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
-
 
 def long_substr(data):
     substr = ''
@@ -76,7 +70,6 @@ def columnize(array, displaywidth=80, colsep = '  ',
     if len(opts.keys()) > 0:
         for key in default_opts.keys():
             o[key] = get_option(key, opts)
-            pass
         if o['arrange_array']:
             o['array_prefix'] = '['
             o['lineprefix']   = ' '
@@ -84,7 +77,6 @@ def columnize(array, displaywidth=80, colsep = '  ',
             o['array_suffix'] = "]\n"
             o['colsep']       = ', '
             o['arrange_vertical'] = False
-            pass
 
     else:
         o = default_opts.copy()
@@ -93,17 +85,14 @@ def columnize(array, displaywidth=80, colsep = '  ',
         o['arrange_vertical'] = arrange_vertical
         o['ljust']            = ljust
         o['lineprefix']       = lineprefix
-        pass
 
     # if o['ljust'] is None:
     #     o['ljust'] = !(list.all?{|datum| datum.kind_of?(Numeric)})
-    #     pass
 
     if o['colfmt']:
         array = [(o['colfmt'] % i) for i in array]
     else:
         array = [str(i) for i in array]
-        pass
 
     # Some degenerate cases
     size = len(array)
@@ -117,7 +106,6 @@ def columnize(array, displaywidth=80, colsep = '  ',
         o['displaywidth'] = len(o['lineprefix']) + 4
     else:
         o['displaywidth'] -= len(o['lineprefix'])
-        pass
 
     o['displaywidth'] = max(4, o['displaywidth'] - len(o['lineprefix']))
     if o['arrange_vertical']:
@@ -135,15 +123,12 @@ def columnize(array, displaywidth=80, colsep = '  ',
                     if i >= size: break
                     x = array[i]
                     colwidth = max(colwidth, len(x))
-                    pass
                 colwidths.append(colwidth)
                 totwidth += colwidth + len(o['colsep'])
                 if totwidth > o['displaywidth']:
                     break
-                pass
             if totwidth <= o['displaywidth']:
                 break
-            pass
         # The smallest number of rows computed and the
         # max widths for each column has been obtained.
         # Now we just have to format each of the
@@ -165,11 +150,8 @@ def columnize(array, displaywidth=80, colsep = '  ',
                     texts[col] = texts[col].ljust(colwidths[col])
                 else:
                     texts[col] = texts[col].rjust(colwidths[col])
-                    pass
-                pass
             s += "%s%s%s" % (o['lineprefix'], str(o['colsep'].join(texts)),
                              o['linesuffix'])
-            pass
         return s
     else:
         array_index = lambda ncols, row, col: ncols*(row-1) + col
@@ -193,13 +175,10 @@ def columnize(array, displaywidth=80, colsep = '  ',
                         elif i < size:
                             x = array[i]
                             colwidth = max(colwidth, len(x))
-                            pass
-                        pass
                     colwidths.append(colwidth)
                     totwidth += colwidth + len(o['colsep'])
                     if totwidth >= o['displaywidth']:
                         break
-                    pass
                 if totwidth <= o['displaywidth'] and i >= rounded_size-1:
                     # Found the right nrows and ncols
                     # print "right nrows and ncols"
@@ -209,10 +188,8 @@ def columnize(array, displaywidth=80, colsep = '  ',
                     # print "reduce ncols", ncols
                     # Need to reduce ncols
                     break
-                pass
             if totwidth <= o['displaywidth'] and i >= rounded_size-1:
                 break
-            pass
         # The smallest number of rows computed and the
         # max widths for each column has been obtained.
         # Now we just have to format each of the
@@ -222,7 +199,6 @@ def columnize(array, displaywidth=80, colsep = '  ',
             prefix = o['array_prefix']
         else:
             prefix = o['lineprefix']
-            pass
         for row in range(1, nrows+1):
             texts = []
             for col in range(ncols):
@@ -231,30 +207,22 @@ def columnize(array, displaywidth=80, colsep = '  ',
                     break
                 else: x = array[i]
                 texts.append(x)
-                pass
             for col in range(len(texts)):
                 if o['ljust']:
                     texts[col] = texts[col].ljust(colwidths[col])
                 else:
                     texts[col] = texts[col].rjust(colwidths[col])
-                    pass
-                pass
             s += "%s%s%s" % (prefix, str(o['colsep'].join(texts)),
                              o['linesuffix'])
             prefix = o['lineprefix']
-            pass
         if o['arrange_array']:
             colsep = o['colsep'].rstrip()
             colsep_pos = -(len(colsep)+1)
             if s[colsep_pos:] == colsep + "\n":
                 s = s[:colsep_pos] + o['array_suffix'] + "\n"
-                pass
-            pass
         else:
             s += o['array_suffix']
-            pass
         return s
-    pass
 
 if __name__=='__main__':
     print(columnize(range(12),
@@ -270,8 +238,6 @@ if __name__=='__main__':
             options['displaywidth'] = width
             options['arrange_vertical'] = t2[0]
             print(columnize(data, opts=options))
-            pass
-        pass
     print(columnize([]))
     print(columnize(["a", '2', "c"], 10, ', '))
     print(columnize(["oneitem"]))
@@ -306,6 +272,5 @@ if __name__=='__main__':
     except TypeError:
         _, err, _ = sys.exc_info()
         print(err)
-        pass
 
     print(columnize(list(range(4))))

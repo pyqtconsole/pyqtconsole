@@ -2,13 +2,6 @@
 import sys
 import contextlib
 
-try:
-    import jedi
-    from jedi import settings
-    settings.case_insensitive_completion = False
-except ImportError as ex:
-    print(str(ex) + ', No completion available')
-
 from code import InteractiveConsole
 
 try:
@@ -56,14 +49,6 @@ class PythonInterpreter(InteractiveConsole):
     def _print_in_prompt(self):
         self.stdout.write(self._p)
 
-    def _format_result(self):
-        # Are we at the end of a code block, not a very elegant check
-        # but it works for now
-        eof_cblock = self._last_input == '\n' and self._more == True
-
-        if self._last_input != '\n' or eof_cblock:
-            self.stdout.write('\n')
-
     def executing(self):
         return self._executing
 
@@ -99,7 +84,7 @@ class PythonInterpreter(InteractiveConsole):
     def showtraceback(self):
         type_, value, tb = sys.exc_info()
         self.stdout.write('\n')
-        
+
         if type_ == KeyboardInterrupt:
             self.stdout.write('KeyboardInterrupt\n')
         else:
@@ -190,17 +175,6 @@ class PythonInterpreter(InteractiveConsole):
 
                     self.stdout.write(line)
                     self._rep_line(line + '\n')
-
-    def get_completions(self, line):
-        words = []
-
-        if 'jedi' in globals():
-            script = jedi.Interpreter(line, [self.local_ns])
-
-            for completion in script.completions():
-                words.append(completion.name)
-
-        return words
 
 
 @contextlib.contextmanager

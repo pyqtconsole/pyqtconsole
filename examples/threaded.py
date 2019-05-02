@@ -1,15 +1,20 @@
 # -*- coding: utf-8 -*-
 #/usr/bin/python
 import sys
-import _phome
 
-from pyqtconsole.qt.QtWidgets import (QApplication)
+from pyqtconsole.qt.QtWidgets import QApplication
 from pyqtconsole.console import PythonConsole
+
+
+def greet():
+    print("hello world")
+
 
 if __name__ == '__main__':
     app = QApplication([])
 
     console = PythonConsole()
+    console.push_local_ns('greet', greet)
     console.show()
     console.eval_in_thread()
     sys.exit(app.exec_())
