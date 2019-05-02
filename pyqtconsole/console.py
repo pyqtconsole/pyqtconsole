@@ -3,8 +3,8 @@ import threading
 import ctypes
 
 from .qt.QtCore import Qt, Signal
-from .qt.QtWidgets import QTextEdit
-from .qt.QtGui import QFontMetrics, QTextCursor
+from .qt.QtWidgets import QTextEdit, QApplication
+from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
@@ -71,12 +71,21 @@ class BaseConsole(QTextEdit):
             Qt.Key_Left:        self.handle_left_key,
             Qt.Key_D:           self.handle_d_key,
             Qt.Key_C:           self.handle_c_key,
+            Qt.Key_V:           self.handle_v_key,
         }
 
     def insertFromMimeData(self, mime_data):
-        if mime_data.hasText():
-            self._keep_cursor_in_buffer()
-            self.evaluate_buffer(mime_data.text(), echo_lines = True)
+        if mime_data and mime_data.hasText():
+            self.insert_text(mime_data.text())
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MiddleButton:
+            clipboard = QApplication.clipboard()
+            mime_data = clipboard.mimeData(QClipboard.Selection)
+            self.insertFromMimeData(mime_data)
+            event.accept()
+        else:
+            super(BaseConsole, self).mousePressEvent(event)
 
     def keyPressEvent(self, event):
         key = event.key()
@@ -165,6 +174,14 @@ class BaseConsole(QTextEdit):
 
         return intercepted
 
+    def handle_v_key(self, event):
+        if event.modifiers() == Qt.ControlModifier:
+            clipboard = QApplication.clipboard()
+            mime_data = clipboard.mimeData(QClipboard.Clipboard)
+            self.insertFromMimeData(mime_data)
+            return True
+        return False
+
     def _move_cursor(self, position=None, select=False):
         cursor = self.textCursor()
         mode = QTextCursor.KeepAnchor if select else QTextCursor.MoveAnchor
@@ -237,6 +254,20 @@ class BaseConsole(QTextEdit):
             self._copy_buffer = ''
 
     # Abstract
+    def insert_text(self, text):
+        self._keep_cursor_in_buffer()
+        text = '\n'.join([
+            self._fix_line(line)
+            for line in text.splitlines()])
+        self.insertPlainText(text)
+
+    def _fix_line(self, line):
+        # Remove the any remaining more prompt, to make it easier
+        # to copy/paste within the interpreter.
+        if line.startswith(self.interpreter._morep):
+            line = line[len(self.interpreter._morep):]
+        return line
+
     def exit(self):
         self.stdin.write('EOF\n')
 
@@ -245,9 +276,6 @@ class BaseConsole(QTextEdit):
             self.window().close()
 
     # Abstract
-    def evaluate_buffer(self, _buffer, echo_lines = False):
-        print(_buffer)
-
     def set_tab(self, chars):
         self._tab_chars = chars
 
@@ -286,13 +314,6 @@ class PythonConsole(BaseConsole):
     def closeEvent(self, event):
         self.exit()
         event.accept()
-
-    def evaluate_buffer(self, _buffer, echo_lines = False):
-        self.interpreter.set_buffer(_buffer)
-        if echo_lines:
-            self.stdin.write('%%eval_lines\n')
-        else:
-            self.stdin.write('%%eval_buffer\n')
 
     def get_completions(self, line):
         script = jedi.Interpreter(line, [self.interpreter.local_ns])
