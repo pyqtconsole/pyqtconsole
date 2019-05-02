@@ -11,10 +11,17 @@ except ImportError as ex:
 
 from code import InteractiveConsole
 
+try:
+    from builtins import exit       # py3
+except ImportError:
+    from __builtin__ import exit    # py2
+
+
 class PythonInterpreter(InteractiveConsole):
     def __init__(self, stdin, stdout, local = {}):
         InteractiveConsole.__init__(self, local)
         self.local_ns = local
+        self.local_ns['exit'] = exit
         self.stdin = stdin
         self.stdout = stdout
 
@@ -70,11 +77,13 @@ class PythonInterpreter(InteractiveConsole):
         # redirect IO, since we don't how IO is handled within the code we
         # are running. Same thing for the except hook, we don't know what the
         # user are doing in it.
-        with redirected_io(self.stdout), disabled_excepthook():
-            exec_res = InteractiveConsole.runcode(self, code)
-
-        self._executing = False        
-        return exec_res
+        try:
+            with redirected_io(self.stdout), disabled_excepthook():
+                return InteractiveConsole.runcode(self, code)
+        except SystemExit:
+            self.exit()
+        finally:
+            self._executing = False
 
     def raw_input(self, prompt=None, timeout=None):
         line = self.stdin.readline(timeout)
@@ -106,10 +115,7 @@ class PythonInterpreter(InteractiveConsole):
     def _rep_line(self, line):
         self._last_input = line
 
-        if line == 'exit' or line == 'exit()':
-            self._running = False
-            self.stdout.close()
-        elif line == '%%eval_buffer':
+        if line == '%%eval_buffer':
             line = self.eval_buffer()
         elif line == '%%eval_lines':
             self.eval_lines()
@@ -152,7 +158,8 @@ class PythonInterpreter(InteractiveConsole):
 
     def exit(self):
         if self._running:
-            self.stdin.write('exit\n')
+            self._running = False
+            self.stdout.close()
 
     def set_buffer(self, _buffer):
         self._current_eval_buffer = _buffer.strip('\n')
@@ -163,6 +170,8 @@ class PythonInterpreter(InteractiveConsole):
                 code = compile(self._current_eval_buffer,'<string>', 'exec')
             except (OverflowError, SyntaxError):
                 InteractiveConsole.showsyntaxerror(self)
+            except SystemExit:
+                self.exit()
             else:
                 self.runcode(code)
 
