@@ -4,14 +4,18 @@ import contextlib
 
 from code import InteractiveConsole
 
+from .qt.QtCore import QObject, Slot
+
 try:
     from builtins import exit       # py3
 except ImportError:
     from __builtin__ import exit    # py2
 
 
-class PythonInterpreter(InteractiveConsole):
+class PythonInterpreter(QObject, InteractiveConsole):
+
     def __init__(self, stdin, stdout, local = {}):
+        QObject.__init__(self)
         InteractiveConsole.__init__(self, local)
         self.local_ns = local
         self.local_ns['exit'] = exit
@@ -69,8 +73,8 @@ class PythonInterpreter(InteractiveConsole):
         finally:
             self._executing = False
 
-    def raw_input(self, prompt=None, timeout=None):
-        line = self.stdin.readline(timeout)
+    def raw_input(self, prompt=None):
+        line = self.stdin.readline()
 
         if line != '\n':
             line = line.strip('\n')
@@ -96,23 +100,12 @@ class PythonInterpreter(InteractiveConsole):
         InteractiveConsole.showsyntaxerror(self, filename)
         self.stdout.write('\n')
 
-    def _rep_line(self, line):
+    @Slot(str)
+    def recv_line(self, line):
         self._last_input = line
         self._more = self.push(line)
         self._update_in_prompt(self._more, self._last_input)
         self._print_in_prompt()
-
-    def repl(self):
-        self._running = True
-
-        while self._running:
-            try:
-                line = self.raw_input(timeout = None)
-
-                if line:
-                    self._rep_line(line)
-            except KeyboardInterrupt:
-                self.handle_ctrl_c()
 
     def handle_ctrl_c(self):
         self.resetbuffer()
@@ -121,12 +114,6 @@ class PythonInterpreter(InteractiveConsole):
         self.stdout.write('^C\n')
         self._update_in_prompt(self._more, self._last_input)
         self._print_in_prompt()
-
-    def repl_nonblock(self):
-        line = self.raw_input(timeout = 0)
-
-        if line:
-            self._rep_line(line)
 
     def exit(self):
         if self._running:

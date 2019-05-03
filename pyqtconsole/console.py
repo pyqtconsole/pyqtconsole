@@ -2,7 +2,7 @@
 import threading
 import ctypes
 
-from .qt.QtCore import Qt, Signal
+from .qt.QtCore import Qt, Signal, QThread
 from .qt.QtWidgets import QTextEdit, QApplication
 from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
@@ -25,6 +25,7 @@ class BaseConsole(QTextEdit):
     key_pressed_signal = Signal(object)
     post_key_pressed_signal = Signal(object)
     set_complete_mode_signal = Signal(int)
+    push_line_signal = Signal(str)
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
@@ -215,7 +216,7 @@ class BaseConsole(QTextEdit):
         self.ensureCursorVisible()
 
         if lf:
-            self.stdin.write('\n')
+            self.push_line_signal.emit('')
 
     def _insert_welcome_message(self, message):
         self._insert_prompt(message)
@@ -244,7 +245,7 @@ class BaseConsole(QTextEdit):
 
     def _parse_buffer(self):
         cmd = self._get_buffer()
-        self.stdin.write(cmd + '\n')
+        self.push_line_signal.emit(cmd)
 
     def _stdout_data_handler(self, data):
         self._insert_prompt(data)
@@ -269,7 +270,7 @@ class BaseConsole(QTextEdit):
         return line
 
     def exit(self):
-        self.stdin.write('EOF\n')
+        pass
 
     def _close(self):
         if self.window().isVisible():
@@ -295,6 +296,9 @@ class PythonConsole(BaseConsole):
         self._thread = None
 
     def exit(self):
+        if self._thread:
+            self._thread.exit()
+            self._thread = None
         self.interpreter.exit()
 
     def _handle_ctrl_c(self):
@@ -322,17 +326,33 @@ class PythonConsole(BaseConsole):
     def push_local_ns(self, name, value):
         self.interpreter.local_ns[name] = value
 
-    def repl_nonblock(self):
-        return self.interpreter.repl_nonblock()
-
-    def repl(self):
-        return self.interpreter.repl()
-
     def eval_in_thread(self):
-        self._thread = threading.Thread(target = self.repl)
-        self._thread.start()
+        self._thread = Thread()
+        self.interpreter.moveToThread(self._thread)
+        self.push_line_signal.connect(
+            self.interpreter.recv_line, Qt.ConnectionType.QueuedConnection)
         return self._thread
 
     def eval_queued(self):
-        return self.stdin.write_event.connect(
-            self.repl_nonblock, Qt.ConnectionType.QueuedConnection)
+        return self.push_line_signal.connect(
+            self.interpreter.recv_line, Qt.ConnectionType.QueuedConnection)
+
+    def eval_executor(self, spawn):
+        return self.push_line_signal.connect(
+            lambda line: spawn(self.interpreter.recv_line, line))
+
+
+class Thread(QThread):
+
+    """Thread that runs an event loop and exposes thread ID as ``.ident``."""
+
+    def __init__(self, parent=None):
+        super(Thread, self).__init__(parent)
+        self.ready = threading.Event()
+        self.start()
+        self.ready.wait()
+
+    def run(self):
+        self.ident = threading.current_thread().ident
+        self.ready.set()
+        self.exec_()
