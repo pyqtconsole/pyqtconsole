@@ -2,7 +2,7 @@
 import threading
 import ctypes
 
-from .qt.QtCore import Qt, Signal, QThread
+from .qt.QtCore import Qt, Signal, QThread, Slot
 from .qt.QtWidgets import QTextEdit, QApplication
 from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
@@ -25,7 +25,6 @@ class BaseConsole(QTextEdit):
     key_pressed_signal = Signal(object)
     post_key_pressed_signal = Signal(object)
     set_complete_mode_signal = Signal(int)
-    push_line_signal = Signal(str)
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
@@ -33,6 +32,15 @@ class BaseConsole(QTextEdit):
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False
         self._copy_buffer = ''
+
+        self._last_input = ''
+        self._more = False
+        self._current_line = 0
+
+        self._inp = 'IN [%s]: '
+        self._morep = '...: '
+        self._outp = 'OUT[%s]: '
+        self._p = self._inp % self._current_line
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -59,6 +67,28 @@ class BaseConsole(QTextEdit):
         self.extensions.install(CommandHistory)
         if jedi is not None:
             self.extensions.install(AutoComplete)
+
+        self._print_in_prompt()
+
+    def _update_in_prompt(self, _more):
+        # We need to show the more prompt of the input was incomplete
+        # If the input is complete increase the input number and show
+        # the in prompt
+        if not _more:
+            self._p = self._inp % self._current_line
+        else:
+            self._p = (len(self._p) - len(self._morep)) * ' ' + self._morep
+
+    @Slot(bool)
+    def _finish_command(self, executed):
+        if executed and self._last_input != '\n':
+            self._current_line += 1
+        self._more = False
+        self._update_in_prompt(self._more)
+        self._print_in_prompt()
+
+    def _print_in_prompt(self):
+        self.stdout.write(self._p)
 
     def _get_key_event_handlers(self):
         return {
@@ -122,8 +152,7 @@ class BaseConsole(QTextEdit):
             cursor.movePosition(QTextCursor.EndOfLine)
             self.setTextCursor(cursor)
             self._parse_buffer()
-
-        return False
+            return True
 
     def handle_backspace_key(self, event):
         if self._cursor_offset() >= 1:
@@ -216,7 +245,7 @@ class BaseConsole(QTextEdit):
         self.ensureCursorVisible()
 
         if lf:
-            self.push_line_signal.emit('')
+            self.recv_line('')
 
     def _insert_welcome_message(self, message):
         self._insert_prompt(message)
@@ -245,7 +274,12 @@ class BaseConsole(QTextEdit):
 
     def _parse_buffer(self):
         cmd = self._get_buffer()
-        self.push_line_signal.emit(cmd)
+        self.stdout.write('\n')
+        self.recv_line(cmd)
+
+    # Abstract
+    def recv_line(self, line):
+        pass
 
     def _stdout_data_handler(self, data):
         self._insert_prompt(data)
@@ -265,8 +299,8 @@ class BaseConsole(QTextEdit):
     def _fix_line(self, line):
         # Remove the any remaining more prompt, to make it easier
         # to copy/paste within the interpreter.
-        if line.startswith(self.interpreter._morep):
-            line = line[len(self.interpreter._morep):]
+        if line.startswith(self._morep):
+            line = line[len(self._morep):]
         return line
 
     def exit(self):
@@ -292,8 +326,16 @@ class PythonConsole(BaseConsole):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, local=local)
+        self.interpreter.done_signal.connect(self._finish_command)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
+
+    def recv_line(self, line):
+        self._last_input = line
+        self._more = self.interpreter.push(line)
+        self._update_in_prompt(self._more)
+        if self._more:
+            self._print_in_prompt()
 
     def exit(self):
         if self._thread:
@@ -302,12 +344,19 @@ class PythonConsole(BaseConsole):
         self.interpreter.exit()
 
     def _handle_ctrl_c(self):
-        if self._thread:
+        # There is a race condition here, we should lock on the value of
+        # executing() to avoid accidentally raising KeyboardInterrupt after
+        # execution has finished. Deal with this later…
+        if self._thread and self.interpreter.executing():
             self._thread.inject_exception(KeyboardInterrupt)
             # wake up thread in case it is currently waiting on input:
             self.stdin.flush()
         else:
-            self.interpreter.handle_ctrl_c()
+            self.interpreter.resetbuffer()
+            self.stdout.write('^C\n')
+            self._more = False
+            self._update_in_prompt(self._more)
+            self._print_in_prompt()
 
     def closeEvent(self, event):
         self.exit()
@@ -323,17 +372,17 @@ class PythonConsole(BaseConsole):
     def eval_in_thread(self):
         self._thread = Thread()
         self.interpreter.moveToThread(self._thread)
-        self.push_line_signal.connect(
-            self.interpreter.recv_line, Qt.ConnectionType.QueuedConnection)
+        self.interpreter.exec_signal.connect(
+            self.interpreter.exec_, Qt.ConnectionType.QueuedConnection)
         return self._thread
 
     def eval_queued(self):
-        return self.push_line_signal.connect(
-            self.interpreter.recv_line, Qt.ConnectionType.QueuedConnection)
+        return self.interpreter.exec_signal.connect(
+            self.interpreter.exec_, Qt.ConnectionType.QueuedConnection)
 
     def eval_executor(self, spawn):
-        return self.push_line_signal.connect(
-            lambda line: spawn(self.interpreter.recv_line, line))
+        return self.interpreter.exec_signal.connect(
+            lambda line: spawn(self.interpreter.exec_, line))
 
 
 class Thread(QThread):
