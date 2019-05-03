@@ -16,6 +16,7 @@ class PythonInterpreter(QObject, InteractiveConsole):
 
     exec_signal = Signal(object)
     done_signal = Signal(bool)
+    exit_signal = Signal(object)
 
     def __init__(self, stdin, stdout, local = {}):
         QObject.__init__(self)
@@ -24,7 +25,6 @@ class PythonInterpreter(QObject, InteractiveConsole):
         self.local_ns['exit'] = exit
         self.stdin = stdin
         self.stdout = stdout
-        self._running = True
         self._executing = False
 
     def executing(self):
@@ -47,8 +47,8 @@ class PythonInterpreter(QObject, InteractiveConsole):
         try:
             with redirected_io(self.stdout), disabled_excepthook():
                 InteractiveConsole.runcode(self, code)
-        except SystemExit:
-            self.exit()
+        except SystemExit as e:
+            self.exit_signal.emit(e)
         finally:
             self._executing = False
             self.done_signal.emit(True)
@@ -80,11 +80,6 @@ class PythonInterpreter(QObject, InteractiveConsole):
         InteractiveConsole.showsyntaxerror(self, filename)
         self.stdout.write('\n')
         self.done_signal.emit(False)
-
-    def exit(self):
-        if self._running:
-            self._running = False
-            self.stdout.close()
 
 
 @contextlib.contextmanager
