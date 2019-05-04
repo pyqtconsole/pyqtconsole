@@ -320,7 +320,7 @@ class BaseConsole(QTextEdit):
         pass
 
 class PythonConsole(BaseConsole):
-    def __init__(self, parent = None, local = {}):
+    def __init__(self, parent = None, local=None):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, local=local)
