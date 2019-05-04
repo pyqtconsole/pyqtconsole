@@ -197,14 +197,17 @@ class BaseConsole(QFrame):
 
     def handle_enter_key(self, event):
         cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.EndOfLine)
+        cursor.movePosition(QTextCursor.End)
         self.setTextCursor(cursor)
-        self._parse_buffer()
+        buffer = self._get_buffer()
+        self._insert_in_buffer('\n')
+        self.process_input(buffer)
         return True
 
     def handle_backspace_key(self, event):
         if self._cursor_offset() >= 1:
-            if self._get_buffer().endswith(self._tab_chars):
+            buf = self._get_buffer()[:self._cursor_offset()]
+            if buf.endswith(self._tab_chars):
                 for i in range(len(self._tab_chars) - 1):
                     self.textCursor().deletePreviousChar()
             else:
@@ -293,14 +296,19 @@ class BaseConsole(QFrame):
         self._insert_prompt_text('\n' * text.count('\n'))
 
         if lf:
-            self.recv_line('')
+            self.process_input('')
+
+    def _update_prompt_pos(self):
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self._prompt_pos = cursor.position()
 
     def _insert_welcome_message(self, message):
         self._insert_output_text(message)
 
+    # Abstract
     def _get_buffer(self):
-        buffer_pos = self.textCursor().position()
-        return str(self.edit.toPlainText()[self._prompt_pos:buffer_pos])
+        return self.edit.toPlainText()[self._prompt_pos:]
 
     def _clear_buffer(self):
         self.textCursor().clearSelection()
@@ -322,13 +330,8 @@ class BaseConsole(QFrame):
     def set_auto_complete_mode(self, mode):
         self.set_complete_mode_signal.emit(mode)
 
-    def _parse_buffer(self):
-        cmd = self._get_buffer()
-        self.stdout.write('\n')
-        self.recv_line(cmd)
-
     # Abstract
-    def recv_line(self, line):
+    def process_input(self, line):
         pass
 
     def _stdout_data_handler(self, data):
@@ -374,12 +377,14 @@ class PythonConsole(BaseConsole):
         self._thread = None
         self.ctrl_c_pressed_signal.connect(self._handle_ctrl_c)
 
-    def recv_line(self, line):
-        self._last_input = line
-        self._more = self.interpreter.push(line)
+    def process_input(self, source):
+        self._last_input = source
+        self._more = self.interpreter.runsource(source)
         self._update_ps(self._more)
         if self._more:
             self._show_ps()
+        else:
+            self._update_prompt_pos()
 
     def exit(self):
         if self._thread:
@@ -396,7 +401,7 @@ class PythonConsole(BaseConsole):
             # wake up thread in case it is currently waiting on input:
             self.stdin.flush()
         else:
-            self.interpreter.resetbuffer()
+            self._last_input = '\n'
             self.stdout.write('^C\n')
             self._more = False
             self._update_ps(self._more)
