@@ -2,7 +2,7 @@
 import sys
 import contextlib
 
-from code import InteractiveConsole
+from code import InteractiveInterpreter
 
 from .qt.QtCore import QObject, Slot, Signal
 
@@ -12,7 +12,7 @@ except ImportError:
     from __builtin__ import exit    # py2
 
 
-class PythonInterpreter(QObject, InteractiveConsole):
+class PythonInterpreter(QObject, InteractiveInterpreter):
 
     exec_signal = Signal(object)
     done_signal = Signal(bool)
@@ -20,7 +20,7 @@ class PythonInterpreter(QObject, InteractiveConsole):
 
     def __init__(self, stdin, stdout, locals=None):
         QObject.__init__(self)
-        InteractiveConsole.__init__(self, locals)
+        InteractiveInterpreter.__init__(self, locals)
         self.locals['exit'] = exit
         self.stdin = stdin
         self.stdout = stdout
@@ -28,9 +28,6 @@ class PythonInterpreter(QObject, InteractiveConsole):
 
     def executing(self):
         return self._executing
-
-    def push(self, line):
-        return InteractiveConsole.push(self, line)
 
     def runcode(self, code):
         self.exec_signal.emit(code)
@@ -45,20 +42,12 @@ class PythonInterpreter(QObject, InteractiveConsole):
         # user are doing in it.
         try:
             with redirected_io(self.stdout), disabled_excepthook():
-                InteractiveConsole.runcode(self, code)
+                InteractiveInterpreter.runcode(self, code)
         except SystemExit as e:
             self.exit_signal.emit(e)
         finally:
             self._executing = False
             self.done_signal.emit(True)
-
-    def raw_input(self, prompt=None):
-        line = self.stdin.readline()
-
-        if line != '\n':
-            line = line.strip('\n')
-
-        return line
 
     def write(self, data):
         self.stdout.write(data)
@@ -70,13 +59,13 @@ class PythonInterpreter(QObject, InteractiveConsole):
         if type_ == KeyboardInterrupt:
             self.stdout.write('KeyboardInterrupt\n')
         else:
-            InteractiveConsole.showtraceback(self)
+            InteractiveInterpreter.showtraceback(self)
 
         self.stdout.write('\n')
 
     def showsyntaxerror(self, filename):
         self.stdout.write('\n')
-        InteractiveConsole.showsyntaxerror(self, filename)
+        InteractiveInterpreter.showsyntaxerror(self, filename)
         self.stdout.write('\n')
         self.done_signal.emit(False)
 
