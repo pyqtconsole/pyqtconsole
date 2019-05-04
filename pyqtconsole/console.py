@@ -320,10 +320,10 @@ class BaseConsole(QTextEdit):
         pass
 
 class PythonConsole(BaseConsole):
-    def __init__(self, parent = None, local=None):
+    def __init__(self, parent=None, locals=None):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
-        self.interpreter = PythonInterpreter(self.stdin, self.stdout, local=local)
+        self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
@@ -362,11 +362,11 @@ class PythonConsole(BaseConsole):
         event.accept()
 
     def get_completions(self, line):
-        script = jedi.Interpreter(line, [self.interpreter.local_ns])
+        script = jedi.Interpreter(line, [self.interpreter.locals])
         return [comp.name for comp in script.completions()]
 
     def push_local_ns(self, name, value):
-        self.interpreter.local_ns[name] = value
+        self.interpreter.locals[name] = value
 
     def eval_in_thread(self):
         self._thread = Thread()

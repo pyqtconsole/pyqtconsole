@@ -18,11 +18,10 @@ class PythonInterpreter(QObject, InteractiveConsole):
     done_signal = Signal(bool)
     exit_signal = Signal(object)
 
-    def __init__(self, stdin, stdout, local=None):
+    def __init__(self, stdin, stdout, locals=None):
         QObject.__init__(self)
-        InteractiveConsole.__init__(self, local)
-        self.local_ns = self.locals
-        self.local_ns['exit'] = exit
+        InteractiveConsole.__init__(self, locals)
+        self.locals['exit'] = exit
         self.stdin = stdin
         self.stdout = stdout
         self._executing = False
