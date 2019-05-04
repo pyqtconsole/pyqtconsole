@@ -303,15 +303,9 @@ class PythonConsole(BaseConsole):
 
     def _handle_ctrl_c(self):
         if self._thread:
-            _id = self._thread.ident
-            if _id and _id != threading.current_thread().ident:
-                # Raise exception in remote thread to stop execution of
-                # current commands (this only triggers once the thread
-                # executes any python bytecode):
-                _id, exobj = ctypes.c_long(_id), ctypes.py_object(KeyboardInterrupt)
-                ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, exobj)
-                # wake up thread in case it is currently waiting on input:
-                self.stdin.flush()
+            self._thread.inject_exception(KeyboardInterrupt)
+            # wake up thread in case it is currently waiting on input:
+            self.stdin.flush()
         else:
             self.interpreter.handle_ctrl_c()
 
@@ -356,3 +350,12 @@ class Thread(QThread):
         self.ident = threading.current_thread().ident
         self.ready.set()
         self.exec_()
+
+    def inject_exception(self, value):
+        """Raise exception in remote thread to stop execution of current
+        commands (this only triggers once the thread executes any python
+        bytecode)."""
+        if self.ident != threading.current_thread().ident:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                ctypes.c_long(self.ident),
+                ctypes.py_object(value))
