@@ -37,10 +37,9 @@ class BaseConsole(QTextEdit):
         self._more = False
         self._current_line = 0
 
-        self._inp = 'IN [%s]: '
-        self._morep = '...: '
-        self._outp = 'OUT[%s]: '
-        self._p = self._inp % self._current_line
+        self._ps1 = 'IN [%s]: '
+        self._ps2 = '...: '
+        self._ps = self._ps1 % self._current_line
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -68,27 +67,27 @@ class BaseConsole(QTextEdit):
         if jedi is not None:
             self.extensions.install(AutoComplete)
 
-        self._print_in_prompt()
+        self._show_ps()
 
-    def _update_in_prompt(self, _more):
+    def _update_ps(self, _more):
         # We need to show the more prompt of the input was incomplete
         # If the input is complete increase the input number and show
         # the in prompt
         if not _more:
-            self._p = self._inp % self._current_line
+            self._ps = self._ps1 % self._current_line
         else:
-            self._p = (len(self._p) - len(self._morep)) * ' ' + self._morep
+            self._ps = (len(self._ps) - len(self._ps2)) * ' ' + self._ps2
 
     @Slot(bool)
     def _finish_command(self, executed):
         if executed and self._last_input != '\n':
             self._current_line += 1
         self._more = False
-        self._update_in_prompt(self._more)
-        self._print_in_prompt()
+        self._update_ps(self._more)
+        self._show_ps()
 
-    def _print_in_prompt(self):
-        self.stdout.write(self._p)
+    def _show_ps(self):
+        self.stdout.write(self._ps)
 
     def _get_key_event_handlers(self):
         return {
@@ -299,8 +298,8 @@ class BaseConsole(QTextEdit):
     def _fix_line(self, line):
         # Remove the any remaining more prompt, to make it easier
         # to copy/paste within the interpreter.
-        if line.startswith(self._morep):
-            line = line[len(self._morep):]
+        if line.startswith(self._ps2):
+            line = line[len(self._ps2):]
         return line
 
     def exit(self):
@@ -333,9 +332,9 @@ class PythonConsole(BaseConsole):
     def recv_line(self, line):
         self._last_input = line
         self._more = self.interpreter.push(line)
-        self._update_in_prompt(self._more)
+        self._update_ps(self._more)
         if self._more:
-            self._print_in_prompt()
+            self._show_ps()
 
     def exit(self):
         if self._thread:
@@ -355,8 +354,8 @@ class PythonConsole(BaseConsole):
             self.interpreter.resetbuffer()
             self.stdout.write('^C\n')
             self._more = False
-            self._update_in_prompt(self._more)
-            self._print_in_prompt()
+            self._update_ps(self._more)
+            self._show_ps()
 
     def closeEvent(self, event):
         self.exit()
