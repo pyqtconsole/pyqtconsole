@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-from ..qt import QtCore
+from ..qt.QtCore import Qt, QObject, QEvent
 from .extension import Extension
 
 
-class CommandHistory(Extension, QtCore.QObject):
+class CommandHistory(Extension, QObject):
     def __init__(self):
         Extension.__init__(self)
-        QtCore.QObject.__init__(self)
+        QObject.__init__(self)
         self._cmd_history = []
         self._idx = 0
 
@@ -40,14 +40,14 @@ class CommandHistory(Extension, QtCore.QObject):
             return self._cmd_history[self._idx]
 
     def eventFilter(self, source, event):
-        if event.type() == QtCore.QEvent.KeyPress:
+        if event.type() == QEvent.KeyPress:
             key = event.key()
 
-            if key in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
+            if key in (Qt.Key_Return, Qt.Key_Enter):
                 self.add(self.owner()._get_buffer())
-            elif key == QtCore.Qt.Key_Up:
+            elif key == Qt.Key_Up:
                 self.dec()
-            elif key == QtCore.Qt.Key_Down:
+            elif key == Qt.Key_Down:
                 self.inc()
 
         return False

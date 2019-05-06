@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ..qt import QtCore
+from ..qt.QtCore import Qt, QObject
 from ..qt.QtWidgets import QCompleter
 
 from .extension import Extension
@@ -11,10 +11,10 @@ class COMPLETE_MODE(object):
     INLINE = 2
 
 
-class AutoComplete(Extension, QtCore.QObject):
+class AutoComplete(Extension, QObject):
     def __init__(self):
         Extension.__init__(self)
-        QtCore.QObject.__init__(self)
+        QObject.__init__(self)
         self.mode = COMPLETE_MODE.INLINE
         self.completer = None
         self._last_key = None
@@ -31,11 +31,11 @@ class AutoComplete(Extension, QtCore.QObject):
     def key_pressed_handler(self, event):
         key = event.key()
 
-        if key == QtCore.Qt.Key_Tab:
+        if key == Qt.Key_Tab:
             self.handle_tab_key(event)
-        elif key in (QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter, QtCore.Qt.Key_Space):
+        elif key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
             self.handle_complete_key(event)
-        elif key == QtCore.Qt.Key_Escape:
+        elif key == Qt.Key_Escape:
             self.hide_completion_suggestions()
 
     def post_key_pressed_handler(self, event):
@@ -57,7 +57,7 @@ class AutoComplete(Extension, QtCore.QObject):
                 event.accept()
 
         elif self.mode == COMPLETE_MODE.INLINE:
-            if self._last_key == QtCore.Qt.Key_Tab:
+            if self._last_key == Qt.Key_Tab:
                 self.trigger_complete()
 
             event.accept()
@@ -74,12 +74,12 @@ class AutoComplete(Extension, QtCore.QObject):
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
             self.completer.setCompletionMode(QCompleter.PopupCompletion)
-            self.completer.setCaseSensitivity(QtCore.Qt.CaseSensitive)
+            self.completer.setCaseSensitivity(Qt.CaseSensitive)
             self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
             self.completer.activated.connect(self.insert_completion)
         else:
             self.completer.setCompletionMode(QCompleter.InlineCompletion)
-            self.completer.setCaseSensitivity(QtCore.Qt.CaseSensitive)
+            self.completer.setCaseSensitivity(Qt.CaseSensitive)
             self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
 
     def trigger_complete(self):
