@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ..qt.QtCore import Qt, QObject
+from ..qt.QtCore import Qt, QObject, QTimer
 from ..qt.QtWidgets import QCompleter
 
 from .extension import Extension
@@ -21,7 +21,6 @@ class AutoComplete(Extension, QObject):
 
     def install(self):
         self.owner().key_pressed_signal.connect(self.key_pressed_handler)
-        self.owner().post_key_pressed_signal.connect(self.post_key_pressed_handler)
         self.owner().set_complete_mode_signal.connect(self.mode_set_handler)
         self.init_completion_list([])
 
@@ -38,13 +37,10 @@ class AutoComplete(Extension, QObject):
         elif key == Qt.Key_Escape:
             self.hide_completion_suggestions()
 
-    def post_key_pressed_handler(self, event):
-        key = event.key()
-
+        self._last_key = key
         # Regardless of key pressed update list, if we are completing a
         # word, highlight the first match !
-        self.update_completion(key)
-        self._last_key = key
+        QTimer.singleShot(0, lambda: self.update_completion(key))
 
     def handle_tab_key(self, event):
         if self.mode == COMPLETE_MODE.DROPDOWN:

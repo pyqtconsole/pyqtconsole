@@ -23,7 +23,6 @@ except ImportError:
 
 class BaseConsole(QTextEdit):
     key_pressed_signal = Signal(object)
-    post_key_pressed_signal = Signal(object)
     set_complete_mode_signal = Signal(int)
 
     def __init__(self, parent = None):
@@ -141,8 +140,6 @@ class BaseConsole(QTextEdit):
             super(BaseConsole, self).keyPressEvent(event)
         else:
             event.accept()
-
-        self.post_key_pressed_signal.emit(event)
 
     def handle_enter_key(self, event):
         if not event.isAccepted():
