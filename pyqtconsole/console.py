@@ -196,12 +196,17 @@ class BaseConsole(QFrame):
         return intercepted
 
     def handle_enter_key(self, event):
-        cursor = self.textCursor()
-        cursor.movePosition(QTextCursor.End)
-        self.setTextCursor(cursor)
-        buffer = self._get_buffer()
-        self._insert_in_buffer('\n')
-        self.process_input(buffer)
+        if event.modifiers() & Qt.ShiftModifier:
+            self._insert_in_buffer('\n')
+            self._update_ps(True)
+            self._show_ps()
+        else:
+            cursor = self.textCursor()
+            cursor.movePosition(QTextCursor.End)
+            self.setTextCursor(cursor)
+            buffer = self._get_buffer()
+            self._insert_in_buffer('\n')
+            self.process_input(buffer)
         return True
 
     def handle_backspace_key(self, event):
