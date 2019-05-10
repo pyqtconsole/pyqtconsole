@@ -431,7 +431,7 @@ class PythonConsole(BaseConsole):
 
     def process_input(self, source):
         self._last_input = source
-        self._more = self.interpreter.runsource(source)
+        self._more = self.interpreter.runsource(source, symbol='multi')
         self._update_ps(self._more)
         if self._more:
             self._show_ps()

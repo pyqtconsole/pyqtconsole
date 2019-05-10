@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import contextlib
+from functools import partial
 
 from code import InteractiveInterpreter
 
@@ -25,6 +26,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         self.stdin = stdin
         self.stdout = stdout
         self._executing = False
+        self.compile = partial(compile_multi, self.compile)
 
     def executing(self):
         return self._executing
@@ -33,7 +35,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         self.exec_signal.emit(code)
 
     @Slot(object)
-    def exec_(self, code):
+    def exec_(self, codes):
         self._executing = True
 
         # Redirect IO and disable excepthook, this is the only place were we
@@ -42,9 +44,12 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         # user are doing in it.
         try:
             with redirected_io(self.stdout), disabled_excepthook():
-                InteractiveInterpreter.runcode(self, code)
+                for code in codes:
+                    exec(code, self.locals)
         except SystemExit as e:
             self.exit_signal.emit(e)
+        except:
+            self.showtraceback()
         finally:
             self._executing = False
             self.done_signal.emit(True)
@@ -68,6 +73,33 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         InteractiveInterpreter.showsyntaxerror(self, filename)
         self.stdout.write('\n')
         self.done_signal.emit(False)
+
+
+def compile_multi(compiler, source, filename, symbol):
+    if symbol != 'multi':
+        return (compiler(source, filename, symbol),)
+
+    # First, check if the source compiles at all, otherwise the rest will be
+    # wasted effort. This raises an exception if there is a SyntaxError, or
+    # returns None if the code is incomplete:
+    if compiler(source, symbol, 'exec') is None:
+        return None
+
+    lines = source.split('\n')
+
+    for i, line in enumerate(lines):
+        last_line = i != len(lines) - 1
+        if last_line and (line.startswith((' ', '\t', '#')) or not line):
+            continue
+        exec_source = '\n'.join(lines[:i])
+        single_source = '\n'.join(lines[i:])
+        try:
+            exec_code = compiler(exec_source, symbol, 'exec')
+            single_code = compiler(single_source, symbol, 'single')
+            if exec_code and single_code:
+                return (exec_code, single_code)
+        except SyntaxError:
+            continue
 
 
 @contextlib.contextmanager
