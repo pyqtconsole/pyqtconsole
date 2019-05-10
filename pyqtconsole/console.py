@@ -211,13 +211,16 @@ class BaseConsole(QFrame):
 
     def handle_backspace_key(self, event):
         self._keep_cursor_in_buffer()
-        if self._cursor_offset() >= 1:
-            buf = self._get_buffer()[:self._cursor_offset()]
-            if buf.endswith(self._tab_chars):
-                for i in range(len(self._tab_chars) - 1):
-                    self.textCursor().deletePreviousChar()
-            else:
-                self.textCursor().deletePreviousChar()
+        cursor = self.textCursor()
+        offset = self._cursor_offset()
+        if not cursor.hasSelection() and offset >= 1:
+            tab = self._tab_chars
+            buf = self._get_buffer()[:offset]
+            num = len(tab)-1 if buf.endswith(tab) else 1
+            cursor.movePosition(
+                QTextCursor.PreviousCharacter,
+                QTextCursor.KeepAnchor, num)
+        self._remove_selected_input(cursor)
         return True
 
     def handle_tab_key(self, event):
@@ -326,6 +329,8 @@ class BaseConsole(QFrame):
     def _insert_in_buffer(self, text):
         self._keep_cursor_in_buffer()
         self.ensureCursorVisible()
+
+        self._remove_selected_input(self.textCursor())
         self.textCursor().insertText(text)
         self._insert_prompt_text('\n' * text.count('\n'))
 
@@ -354,6 +359,22 @@ class BaseConsole(QFrame):
         self._prompt_width = max(
             self._prompt_width, calc_text_width(self.pbar, text))
         self.pbar.setFixedWidth(self._prompt_width)
+
+    def _remove_selected_input(self, cursor):
+        if not cursor.hasSelection():
+            return
+
+        num_lines = cursor.selectedText().replace(u'\u2029', '\n').count('\n')
+        cursor.removeSelectedText()
+
+        if num_lines > 0:
+            block_num = cursor.blockNumber()
+            block = self.pbar.document().findBlockByNumber(block_num)
+            pc = QTextCursor(block)
+            pc.movePosition(QTextCursor.EndOfBlock)
+            pc.movePosition(QTextCursor.NextBlock, QTextCursor.KeepAnchor, num_lines)
+            pc.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+            pc.removeSelectedText()
 
     # Abstract
     def exit(self):
