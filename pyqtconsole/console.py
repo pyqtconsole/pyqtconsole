@@ -9,7 +9,6 @@ from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 from .interpreter import PythonInterpreter
 from .stream import Stream
 from .syntaxhighlighter import PythonHighlighter
-from .extensions.extension import ExtensionManager
 from .extensions.commandhistory import CommandHistory
 from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
 
@@ -96,10 +95,9 @@ class BaseConsole(QFrame):
         edit.installEventFilter(self)
         self._key_event_handlers = self._get_key_event_handlers()
 
-        self.extensions = ExtensionManager(self)
-        self.extensions.install(CommandHistory)
+        self.command_history = CommandHistory(self)
         if jedi is not None:
-            self.extensions.install(AutoComplete)
+            self.auto_complete = AutoComplete(self)
 
         self._show_ps()
 

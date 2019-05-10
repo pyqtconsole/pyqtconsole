@@ -2,7 +2,6 @@
 from ..qt.QtCore import Qt, QObject, QEvent
 from ..qt.QtWidgets import QCompleter
 
-from .extension import Extension
 from ..text import columnize, long_substr
 
 
@@ -11,17 +10,15 @@ class COMPLETE_MODE(object):
     INLINE = 2
 
 
-class AutoComplete(Extension, QObject):
-    def __init__(self):
-        Extension.__init__(self)
-        QObject.__init__(self)
+class AutoComplete(QObject):
+    def __init__(self, parent):
+        super(AutoComplete, self).__init__(parent)
         self.mode = COMPLETE_MODE.INLINE
         self.completer = None
         self._last_key = None
 
-    def install(self):
-        self.owner().edit.installEventFilter(self)
-        self.owner().set_complete_mode_signal.connect(self.mode_set_handler)
+        parent.edit.installEventFilter(self)
+        parent.set_complete_mode_signal.connect(self.mode_set_handler)
         self.init_completion_list([])
 
     def mode_set_handler(self, mode):
@@ -48,11 +45,11 @@ class AutoComplete(Extension, QObject):
         return intercepted
 
     def handle_tab_key(self, event):
-        if self.owner().textCursor().hasSelection():
+        if self.parent().textCursor().hasSelection():
             return False
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            if self.owner()._get_buffer().strip():
+            if self.parent()._get_buffer().strip():
                 if self.completing():
                     self.complete()
                 else:
@@ -76,8 +73,8 @@ class AutoComplete(Extension, QObject):
 
     def init_completion_list(self, words):
         self.completer = QCompleter(words, self)
-        self.completer.setCompletionPrefix(self.owner()._get_buffer())
-        self.completer.setWidget(self.owner().edit)
+        self.completer.setCompletionPrefix(self.parent()._get_buffer())
+        self.completer.setWidget(self.parent().edit)
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
             self.completer.setCompletionMode(QCompleter.PopupCompletion)
@@ -90,11 +87,11 @@ class AutoComplete(Extension, QObject):
             self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
 
     def trigger_complete(self):
-        _buffer = self.owner()._get_buffer().strip()
+        _buffer = self.parent()._get_buffer().strip()
         self.show_completion_suggestions(_buffer)
 
     def show_completion_suggestions(self, _buffer):
-        words = self.owner().get_completions(_buffer)
+        words = self.parent().get_completions(_buffer)
 
         # No words to show, just return
         if len(words) == 0:
@@ -114,7 +111,7 @@ class AutoComplete(Extension, QObject):
             return
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            cr = self.owner().edit.cursorRect()
+            cr = self.parent().edit.cursorRect()
             sbar_w = self.completer.popup().verticalScrollBar()
             popup_width = self.completer.popup().sizeHintForColumn(0)
             popup_width += sbar_w.sizeHint().width()
@@ -122,7 +119,7 @@ class AutoComplete(Extension, QObject):
             self.completer.complete(cr)
         elif self.mode == COMPLETE_MODE.INLINE:
             cl = columnize(words, colsep = '  |  ')
-            self.owner()._insert_output_text(
+            self.parent()._insert_output_text(
                 '\n\n' + cl + '\n', lf=True, keep_buffer=True)
 
     def hide_completion_suggestions(self):
@@ -137,7 +134,7 @@ class AutoComplete(Extension, QObject):
             return False
 
     def insert_completion(self, completion):
-        _buffer = self.owner()._get_buffer().strip()
+        _buffer = self.parent()._get_buffer().strip()
 
         # Handling the . operator in object oriented languages so we don't
         # overwrite the . when we are inserting the completion. Its not the .
@@ -148,19 +145,19 @@ class AutoComplete(Extension, QObject):
             _buffer = _buffer[idx:]
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            self.owner()._insert_in_buffer(completion[len(_buffer):])
+            self.parent()._insert_in_buffer(completion[len(_buffer):])
         elif self.mode == COMPLETE_MODE.INLINE:
-            self.owner()._clear_buffer()
-            self.owner()._insert_in_buffer(completion)
+            self.parent()._clear_buffer()
+            self.parent()._insert_in_buffer(completion)
 
-            words = self.owner().get_completions(completion)
+            words = self.parent().get_completions(completion)
 
             if len(words) == 1:
-                self.owner()._insert_in_buffer(' ')
+                self.parent()._insert_in_buffer(' ')
 
     def update_completion(self, key):
         if self.completing():
-            _buffer = self.owner()._get_buffer()
+            _buffer = self.parent()._get_buffer()
 
             if len(_buffer) > 1:
                 self.show_completion_suggestions(_buffer)
