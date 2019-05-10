@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ..qt.QtCore import Qt, QObject, QEvent
+from .qt.QtCore import Qt, QObject, QEvent
 
 
 class CommandHistory(QObject):

@@ -8,9 +8,9 @@ from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
-from .syntaxhighlighter import PythonHighlighter
-from .extensions.commandhistory import CommandHistory
-from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
+from .highlighter import PythonHighlighter
+from .commandhistory import CommandHistory
+from .autocomplete import AutoComplete, COMPLETE_MODE
 
 try:
     import jedi

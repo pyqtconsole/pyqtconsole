@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from ..qt.QtCore import Qt, QObject, QEvent
-from ..qt.QtWidgets import QCompleter
+from .qt.QtCore import Qt, QObject, QEvent
+from .qt.QtWidgets import QCompleter
 
-from ..text import columnize, long_substr
+from .text import columnize, long_substr
 
 
 class COMPLETE_MODE(object):
