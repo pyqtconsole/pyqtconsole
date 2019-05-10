@@ -53,7 +53,5 @@ class CommandHistory(Extension, QObject):
         return False
 
     def _insert_in_editor(self, str_):
-        self.owner().textCursor().clearSelection()
         self.owner()._clear_buffer()
-        self.owner()._keep_cursor_in_buffer()
         self.owner()._insert_in_buffer(str_)

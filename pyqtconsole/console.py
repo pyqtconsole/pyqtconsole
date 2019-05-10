@@ -198,14 +198,12 @@ class BaseConsole(QFrame):
     def handle_enter_key(self, event):
         if event.modifiers() & Qt.ShiftModifier:
             self._insert_in_buffer('\n')
-            self._update_ps(True)
-            self._show_ps()
         else:
             cursor = self.textCursor()
             cursor.movePosition(QTextCursor.End)
             self.setTextCursor(cursor)
             buffer = self._get_buffer()
-            self._insert_in_buffer('\n')
+            self._insert_in_buffer('\n', show_ps=False)
             self.process_input(buffer)
         return True
 
@@ -320,19 +318,28 @@ class BaseConsole(QFrame):
         return self.edit.toPlainText()[self._prompt_pos:]
 
     def _clear_buffer(self):
-        self.textCursor().clearSelection()
-        buffer_pos = self.textCursor().position()
+        cursor = self.textCursor()
+        cursor.setPosition(self._prompt_pos)
+        cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+        self._remove_selected_input(cursor)
+        self.setTextCursor(cursor)
 
-        for i in range(self._prompt_pos,buffer_pos):
-            self.textCursor().deletePreviousChar()
-
-    def _insert_in_buffer(self, text):
+    def _insert_in_buffer(self, text, show_ps=True):
         self._keep_cursor_in_buffer()
         self.ensureCursorVisible()
 
         self._remove_selected_input(self.textCursor())
         self.textCursor().insertText(text)
-        self._insert_prompt_text('\n' * text.count('\n'))
+
+        if show_ps and '\n' in text:
+            self._update_ps(True)
+            for _ in range(text.count('\n')):
+                # NOTE: need to insert in two steps, because this internally
+                # uses setAlignment, which affects only the first line:
+                self._insert_prompt_text('\n')
+                self._insert_prompt_text(self._ps)
+        elif '\n' in text:
+            self._insert_prompt_text('\n' * text.count('\n'))
 
     # Asbtract
     def get_completions(self, line):
