@@ -22,6 +22,7 @@ except ImportError:
 
 class BaseConsole(QFrame):
 
+    input_applied_signal = Signal(str)
     ctrl_c_pressed_signal = Signal()
 
     def __init__(self, parent = None):
@@ -227,9 +228,29 @@ class BaseConsole(QFrame):
         return True
 
     def handle_up_key(self, event):
+        buffer_start = QTextCursor(self.document())
+        buffer_start.setPosition(self._prompt_pos)
+
+        cursor = self.textCursor()
+        shift = event.modifiers() & Qt.ShiftModifier
+        if shift or cursor.blockNumber() > buffer_start.blockNumber():
+            self._move_cursor(QTextCursor.Up, select=shift)
+        else:
+            self.command_history.dec()
+
         return True
 
     def handle_down_key(self, event):
+        buffer_end = QTextCursor(self.document())
+        buffer_end.movePosition(QTextCursor.End)
+
+        cursor = self.textCursor()
+        shift = event.modifiers() & Qt.ShiftModifier
+        if shift or cursor.blockNumber() < buffer_end.blockNumber():
+            self._move_cursor(QTextCursor.Down, select=shift)
+        else:
+            self.command_history.inc()
+
         return True
 
     def handle_left_key(self, event):
@@ -264,11 +285,11 @@ class BaseConsole(QFrame):
             return True
         return False
 
-    def _move_cursor(self, position=None, select=False):
+    def _move_cursor(self, position, select=False):
         cursor = self.textCursor()
         mode = QTextCursor.KeepAnchor if select else QTextCursor.MoveAnchor
-        if position is None:
-            cursor.movePosition(QTextCursor.End, mode)
+        if isinstance(position, QTextCursor.MoveOperation):
+            cursor.movePosition(position, mode)
         else:
             cursor.setPosition(position, mode)
         self.setTextCursor(cursor)
@@ -415,6 +436,7 @@ class PythonConsole(BaseConsole):
         if self._more:
             self._show_ps()
         else:
+            self.input_applied_signal.emit(source)
             self._update_prompt_pos()
 
     def exit(self):

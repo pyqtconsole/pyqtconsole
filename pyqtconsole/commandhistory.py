@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .qt.QtCore import Qt, QObject, QEvent
+from .qt.QtCore import QObject
 
 
 class CommandHistory(QObject):
@@ -7,8 +7,7 @@ class CommandHistory(QObject):
         super(CommandHistory, self).__init__(parent)
         self._cmd_history = []
         self._idx = 0
-
-        parent.edit.installEventFilter(self)
+        parent.input_applied_signal.connect(self.add)
 
     def add(self, str_):
         if str_:
@@ -22,32 +21,15 @@ class CommandHistory(QObject):
         if len(self._cmd_history) and (self._idx + 1) < len(self._cmd_history):
             self._idx += 1
             self._insert_in_editor(self.current())
-        else:
-            self._insert_in_editor('')
 
     def dec(self):
-        if len(self._cmd_history):
-            if self._idx > 0:
-                self._idx -= 1
-
+        if len(self._cmd_history) and self._idx > 0:
+            self._idx -= 1
             self._insert_in_editor(self.current())
 
     def current(self):
         if len(self._cmd_history):
             return self._cmd_history[self._idx]
-
-    def eventFilter(self, source, event):
-        if event.type() == QEvent.KeyPress:
-            key = event.key()
-
-            if key in (Qt.Key_Return, Qt.Key_Enter):
-                self.add(self.parent()._get_buffer())
-            elif key == Qt.Key_Up:
-                self.dec()
-            elif key == Qt.Key_Down:
-                self.inc()
-
-        return False
 
     def _insert_in_editor(self, str_):
         self.parent()._clear_buffer()
