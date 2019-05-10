@@ -22,7 +22,6 @@ except ImportError:
 
 class BaseConsole(QFrame):
 
-    set_complete_mode_signal = Signal(int)
     ctrl_c_pressed_signal = Signal()
 
     def __init__(self, parent = None):
@@ -96,8 +95,7 @@ class BaseConsole(QFrame):
         self._key_event_handlers = self._get_key_event_handlers()
 
         self.command_history = CommandHistory(self)
-        if jedi is not None:
-            self.auto_complete = AutoComplete(self)
+        self.auto_complete = jedi and AutoComplete(self)
 
         self._show_ps()
 
@@ -344,7 +342,8 @@ class BaseConsole(QFrame):
         return ['No completion support available']
 
     def set_auto_complete_mode(self, mode):
-        self.set_complete_mode_signal.emit(mode)
+        if self.auto_complete:
+            self.auto_complete.mode = mode
 
     # Abstract
     def process_input(self, line):

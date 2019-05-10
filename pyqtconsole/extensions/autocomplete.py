@@ -18,11 +18,7 @@ class AutoComplete(QObject):
         self._last_key = None
 
         parent.edit.installEventFilter(self)
-        parent.set_complete_mode_signal.connect(self.mode_set_handler)
         self.init_completion_list([])
-
-    def mode_set_handler(self, mode):
-        self.mode = mode
 
     def eventFilter(self, widget, event):
         if event.type() == QEvent.KeyPress:
