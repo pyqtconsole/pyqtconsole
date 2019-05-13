@@ -50,6 +50,7 @@ class BaseConsole(QFrame):
 
         self._ps1 = 'IN [%s]:'
         self._ps2 = '...: '
+        self._ps_out = 'OUT[%s]:'
         self._ps = self._ps1 % self._current_line
 
         self.stdin = Stream()
@@ -136,8 +137,14 @@ class BaseConsole(QFrame):
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * ' ' + self._ps2
 
-    @Slot(bool)
-    def _finish_command(self, executed):
+    @Slot(bool, object)
+    def _finish_command(self, executed, result):
+        if result is not None:
+            self._insert_output_text(
+                repr(result),
+                prompt=self._ps_out % self._current_line)
+            self._insert_output_text('\n')
+
         if executed and self._last_input != '\n':
             self._current_line += 1
         self._more = False
@@ -307,7 +314,7 @@ class BaseConsole(QFrame):
     def _cursor_offset(self):
         return self.textCursor().position() - self._prompt_pos
 
-    def _insert_output_text(self, text, lf=False, keep_buffer=False):
+    def _insert_output_text(self, text, lf=False, keep_buffer=False, prompt=''):
         if keep_buffer:
             self._copy_buffer = self._get_buffer()
 
@@ -317,7 +324,7 @@ class BaseConsole(QFrame):
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
 
-        self._insert_prompt_text('\n' * text.count('\n'))
+        self._insert_prompt_text(prompt + '\n' * text.count('\n'))
 
         if lf:
             self.process_input('')

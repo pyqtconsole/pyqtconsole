@@ -16,7 +16,7 @@ except ImportError:
 class PythonInterpreter(QObject, InteractiveInterpreter):
 
     exec_signal = Signal(object)
-    done_signal = Signal(bool)
+    done_signal = Signal(bool, object)
     exit_signal = Signal(object)
 
     def __init__(self, stdin, stdout, locals=None):
@@ -37,6 +37,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
     @Slot(object)
     def exec_(self, codes):
         self._executing = True
+        result = None
 
         # Redirect IO and disable excepthook, this is the only place were we
         # redirect IO, since we don't how IO is handled within the code we
@@ -44,15 +45,18 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         # user are doing in it.
         try:
             with redirected_io(self.stdout), disabled_excepthook():
-                for code in codes:
-                    exec(code, self.locals)
+                for code, mode in codes:
+                    if mode == 'eval':
+                        result = eval(code, self.locals)
+                    else:
+                        exec(code, self.locals)
         except SystemExit as e:
             self.exit_signal.emit(e)
         except:
             self.showtraceback()
         finally:
             self._executing = False
-            self.done_signal.emit(True)
+            self.done_signal.emit(True, result)
 
     def write(self, data):
         self.stdout.write(data)
@@ -72,12 +76,12 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         self.stdout.write('\n')
         InteractiveInterpreter.showsyntaxerror(self, filename)
         self.stdout.write('\n')
-        self.done_signal.emit(False)
+        self.done_signal.emit(False, None)
 
 
 def compile_multi(compiler, source, filename, symbol):
     if symbol != 'multi':
-        return (compiler(source, filename, symbol),)
+        return [(compiler(source, filename, symbol), symbol)]
 
     # First, check if the source compiles at all, otherwise the rest will be
     # wasted effort. This raises an exception if there is a SyntaxError, or
@@ -97,7 +101,13 @@ def compile_multi(compiler, source, filename, symbol):
             exec_code = compiler(exec_source, symbol, 'exec')
             single_code = compiler(single_source, symbol, 'single')
             if exec_code and single_code:
-                return (exec_code, single_code)
+                try:
+                    expr_code = compiler(single_source, symbol, 'eval')
+                    if expr_code:
+                        return [(exec_code, 'exec'), (expr_code, 'eval')]
+                except SyntaxError:
+                    pass
+                return [(exec_code, 'exec'), (single_code, 'exec')]
         except SyntaxError:
             continue
 

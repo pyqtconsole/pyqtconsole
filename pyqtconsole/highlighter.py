@@ -31,7 +31,8 @@ STYLES = {
     'comment': format('darkGreen', 'italic'),
     'self': format('black', 'italic'),
     'numbers': format('brown'),
-    'prompt': format('darkBlue', 'bold'),
+    'inprompt': format('darkBlue', 'bold'),
+    'outprompt': format('darkRed', 'bold'),
 }
 
 
@@ -62,8 +63,8 @@ class PythonHighlighter(QSyntaxHighlighter):
             #(r'\bself\b', 0, STYLES['self']),
 
             # Match the prompt incase of a console
-            (r'IN[^\:]*', 0, STYLES['prompt']),
-            (r'OUT[^\:]*', 0, STYLES['prompt']),
+            (r'IN[^\:]*', 0, STYLES['inprompt']),
+            (r'OUT[^\:]*', 0, STYLES['outprompt']),
 
             # Double-quoted string, possibly containing escape sequences
             (r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
