@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import sys
 import contextlib
+from functools import partial
 
-from code import InteractiveConsole
+from code import InteractiveInterpreter
 
 from .qt.QtCore import QObject, Slot, Signal
 
@@ -12,32 +13,31 @@ except ImportError:
     from __builtin__ import exit    # py2
 
 
-class PythonInterpreter(QObject, InteractiveConsole):
+class PythonInterpreter(QObject, InteractiveInterpreter):
 
     exec_signal = Signal(object)
-    done_signal = Signal(bool)
+    done_signal = Signal(bool, object)
     exit_signal = Signal(object)
 
     def __init__(self, stdin, stdout, locals=None):
         QObject.__init__(self)
-        InteractiveConsole.__init__(self, locals)
+        InteractiveInterpreter.__init__(self, locals)
         self.locals['exit'] = exit
         self.stdin = stdin
         self.stdout = stdout
         self._executing = False
+        self.compile = partial(compile_multi, self.compile)
 
     def executing(self):
         return self._executing
-
-    def push(self, line):
-        return InteractiveConsole.push(self, line)
 
     def runcode(self, code):
         self.exec_signal.emit(code)
 
     @Slot(object)
-    def exec_(self, code):
+    def exec_(self, codes):
         self._executing = True
+        result = None
 
         # Redirect IO and disable excepthook, this is the only place were we
         # redirect IO, since we don't how IO is handled within the code we
@@ -45,20 +45,18 @@ class PythonInterpreter(QObject, InteractiveConsole):
         # user are doing in it.
         try:
             with redirected_io(self.stdout), disabled_excepthook():
-                InteractiveConsole.runcode(self, code)
+                for code, mode in codes:
+                    if mode == 'eval':
+                        result = eval(code, self.locals)
+                    else:
+                        exec(code, self.locals)
         except SystemExit as e:
             self.exit_signal.emit(e)
+        except:
+            self.showtraceback()
         finally:
             self._executing = False
-            self.done_signal.emit(True)
-
-    def raw_input(self, prompt=None):
-        line = self.stdin.readline()
-
-        if line != '\n':
-            line = line.strip('\n')
-
-        return line
+            self.done_signal.emit(True, result)
 
     def write(self, data):
         self.stdout.write(data)
@@ -70,15 +68,44 @@ class PythonInterpreter(QObject, InteractiveConsole):
         if type_ == KeyboardInterrupt:
             self.stdout.write('KeyboardInterrupt\n')
         else:
-            InteractiveConsole.showtraceback(self)
-
-        self.stdout.write('\n')
+            InteractiveInterpreter.showtraceback(self)
 
     def showsyntaxerror(self, filename):
-        self.stdout.write('\n')
-        InteractiveConsole.showsyntaxerror(self, filename)
-        self.stdout.write('\n')
-        self.done_signal.emit(False)
+        InteractiveInterpreter.showsyntaxerror(self, filename)
+        self.done_signal.emit(False, None)
+
+
+def compile_multi(compiler, source, filename, symbol):
+    if symbol != 'multi':
+        return [(compiler(source, filename, symbol), symbol)]
+
+    # First, check if the source compiles at all, otherwise the rest will be
+    # wasted effort. This raises an exception if there is a SyntaxError, or
+    # returns None if the code is incomplete:
+    if compiler(source, symbol, 'exec') is None:
+        return None
+
+    lines = source.split('\n')
+
+    for i, line in enumerate(lines):
+        last_line = i != len(lines) - 1
+        if last_line and (line.startswith((' ', '\t', '#')) or not line):
+            continue
+        exec_source = '\n'.join(lines[:i])
+        single_source = '\n'.join(lines[i:])
+        try:
+            exec_code = compiler(exec_source, symbol, 'exec')
+            single_code = compiler(single_source, symbol, 'single')
+            if exec_code and single_code:
+                try:
+                    expr_code = compiler(single_source, symbol, 'eval')
+                    if expr_code:
+                        return [(exec_code, 'exec'), (expr_code, 'eval')]
+                except SyntaxError:
+                    pass
+                return [(exec_code, 'exec'), (single_code, 'exec')]
+        except SyntaxError:
+            continue
 
 
 @contextlib.contextmanager

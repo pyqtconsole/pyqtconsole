@@ -2,16 +2,15 @@
 import threading
 import ctypes
 
-from .qt.QtCore import Qt, Signal, QThread, Slot
-from .qt.QtWidgets import QTextEdit, QApplication
+from .qt.QtCore import Qt, Signal, QThread, Slot, QEvent
+from .qt.QtWidgets import QTextEdit, QApplication, QHBoxLayout, QFrame
 from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
-from .syntaxhighlighter import PythonHighlighter
-from .extensions.extension import ExtensionManager
-from .extensions.commandhistory import CommandHistory
-from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
+from .highlighter import PythonHighlighter
+from .commandhistory import CommandHistory
+from .autocomplete import AutoComplete, COMPLETE_MODE
 
 try:
     import jedi
@@ -21,14 +20,27 @@ except ImportError:
     jedi = None
 
 
-class BaseConsole(QTextEdit):
-    key_pressed_signal = Signal(object)
-    post_key_pressed_signal = Signal(object)
-    set_complete_mode_signal = Signal(int)
+class BaseConsole(QFrame):
+
+    input_applied_signal = Signal(str)
+    ctrl_c_pressed_signal = Signal()
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
+
+        self.pbar = pbar = QTextEdit()
+        self.edit = edit = InputArea()
+
+        layout = QHBoxLayout()
+        layout.addWidget(pbar)
+        layout.addWidget(edit)
+        layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+        self._prompt_width = 0
         self._prompt_pos = 0
+        self._output_inserted = False
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False
         self._copy_buffer = ''
@@ -37,36 +49,85 @@ class BaseConsole(QTextEdit):
         self._more = False
         self._current_line = 0
 
-        self._ps1 = 'IN [%s]: '
+        self._ps1 = 'IN [%s]:'
         self._ps2 = '...: '
+        self._ps_out = 'OUT[%s]:'
         self._ps = self._ps1 % self._current_line
 
         self.stdin = Stream()
         self.stdout = Stream()
         self.stdout.write_event.connect(self._stdout_data_handler)
 
-        font = self.document().defaultFont()
+        # show frame around both child widgets:
+        self.setFrameStyle(edit.frameStyle())
+        pbar.setFrameStyle(QFrame.NoFrame)
+        edit.setFrameStyle(QFrame.NoFrame)
+
+        # keep scrolling in sync:
+        p_scroll = pbar.verticalScrollBar()
+        e_scroll = edit.verticalScrollBar()
+        p_scroll.valueChanged.connect(e_scroll.setValue)
+        e_scroll.valueChanged.connect(p_scroll.setValue)
+        pbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        pbar.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        pbar.setLineWrapMode(QTextEdit.NoWrap)
+
+        font = edit.document().defaultFont()
         font.setFamily("Courier New")
         font_width = QFontMetrics(font).width('M')
-        self.document().setDefaultFont(font)
-        geometry = self.geometry()
+        self.setFont(font)
+
+        geometry = edit.geometry()
         geometry.setWidth(font_width*80+20)
         geometry.setHeight(font_width*40)
-        self.setGeometry(geometry)
-        self.resize(font_width*80+20, font_width*40)
-        self.setReadOnly(True)
-        self.setTextInteractionFlags(
+        edit.setGeometry(geometry)
+        edit.resize(font_width*80+20, font_width*40)
+
+        pbar.setReadOnly(True)
+        edit.setReadOnly(True)
+        pbar.setTextInteractionFlags(Qt.NoTextInteraction)
+        edit.setTextInteractionFlags(
             Qt.TextSelectableByMouse |
             Qt.TextSelectableByKeyboard)
+        self.setFocusPolicy(Qt.NoFocus)
+        pbar.setFocusPolicy(Qt.NoFocus)
+        edit.setFocusPolicy(Qt.StrongFocus)
+        edit.setFocus()
 
+        edit.installEventFilter(self)
         self._key_event_handlers = self._get_key_event_handlers()
 
-        self.extensions = ExtensionManager(self)
-        self.extensions.install(CommandHistory)
-        if jedi is not None:
-            self.extensions.install(AutoComplete)
+        self.command_history = CommandHistory(self)
+        self.auto_complete = jedi and AutoComplete(self)
 
         self._show_ps()
+
+    def setFont(self, font):
+        self.edit.document().setDefaultFont(font)
+        self.pbar.document().setDefaultFont(font)
+        self.edit.setFont(font)
+        self.pbar.setFont(font)
+        super(BaseConsole, self).setFont(font)
+
+    def eventFilter(self, edit, event):
+        if event.type() == QEvent.KeyPress:
+            return bool(self.filter_keyPressEvent(event))
+        elif event.type() == QEvent.MouseButtonPress:
+            return bool(self.filter_mousePressEvent(event))
+        else:
+            return False
+
+    def document(self):
+        return self.edit.document()
+
+    def textCursor(self):
+        return self.edit.textCursor()
+
+    def setTextCursor(self, cursor):
+        self.edit.setTextCursor(cursor)
+
+    def ensureCursorVisible(self):
+        self.edit.ensureCursorVisible()
 
     def _update_ps(self, _more):
         # We need to show the more prompt of the input was incomplete
@@ -77,16 +138,24 @@ class BaseConsole(QTextEdit):
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * ' ' + self._ps2
 
-    @Slot(bool)
-    def _finish_command(self, executed):
-        if executed and self._last_input != '\n':
+    @Slot(bool, object)
+    def _finish_command(self, executed, result):
+        if result is not None:
+            self._insert_output_text(
+                repr(result),
+                prompt=self._ps_out % self._current_line)
+            self._insert_output_text('\n')
+
+        if executed and self._last_input:
             self._current_line += 1
         self._more = False
         self._update_ps(self._more)
         self._show_ps()
 
     def _show_ps(self):
-        self.stdout.write(self._ps)
+        if self._output_inserted and not self._more:
+            self._insert_output_text("\n")
+        self._insert_prompt_text(self._ps)
 
     def _get_key_event_handlers(self):
         return {
@@ -105,22 +174,18 @@ class BaseConsole(QTextEdit):
 
     def insertFromMimeData(self, mime_data):
         if mime_data and mime_data.hasText():
-            self.insert_text(mime_data.text())
+            self._insert_in_buffer(mime_data.text())
 
-    def mousePressEvent(self, event):
+    def filter_mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
             clipboard = QApplication.clipboard()
             mime_data = clipboard.mimeData(QClipboard.Selection)
             self.insertFromMimeData(mime_data)
-            event.accept()
-        else:
-            super(BaseConsole, self).mousePressEvent(event)
+            return True
 
-    def keyPressEvent(self, event):
+    def filter_keyPressEvent(self, event):
         key = event.key()
         event.ignore()
-
-        self.key_pressed_signal.emit(event)
 
         handler = self._key_event_handlers.get(key)
         intercepted = handler and handler(event)
@@ -133,38 +198,38 @@ class BaseConsole(QTextEdit):
 
             if not intercepted and event.text():
                 intercepted = True
-                self.insertPlainText(event.text())
+                self._insert_in_buffer(event.text())
 
-        # Call the TextEdit keyPressEvent for the events that are not
-        # intercepted
-        if not intercepted:
-            super(BaseConsole, self).keyPressEvent(event)
-        else:
-            event.accept()
-
-        self.post_key_pressed_signal.emit(event)
+        return intercepted
 
     def handle_enter_key(self, event):
-        if not event.isAccepted():
+        if event.modifiers() & Qt.ShiftModifier:
+            self._insert_in_buffer('\n')
+        else:
             cursor = self.textCursor()
-            cursor.movePosition(QTextCursor.EndOfLine)
+            cursor.movePosition(QTextCursor.End)
             self.setTextCursor(cursor)
-            self._parse_buffer()
-            return True
+            buffer = self._get_buffer()
+            self._insert_in_buffer('\n', show_ps=False)
+            self.process_input(buffer)
+        return True
 
     def handle_backspace_key(self, event):
-        if self._cursor_offset() >= 1:
-            if self._get_buffer().endswith(self._tab_chars):
-                for i in range(len(self._tab_chars) - 1):
-                    self.textCursor().deletePreviousChar()
-            else:
-                self.textCursor().deletePreviousChar()
+        self._keep_cursor_in_buffer()
+        cursor = self.textCursor()
+        offset = self._cursor_offset()
+        if not cursor.hasSelection() and offset >= 1:
+            tab = self._tab_chars
+            buf = self._get_buffer()[:offset]
+            num = len(tab)-1 if buf.endswith(tab) else 1
+            cursor.movePosition(
+                QTextCursor.PreviousCharacter,
+                QTextCursor.KeepAnchor, num)
+        self._remove_selected_input(cursor)
         return True
 
     def handle_tab_key(self, event):
-        if not event.isAccepted():
-            self._insert_in_buffer(self._tab_chars)
-
+        self._insert_in_buffer(self._tab_chars)
         return True
 
     def handle_home_key(self, event):
@@ -173,9 +238,29 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_up_key(self, event):
+        buffer_start = QTextCursor(self.document())
+        buffer_start.setPosition(self._prompt_pos)
+
+        cursor = self.textCursor()
+        shift = event.modifiers() & Qt.ShiftModifier
+        if shift or cursor.blockNumber() > buffer_start.blockNumber():
+            self._move_cursor(QTextCursor.Up, select=shift)
+        else:
+            self.command_history.dec()
+
         return True
 
     def handle_down_key(self, event):
+        buffer_end = QTextCursor(self.document())
+        buffer_end.movePosition(QTextCursor.End)
+
+        cursor = self.textCursor()
+        shift = event.modifiers() & Qt.ShiftModifier
+        if shift or cursor.blockNumber() < buffer_end.blockNumber():
+            self._move_cursor(QTextCursor.Down, select=shift)
+        else:
+            self.command_history.inc()
+
         return True
 
     def handle_left_key(self, event):
@@ -188,7 +273,7 @@ class BaseConsole(QTextEdit):
         elif event.modifiers() == Qt.ControlModifier:
             msg = "\nCan't use CTRL-D to exit, you have to exit the "
             msg += "application !\n"
-            self._insert_prompt(msg)
+            self._insert_output_text(msg)
 
         return False
 
@@ -198,7 +283,7 @@ class BaseConsole(QTextEdit):
         # Do not intercept so that the event is forwarded to the base class
         # can handle it. In this case for copy that is: CTRL-C
         if event.modifiers() == Qt.ControlModifier:
-            self._handle_ctrl_c()
+            self.ctrl_c_pressed_signal.emit()
 
         return intercepted
 
@@ -210,11 +295,11 @@ class BaseConsole(QTextEdit):
             return True
         return False
 
-    def _move_cursor(self, position=None, select=False):
+    def _move_cursor(self, position, select=False):
         cursor = self.textCursor()
         mode = QTextCursor.KeepAnchor if select else QTextCursor.MoveAnchor
-        if position is None:
-            cursor.movePosition(QTextCursor.End, mode)
+        if isinstance(position, QTextCursor.MoveOperation):
+            cursor.movePosition(position, mode)
         else:
             cursor.setPosition(position, mode)
         self.setTextCursor(cursor)
@@ -232,75 +317,103 @@ class BaseConsole(QTextEdit):
     def _cursor_offset(self):
         return self.textCursor().position() - self._prompt_pos
 
-    def _insert_prompt(self, prompt, lf=False, keep_buffer=False):
+    def _insert_output_text(self, text, lf=False, keep_buffer=False, prompt=''):
         if keep_buffer:
             self._copy_buffer = self._get_buffer()
 
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)
-        cursor.insertText(prompt)
+        cursor.insertText(text)
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
 
+        self._insert_prompt_text(prompt + '\n' * text.count('\n'))
+        self._output_inserted = True
+
         if lf:
-            self.recv_line('')
+            self.process_input('')
+
+    def _update_prompt_pos(self):
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self._prompt_pos = cursor.position()
+        self._output_inserted = self._more
 
     def _insert_welcome_message(self, message):
-        self._insert_prompt(message)
+        self._insert_output_text(message)
 
+    # Abstract
     def _get_buffer(self):
-        buffer_pos = self.textCursor().position()
-        return str(self.toPlainText()[self._prompt_pos:buffer_pos])
+        return self.edit.toPlainText()[self._prompt_pos:]
 
     def _clear_buffer(self):
-        self.textCursor().clearSelection()
-        buffer_pos = self.textCursor().position()
+        cursor = self.textCursor()
+        cursor.setPosition(self._prompt_pos)
+        cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
+        self._remove_selected_input(cursor)
+        self.setTextCursor(cursor)
 
-        for i in range(self._prompt_pos,buffer_pos):
-            self.textCursor().deletePreviousChar()
-
-    def _insert_in_buffer(self, text):
+    def _insert_in_buffer(self, text, show_ps=True):
+        self._keep_cursor_in_buffer()
         self.ensureCursorVisible()
+
+        self._remove_selected_input(self.textCursor())
         self.textCursor().insertText(text)
+
+        if show_ps and '\n' in text:
+            self._update_ps(True)
+            for _ in range(text.count('\n')):
+                # NOTE: need to insert in two steps, because this internally
+                # uses setAlignment, which affects only the first line:
+                self._insert_prompt_text('\n')
+                self._insert_prompt_text(self._ps)
+        elif '\n' in text:
+            self._insert_prompt_text('\n' * text.count('\n'))
 
     # Asbtract
     def get_completions(self, line):
         return ['No completion support available']
 
     def set_auto_complete_mode(self, mode):
-        self.set_complete_mode_signal.emit(mode)
-
-    def _parse_buffer(self):
-        cmd = self._get_buffer()
-        self.stdout.write('\n')
-        self.recv_line(cmd)
+        if self.auto_complete:
+            self.auto_complete.mode = mode
 
     # Abstract
-    def recv_line(self, line):
+    def process_input(self, line):
         pass
 
     def _stdout_data_handler(self, data):
-        self._insert_prompt(data)
+        self._insert_output_text(data)
 
         if len(self._copy_buffer) > 0:
             self._insert_in_buffer(self._copy_buffer)
             self._copy_buffer = ''
 
+    def _insert_prompt_text(self, text):
+        self.pbar.setAlignment(Qt.AlignRight)
+        self.pbar.insertPlainText(text)
+
+        self._prompt_width = max(
+            self._prompt_width, calc_text_width(self.pbar, text))
+        self.pbar.setFixedWidth(self._prompt_width)
+
+    def _remove_selected_input(self, cursor):
+        if not cursor.hasSelection():
+            return
+
+        num_lines = cursor.selectedText().replace(u'\u2029', '\n').count('\n')
+        cursor.removeSelectedText()
+
+        if num_lines > 0:
+            block_num = cursor.blockNumber()
+            block = self.pbar.document().findBlockByNumber(block_num)
+            pc = QTextCursor(block)
+            pc.movePosition(QTextCursor.EndOfBlock)
+            pc.movePosition(QTextCursor.NextBlock, QTextCursor.KeepAnchor, num_lines)
+            pc.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
+            pc.removeSelectedText()
+
     # Abstract
-    def insert_text(self, text):
-        self._keep_cursor_in_buffer()
-        text = '\n'.join([
-            self._fix_line(line)
-            for line in text.splitlines()])
-        self.insertPlainText(text)
-
-    def _fix_line(self, line):
-        # Remove the any remaining more prompt, to make it easier
-        # to copy/paste within the interpreter.
-        if line.startswith(self._ps2):
-            line = line[len(self._ps2):]
-        return line
-
     def exit(self):
         pass
 
@@ -315,26 +428,28 @@ class BaseConsole(QTextEdit):
     def ctrl_d_exits_console(self, b):
         self._ctrl_d_exits = b
 
-    # Abstract
-    def _handle_ctrl_c(self):
-        pass
 
 class PythonConsole(BaseConsole):
     def __init__(self, parent=None, locals=None):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
+        self.prompt_highlighter = PythonHighlighter(self.pbar.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
+        self.ctrl_c_pressed_signal.connect(self._handle_ctrl_c)
 
-    def recv_line(self, line):
-        self._last_input = line
-        self._more = self.interpreter.push(line)
+    def process_input(self, source):
+        self._last_input = source
+        self._more = self.interpreter.runsource(source, symbol='multi')
         self._update_ps(self._more)
         if self._more:
             self._show_ps()
+        else:
+            self.input_applied_signal.emit(source)
+            self._update_prompt_pos()
 
     def exit(self):
         if self._thread:
@@ -351,8 +466,9 @@ class PythonConsole(BaseConsole):
             # wake up thread in case it is currently waiting on input:
             self.stdin.flush()
         else:
-            self.interpreter.resetbuffer()
+            self._last_input = ''
             self.stdout.write('^C\n')
+            self._output_inserted = False
             self._more = False
             self._update_ps(self._more)
             self._show_ps()
@@ -407,3 +523,16 @@ class Thread(QThread):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_long(self.ident),
                 ctypes.py_object(value))
+
+
+class InputArea(QTextEdit):
+
+    def insertFromMimeData(self, mime_data):
+        return self.parent().insertFromMimeData(mime_data)
+
+
+def calc_text_width(widget, text):
+    return (widget.fontMetrics().width(text) +
+            widget.fontMetrics().width('M') +
+            widget.contentsMargins().left() +
+            widget.contentsMargins().right())
