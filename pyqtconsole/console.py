@@ -44,7 +44,6 @@ class BaseConsole(QTextEdit):
         self.stdin = Stream()
         self.stdout = Stream()
         self.stdout.write_event.connect(self._stdout_data_handler)
-        self.stdout.close_event.connect(self._close)
 
         font = self.document().defaultFont()
         font.setFamily("Courier New")
@@ -321,11 +320,12 @@ class BaseConsole(QTextEdit):
         pass
 
 class PythonConsole(BaseConsole):
-    def __init__(self, parent = None, local = {}):
+    def __init__(self, parent = None, local=None):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, local=local)
         self.interpreter.done_signal.connect(self._finish_command)
+        self.interpreter.exit_signal.connect(self.exit)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
 
@@ -340,7 +340,7 @@ class PythonConsole(BaseConsole):
         if self._thread:
             self._thread.exit()
             self._thread = None
-        self.interpreter.exit()
+        self._close()
 
     def _handle_ctrl_c(self):
         # There is a race condition here, we should lock on the value of
