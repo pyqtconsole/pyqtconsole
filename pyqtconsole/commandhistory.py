@@ -1,17 +1,14 @@
 # -*- coding: utf-8 -*-
-from ..qt.QtCore import Qt, QObject, QEvent
-from .extension import Extension
+from .qt.QtCore import Qt, QObject, QEvent
 
 
-class CommandHistory(Extension, QObject):
-    def __init__(self):
-        Extension.__init__(self)
-        QObject.__init__(self)
+class CommandHistory(QObject):
+    def __init__(self, parent):
+        super(CommandHistory, self).__init__(parent)
         self._cmd_history = []
         self._idx = 0
 
-    def install(self):
-        self.owner().edit.installEventFilter(self)
+        parent.edit.installEventFilter(self)
 
     def add(self, str_):
         if str_:
@@ -44,7 +41,7 @@ class CommandHistory(Extension, QObject):
             key = event.key()
 
             if key in (Qt.Key_Return, Qt.Key_Enter):
-                self.add(self.owner()._get_buffer())
+                self.add(self.parent()._get_buffer())
             elif key == Qt.Key_Up:
                 self.dec()
             elif key == Qt.Key_Down:
@@ -53,5 +50,5 @@ class CommandHistory(Extension, QObject):
         return False
 
     def _insert_in_editor(self, str_):
-        self.owner()._clear_buffer()
-        self.owner()._insert_in_buffer(str_)
+        self.parent()._clear_buffer()
+        self.parent()._insert_in_buffer(str_)

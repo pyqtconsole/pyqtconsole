@@ -8,10 +8,9 @@ from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
-from .syntaxhighlighter import PythonHighlighter
-from .extensions.extension import ExtensionManager
-from .extensions.commandhistory import CommandHistory
-from .extensions.autocomplete import AutoComplete, COMPLETE_MODE
+from .highlighter import PythonHighlighter
+from .commandhistory import CommandHistory
+from .autocomplete import AutoComplete, COMPLETE_MODE
 
 try:
     import jedi
@@ -23,7 +22,6 @@ except ImportError:
 
 class BaseConsole(QFrame):
 
-    set_complete_mode_signal = Signal(int)
     ctrl_c_pressed_signal = Signal()
 
     def __init__(self, parent = None):
@@ -96,10 +94,8 @@ class BaseConsole(QFrame):
         edit.installEventFilter(self)
         self._key_event_handlers = self._get_key_event_handlers()
 
-        self.extensions = ExtensionManager(self)
-        self.extensions.install(CommandHistory)
-        if jedi is not None:
-            self.extensions.install(AutoComplete)
+        self.command_history = CommandHistory(self)
+        self.auto_complete = jedi and AutoComplete(self)
 
         self._show_ps()
 
@@ -346,7 +342,8 @@ class BaseConsole(QFrame):
         return ['No completion support available']
 
     def set_auto_complete_mode(self, mode):
-        self.set_complete_mode_signal.emit(mode)
+        if self.auto_complete:
+            self.auto_complete.mode = mode
 
     # Abstract
     def process_input(self, line):
