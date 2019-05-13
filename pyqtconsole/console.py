@@ -273,6 +273,9 @@ class BaseConsole(QFrame):
             msg = "\nCan't use CTRL-D to exit, you have to exit the "
             msg += "application !\n"
             self._insert_output_text(msg)
+            self._more = False
+            self._update_ps(False)
+            self._show_ps()
 
         return False
 
