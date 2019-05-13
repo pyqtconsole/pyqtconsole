@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from threading import Condition
-from .qt import QtCore
+from .qt.QtCore import QObject, Signal
 
-class Stream(QtCore.QObject):
-    write_event = QtCore.Signal(str)
-    flush_event = QtCore.Signal(str)
-    close_event = QtCore.Signal()
+class Stream(QObject):
+    write_event = Signal(str)
+    flush_event = Signal(str)
+    close_event = Signal()
 
     def __init__(self):
         super(Stream, self).__init__()
