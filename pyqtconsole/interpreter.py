@@ -4,49 +4,28 @@ import contextlib
 
 from code import InteractiveConsole
 
+from .qt.QtCore import QObject, Slot, Signal
+
 try:
     from builtins import exit       # py3
 except ImportError:
     from __builtin__ import exit    # py2
 
 
-class PythonInterpreter(InteractiveConsole):
+class PythonInterpreter(QObject, InteractiveConsole):
+
+    exec_signal = Signal(object)
+    done_signal = Signal(bool)
+
     def __init__(self, stdin, stdout, local = {}):
+        QObject.__init__(self)
         InteractiveConsole.__init__(self, local)
         self.local_ns = local
         self.local_ns['exit'] = exit
         self.stdin = stdin
         self.stdout = stdout
-
         self._running = True
-        self._last_input = ''
-        self._more = False
-        self._current_line = 0
         self._executing = False
-
-        self._inp = 'IN [%s]: '
-        self._morep = '...: '
-        self._outp = 'OUT[%s]: '
-        self._p = self._inp % self._current_line
-        self._print_in_prompt()
-
-    def _update_in_prompt(self, _more, _input):
-        # We need to show the more prompt of the input was incomplete
-        # If the input is complete increase the input number and show
-        # the in prompt
-        if not _more:
-            # Only increase the input number if the input was complete
-            # last prompt was the more prompt (and we know that we don't have
-            # more input to expect). Obviously do not increase for CR
-            if _input != '\n' or self._p == self._morep:
-                self._current_line += 1
-
-            self._p = self._inp % self._current_line
-        else:
-            self._p = (len(self._p) - len(self._morep)) * ' ' + self._morep
-
-    def _print_in_prompt(self):
-        self.stdout.write(self._p)
 
     def executing(self):
         return self._executing
@@ -55,6 +34,10 @@ class PythonInterpreter(InteractiveConsole):
         return InteractiveConsole.push(self, line)
 
     def runcode(self, code):
+        self.exec_signal.emit(code)
+
+    @Slot(object)
+    def exec_(self, code):
         self._executing = True
 
         # Redirect IO and disable excepthook, this is the only place were we
@@ -63,14 +46,15 @@ class PythonInterpreter(InteractiveConsole):
         # user are doing in it.
         try:
             with redirected_io(self.stdout), disabled_excepthook():
-                return InteractiveConsole.runcode(self, code)
+                InteractiveConsole.runcode(self, code)
         except SystemExit:
             self.exit()
         finally:
             self._executing = False
+            self.done_signal.emit(True)
 
-    def raw_input(self, prompt=None, timeout=None):
-        line = self.stdin.readline(timeout)
+    def raw_input(self, prompt=None):
+        line = self.stdin.readline()
 
         if line != '\n':
             line = line.strip('\n')
@@ -95,38 +79,7 @@ class PythonInterpreter(InteractiveConsole):
         self.stdout.write('\n')
         InteractiveConsole.showsyntaxerror(self, filename)
         self.stdout.write('\n')
-
-    def _rep_line(self, line):
-        self._last_input = line
-        self._more = self.push(line)
-        self._update_in_prompt(self._more, self._last_input)
-        self._print_in_prompt()
-
-    def repl(self):
-        self._running = True
-
-        while self._running:
-            try:
-                line = self.raw_input(timeout = None)
-
-                if line:
-                    self._rep_line(line)
-            except KeyboardInterrupt:
-                self.handle_ctrl_c()
-
-    def handle_ctrl_c(self):
-        self.resetbuffer()
-        self._last_input = '\n'
-        self._more = False
-        self.stdout.write('^C\n')
-        self._update_in_prompt(self._more, self._last_input)
-        self._print_in_prompt()
-
-    def repl_nonblock(self):
-        line = self.raw_input(timeout = 0)
-
-        if line:
-            self._rep_line(line)
+        self.done_signal.emit(False)
 
     def exit(self):
         if self._running:
