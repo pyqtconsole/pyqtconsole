@@ -146,7 +146,7 @@ class BaseConsole(QFrame):
                 prompt=self._ps_out % self._current_line)
             self._insert_output_text('\n')
 
-        if executed and self._last_input != '\n':
+        if executed and self._last_input:
             self._current_line += 1
         self._more = False
         self._update_ps(self._more)
@@ -466,7 +466,7 @@ class PythonConsole(BaseConsole):
             # wake up thread in case it is currently waiting on input:
             self.stdin.flush()
         else:
-            self._last_input = '\n'
+            self._last_input = ''
             self.stdout.write('^C\n')
             self._output_inserted = False
             self._more = False
