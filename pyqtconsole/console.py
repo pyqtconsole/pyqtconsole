@@ -222,12 +222,18 @@ class BaseConsole(QFrame):
         if not cursor.hasSelection() and offset >= 1:
             tab = self._tab_chars
             buf = self._get_line_until_cursor()
-            # delete spaces to previous tabstop boundary:
-            tabstop = len(buf) % len(tab) == 0
-            num = len(tab) if tabstop and buf.endswith(tab) else 1
-            cursor.movePosition(
-                QTextCursor.PreviousCharacter,
-                QTextCursor.KeepAnchor, num)
+            if event.modifiers() == Qt.ControlModifier:
+                cursor.movePosition(
+                    QTextCursor.PreviousWord,
+                    QTextCursor.KeepAnchor, 1)
+                self._keep_cursor_in_buffer()
+            else:
+                # delete spaces to previous tabstop boundary:
+                tabstop = len(buf) % len(tab) == 0
+                num = len(tab) if tabstop and buf.endswith(tab) else 1
+                cursor.movePosition(
+                    QTextCursor.PreviousCharacter,
+                    QTextCursor.KeepAnchor, num)
         self._remove_selected_input(cursor)
         return True
 
@@ -239,12 +245,18 @@ class BaseConsole(QFrame):
             tab = self._tab_chars
             left = self._get_line_until_cursor()
             right = self._get_line_after_cursor()
-            # delete spaces to next tabstop boundary:
-            tabstop = len(left) % len(tab) == 0
-            num = len(tab) if tabstop and right.startswith(tab) else 1
-            cursor.movePosition(
-                QTextCursor.NextCharacter,
-                QTextCursor.KeepAnchor, num)
+            if event.modifiers() == Qt.ControlModifier:
+                cursor.movePosition(
+                    QTextCursor.NextWord,
+                    QTextCursor.KeepAnchor, 1)
+                self._keep_cursor_in_buffer()
+            else:
+                # delete spaces to next tabstop boundary:
+                tabstop = len(left) % len(tab) == 0
+                num = len(tab) if tabstop and right.startswith(tab) else 1
+                cursor.movePosition(
+                    QTextCursor.NextCharacter,
+                    QTextCursor.KeepAnchor, num)
         self._remove_selected_input(cursor)
         return True
 
