@@ -23,7 +23,6 @@ except ImportError:
 class BaseConsole(QFrame):
 
     input_applied_signal = Signal(str)
-    ctrl_c_pressed_signal = Signal()
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
@@ -283,7 +282,7 @@ class BaseConsole(QFrame):
         # Do not intercept so that the event is forwarded to the base class
         # can handle it. In this case for copy that is: CTRL-C
         if event.modifiers() == Qt.ControlModifier:
-            self.ctrl_c_pressed_signal.emit()
+            self._handle_ctrl_c()
 
         return intercepted
 
@@ -428,6 +427,10 @@ class BaseConsole(QFrame):
     def ctrl_d_exits_console(self, b):
         self._ctrl_d_exits = b
 
+    # Abstract
+    def _handle_ctrl_c(self):
+        pass
+
 
 class PythonConsole(BaseConsole):
     def __init__(self, parent=None, locals=None):
@@ -439,7 +442,6 @@ class PythonConsole(BaseConsole):
         self.interpreter.exit_signal.connect(self.exit)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
-        self.ctrl_c_pressed_signal.connect(self._handle_ctrl_c)
 
     def process_input(self, source):
         self._last_input = source
