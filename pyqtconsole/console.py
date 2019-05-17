@@ -3,14 +3,15 @@ import threading
 import ctypes
 
 from .qt.QtCore import Qt, Signal, QThread, Slot, QEvent
-from .qt.QtWidgets import QTextEdit, QApplication, QHBoxLayout, QFrame
+from .qt.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
 from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
-from .highlighter import PythonHighlighter
+from .highlighter import PythonHighlighter, PromptHighlighter
 from .commandhistory import CommandHistory
 from .autocomplete import AutoComplete, COMPLETE_MODE
+from .prompt import PromptArea
 
 try:
     import jedi
@@ -29,8 +30,9 @@ class BaseConsole(QFrame):
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
 
-        self.pbar = pbar = QTextEdit()
         self.edit = edit = InputArea()
+        self.pbar = pbar = PromptArea(
+            edit, self._get_prompt_text, PromptHighlighter())
 
         layout = QHBoxLayout()
         layout.addWidget(pbar)
@@ -39,7 +41,7 @@ class BaseConsole(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-        self._prompt_width = 0
+        self._prompt_doc = ['']
         self._prompt_pos = 0
         self._output_inserted = False
         self._tab_chars = 4 * ' '
@@ -50,9 +52,9 @@ class BaseConsole(QFrame):
         self._more = False
         self._current_line = 0
 
-        self._ps1 = 'IN [%s]:'
+        self._ps1 = 'IN [%s]: '
         self._ps2 = '...: '
-        self._ps_out = 'OUT[%s]:'
+        self._ps_out = 'OUT[%s]: '
         self._ps = self._ps1 % self._current_line
 
         self.stdin = Stream()
@@ -61,17 +63,7 @@ class BaseConsole(QFrame):
 
         # show frame around both child widgets:
         self.setFrameStyle(edit.frameStyle())
-        pbar.setFrameStyle(QFrame.NoFrame)
         edit.setFrameStyle(QFrame.NoFrame)
-
-        # keep scrolling in sync:
-        p_scroll = pbar.verticalScrollBar()
-        e_scroll = edit.verticalScrollBar()
-        p_scroll.valueChanged.connect(e_scroll.setValue)
-        e_scroll.valueChanged.connect(p_scroll.setValue)
-        pbar.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        pbar.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        pbar.setLineWrapMode(QTextEdit.NoWrap)
 
         font = edit.document().defaultFont()
         font.setFamily("Courier New")
@@ -84,9 +76,7 @@ class BaseConsole(QFrame):
         edit.setGeometry(geometry)
         edit.resize(font_width*80+20, font_width*40)
 
-        pbar.setReadOnly(True)
         edit.setReadOnly(True)
-        pbar.setTextInteractionFlags(Qt.NoTextInteraction)
         edit.setTextInteractionFlags(
             Qt.TextSelectableByMouse |
             Qt.TextSelectableByKeyboard)
@@ -106,9 +96,7 @@ class BaseConsole(QFrame):
     def setFont(self, font):
         """Set font (you should only use monospace!)."""
         self.edit.document().setDefaultFont(font)
-        self.pbar.document().setDefaultFont(font)
         self.edit.setFont(font)
-        self.pbar.setFont(font)
         super(BaseConsole, self).setFont(font)
 
     def eventFilter(self, edit, event):
@@ -481,12 +469,14 @@ class BaseConsole(QFrame):
             self._copy_buffer = ''
 
     def _insert_prompt_text(self, text):
-        self.pbar.setAlignment(Qt.AlignRight)
-        self.pbar.insertPlainText(text)
+        lines = text.split('\n')
+        self._prompt_doc[-1] += lines[0]
+        self._prompt_doc += lines[1:]
+        for line in self._prompt_doc[-len(lines):]:
+            self.pbar.adjust_width(line)
 
-        self._prompt_width = max(
-            self._prompt_width, calc_text_width(self.pbar, text))
-        self.pbar.setFixedWidth(self._prompt_width)
+    def _get_prompt_text(self, line_number):
+        return self._prompt_doc[line_number]
 
     def _remove_selected_input(self, cursor):
         if not cursor.hasSelection():
@@ -496,13 +486,8 @@ class BaseConsole(QFrame):
         cursor.removeSelectedText()
 
         if num_lines > 0:
-            block_num = cursor.blockNumber()
-            block = self.pbar.document().findBlockByNumber(block_num)
-            pc = QTextCursor(block)
-            pc.movePosition(QTextCursor.EndOfBlock)
-            pc.movePosition(QTextCursor.NextBlock, QTextCursor.KeepAnchor, num_lines)
-            pc.movePosition(QTextCursor.EndOfBlock, QTextCursor.KeepAnchor)
-            pc.removeSelectedText()
+            block = cursor.blockNumber() + 1
+            del self._prompt_doc[block:block+num_lines]
 
     # Abstract
     def exit(self):
@@ -531,7 +516,6 @@ class PythonConsole(BaseConsole):
     def __init__(self, parent=None, locals=None):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
-        self.prompt_highlighter = PythonHighlighter(self.pbar.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
@@ -635,17 +619,9 @@ class Thread(QThread):
                 ctypes.py_object(value))
 
 
-class InputArea(QTextEdit):
+class InputArea(QPlainTextEdit):
 
     """Widget that is used for the input/output edit area of the console."""
 
     def insertFromMimeData(self, mime_data):
         return self.parent().insertFromMimeData(mime_data)
-
-
-def calc_text_width(widget, text):
-    """Estimate the width that the given text would take within the widget."""
-    return (widget.fontMetrics().width(text) +
-            widget.fontMetrics().width('M') +
-            widget.contentsMargins().left() +
-            widget.contentsMargins().right())
