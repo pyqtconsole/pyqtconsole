@@ -220,8 +220,10 @@ class BaseConsole(QFrame):
         offset = self._cursor_offset()
         if not cursor.hasSelection() and offset >= 1:
             tab = self._tab_chars
-            buf = self._get_buffer()[:offset]
-            num = len(tab)-1 if buf.endswith(tab) else 1
+            buf = self._get_line_until_cursor()
+            # delete spaces to previous tabstop boundary:
+            tabstop = len(buf) % len(tab) == 0
+            num = len(tab) if tabstop and buf.endswith(tab) else 1
             cursor.movePosition(
                 QTextCursor.PreviousCharacter,
                 QTextCursor.KeepAnchor, num)
@@ -234,8 +236,11 @@ class BaseConsole(QFrame):
         offset = self._cursor_offset()
         if not cursor.hasSelection() and offset < len(self._get_buffer()):
             tab = self._tab_chars
-            buf = self._get_buffer()[offset:]
-            num = len(tab) if buf.startswith(tab) else 1
+            left = self._get_line_until_cursor()
+            right = self._get_line_after_cursor()
+            # delete spaces to next tabstop boundary:
+            tabstop = len(left) % len(tab) == 0
+            num = len(tab) if tabstop and right.startswith(tab) else 1
             cursor.movePosition(
                 QTextCursor.NextCharacter,
                 QTextCursor.KeepAnchor, num)
@@ -243,7 +248,11 @@ class BaseConsole(QFrame):
         return True
 
     def handle_tab_key(self, event):
-        self._insert_in_buffer(self._tab_chars)
+        # add spaces until next tabstop boundary:
+        tab = self._tab_chars
+        buf = self._get_line_until_cursor()
+        num = len(tab) - len(buf) % len(tab)
+        self._insert_in_buffer(tab[:num])
         return True
 
     def handle_home_key(self, event):
@@ -368,6 +377,12 @@ class BaseConsole(QFrame):
     # Abstract
     def _get_buffer(self):
         return self.edit.toPlainText()[self._prompt_pos:]
+
+    def _get_line_until_cursor(self):
+        return self._get_buffer()[:self._cursor_offset()].rsplit('\n', 1)[-1]
+
+    def _get_line_after_cursor(self):
+        return self._get_buffer()[self._cursor_offset():].split('\n', 1)[0]
 
     def _clear_buffer(self):
         cursor = self.textCursor()
