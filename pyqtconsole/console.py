@@ -210,6 +210,7 @@ class BaseConsole(QFrame):
         return True
 
     def handle_backspace_key(self, event):
+        self._keep_cursor_in_buffer()
         if self._cursor_offset() >= 1:
             buf = self._get_buffer()[:self._cursor_offset()]
             if buf.endswith(self._tab_chars):
