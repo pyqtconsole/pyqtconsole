@@ -22,6 +22,8 @@ except ImportError:
 
 class BaseConsole(QFrame):
 
+    """Base class for implementing a GUI console."""
+
     input_applied_signal = Signal(str)
 
     def __init__(self, parent = None):
@@ -102,6 +104,7 @@ class BaseConsole(QFrame):
         self._show_ps()
 
     def setFont(self, font):
+        """Set font (you should only use monospace!)."""
         self.edit.document().setDefaultFont(font)
         self.pbar.document().setDefaultFont(font)
         self.edit.setFont(font)
@@ -109,6 +112,7 @@ class BaseConsole(QFrame):
         super(BaseConsole, self).setFont(font)
 
     def eventFilter(self, edit, event):
+        """Intercepts events from the input control."""
         if event.type() == QEvent.KeyPress:
             return bool(self.filter_keyPressEvent(event))
         elif event.type() == QEvent.MouseButtonPress:
@@ -521,6 +525,9 @@ class BaseConsole(QFrame):
 
 
 class PythonConsole(BaseConsole):
+
+    """Interactive python GUI console."""
+
     def __init__(self, parent=None, locals=None):
         super(PythonConsole, self).__init__(parent)
         self.highlighter = PythonHighlighter(self.document())
@@ -532,6 +539,7 @@ class PythonConsole(BaseConsole):
         self._thread = None
 
     def process_input(self, source):
+        """Handle a new source snippet confirmed by the user."""
         self._last_input = source
         self._more = self.interpreter.runsource(source, symbol='multi')
         self._update_ps(self._more)
@@ -542,12 +550,15 @@ class PythonConsole(BaseConsole):
             self._update_prompt_pos()
 
     def exit(self):
+        """Exit interpreter."""
         if self._thread:
             self._thread.exit()
             self._thread = None
         self._close()
 
     def _handle_ctrl_c(self):
+        """Inject keyboard interrupt if code is being executed in a thread,
+        else cancel the current prompt."""
         # There is a race condition here, we should lock on the value of
         # executing() to avoid accidentally raising KeyboardInterrupt after
         # execution has finished. Deal with this later…
@@ -564,17 +575,21 @@ class PythonConsole(BaseConsole):
             self._show_ps()
 
     def closeEvent(self, event):
+        """Exit interpreter when we're closing."""
         self.exit()
         event.accept()
 
     def get_completions(self, line):
+        """Get completions. Used by the ``autocomplete`` extension."""
         script = jedi.Interpreter(line, [self.interpreter.locals])
         return [comp.name for comp in script.completions()]
 
     def push_local_ns(self, name, value):
+        """Set a variable in the local namespace."""
         self.interpreter.locals[name] = value
 
     def eval_in_thread(self):
+        """Start a thread in which code snippets will be executed."""
         self._thread = Thread()
         self.interpreter.moveToThread(self._thread)
         self.interpreter.exec_signal.connect(
@@ -582,10 +597,14 @@ class PythonConsole(BaseConsole):
         return self._thread
 
     def eval_queued(self):
+        """Setup connections to execute code snippets in later mainloop
+        iterations in the main thread."""
         return self.interpreter.exec_signal.connect(
             self.interpreter.exec_, Qt.ConnectionType.QueuedConnection)
 
     def eval_executor(self, spawn):
+        """Exec snippets using the given executor function (e.g.
+        ``gevent.spawn``)."""
         return self.interpreter.exec_signal.connect(
             lambda line: spawn(self.interpreter.exec_, line))
 
@@ -601,6 +620,7 @@ class Thread(QThread):
         self.ready.wait()
 
     def run(self):
+        """Run Qt event dispatcher within the thread."""
         self.ident = threading.current_thread().ident
         self.ready.set()
         self.exec_()
@@ -617,11 +637,14 @@ class Thread(QThread):
 
 class InputArea(QTextEdit):
 
+    """Widget that is used for the input/output edit area of the console."""
+
     def insertFromMimeData(self, mime_data):
         return self.parent().insertFromMimeData(mime_data)
 
 
 def calc_text_width(widget, text):
+    """Estimate the width that the given text would take within the widget."""
     return (widget.fontMetrics().width(text) +
             widget.fontMetrics().width('M') +
             widget.contentsMargins().left() +
