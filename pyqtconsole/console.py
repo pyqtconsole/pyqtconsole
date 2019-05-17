@@ -267,15 +267,18 @@ class BaseConsole(QFrame):
         return intercepted
 
     def handle_d_key(self, event):
-        if event.modifiers() == Qt.ControlModifier and self._ctrl_d_exits:
-            self.exit()
-        elif event.modifiers() == Qt.ControlModifier:
-            msg = "\nCan't use CTRL-D to exit, you have to exit the "
-            msg += "application !\n"
-            self._insert_output_text(msg)
-            self._more = False
-            self._update_ps(False)
-            self._show_ps()
+
+        if event.modifiers() == Qt.ControlModifier and not self._get_buffer():
+            if self._ctrl_d_exits:
+                self.exit()
+            else:
+                self._insert_output_text(
+                    "\nCan't use CTRL-D to exit, you have to exit the "
+                    "application !\n")
+                self._more = False
+                self._update_ps(False)
+                self._show_ps()
+            return True
 
         return False
 
