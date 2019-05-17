@@ -23,7 +23,6 @@ except ImportError:
 class BaseConsole(QFrame):
 
     input_applied_signal = Signal(str)
-    ctrl_c_pressed_signal = Signal()
 
     def __init__(self, parent = None):
         super(BaseConsole, self).__init__(parent)
@@ -162,8 +161,10 @@ class BaseConsole(QFrame):
             Qt.Key_Return:      self.handle_enter_key,
             Qt.Key_Enter:       self.handle_enter_key,
             Qt.Key_Backspace:   self.handle_backspace_key,
+            Qt.Key_Delete:      self.handle_delete_key,
             Qt.Key_Home:        self.handle_home_key,
             Qt.Key_Tab:         self.handle_tab_key,
+            Qt.Key_Backtab:     self.handle_backtab_key,
             Qt.Key_Up:          self.handle_up_key,
             Qt.Key_Down:        self.handle_down_key,
             Qt.Key_Left:        self.handle_left_key,
@@ -220,17 +221,88 @@ class BaseConsole(QFrame):
         offset = self._cursor_offset()
         if not cursor.hasSelection() and offset >= 1:
             tab = self._tab_chars
-            buf = self._get_buffer()[:offset]
-            num = len(tab)-1 if buf.endswith(tab) else 1
-            cursor.movePosition(
-                QTextCursor.PreviousCharacter,
-                QTextCursor.KeepAnchor, num)
+            buf = self._get_line_until_cursor()
+            if event.modifiers() == Qt.ControlModifier:
+                cursor.movePosition(
+                    QTextCursor.PreviousWord,
+                    QTextCursor.KeepAnchor, 1)
+                self._keep_cursor_in_buffer()
+            else:
+                # delete spaces to previous tabstop boundary:
+                tabstop = len(buf) % len(tab) == 0
+                num = len(tab) if tabstop and buf.endswith(tab) else 1
+                cursor.movePosition(
+                    QTextCursor.PreviousCharacter,
+                    QTextCursor.KeepAnchor, num)
+        self._remove_selected_input(cursor)
+        return True
+
+    def handle_delete_key(self, event):
+        self._keep_cursor_in_buffer()
+        cursor = self.textCursor()
+        offset = self._cursor_offset()
+        if not cursor.hasSelection() and offset < len(self._get_buffer()):
+            tab = self._tab_chars
+            left = self._get_line_until_cursor()
+            right = self._get_line_after_cursor()
+            if event.modifiers() == Qt.ControlModifier:
+                cursor.movePosition(
+                    QTextCursor.NextWord,
+                    QTextCursor.KeepAnchor, 1)
+                self._keep_cursor_in_buffer()
+            else:
+                # delete spaces to next tabstop boundary:
+                tabstop = len(left) % len(tab) == 0
+                num = len(tab) if tabstop and right.startswith(tab) else 1
+                cursor.movePosition(
+                    QTextCursor.NextCharacter,
+                    QTextCursor.KeepAnchor, num)
         self._remove_selected_input(cursor)
         return True
 
     def handle_tab_key(self, event):
-        self._insert_in_buffer(self._tab_chars)
+        cursor = self.textCursor()
+        if cursor.hasSelection():
+            self.setTextCursor(self._indent_selection(cursor))
+        else:
+            # add spaces until next tabstop boundary:
+            tab = self._tab_chars
+            buf = self._get_line_until_cursor()
+            num = len(tab) - len(buf) % len(tab)
+            self._insert_in_buffer(tab[:num])
+        event.accept()
         return True
+
+    def handle_backtab_key(self, event):
+        self.setTextCursor(self._indent_selection(self.textCursor(), False))
+        return True
+
+    def _indent_selection(self, cursor, indent=True):
+        buf = self._get_buffer()
+        tab = self._tab_chars
+        pos0 = cursor.selectionStart() - self._prompt_pos
+        pos1 = cursor.selectionEnd() - self._prompt_pos
+        line0 = buf[:pos0].count('\n')
+        line1 = buf[:pos1].count('\n')
+        lines = buf.split('\n')
+        for i in range(line0, line1+1):
+            # Although it at first seemed appealing to me to indent to the
+            # next tab boundary, this leads to losing relative sub-tab
+            # indentations and is therefore not desirable. We should therefore
+            # always indent by a full tab:
+            line = lines[i]
+            if indent:
+                lines[i] = tab + line
+            else:
+                lines[i] = line[:len(tab)].lstrip() + line[len(tab):]
+            num = len(lines[i]) - len(line)
+            pos0 += num if i == line0 else 0
+            pos1 += num
+        self._clear_buffer()
+        self._insert_in_buffer('\n'.join(lines))
+        cursor.setPosition(self._prompt_pos + pos0)
+        cursor.setPosition(self._prompt_pos + pos1, QTextCursor.KeepAnchor)
+        return cursor
 
     def handle_home_key(self, event):
         select = event.modifiers() & Qt.ShiftModifier
@@ -268,27 +340,36 @@ class BaseConsole(QFrame):
         return intercepted
 
     def handle_d_key(self, event):
-        if event.modifiers() == Qt.ControlModifier and self._ctrl_d_exits:
-            self.exit()
-        elif event.modifiers() == Qt.ControlModifier:
-            msg = "\nCan't use CTRL-D to exit, you have to exit the "
-            msg += "application !\n"
-            self._insert_output_text(msg)
+
+        if event.modifiers() == Qt.ControlModifier and not self._get_buffer():
+            if self._ctrl_d_exits:
+                self.exit()
+            else:
+                self._insert_output_text(
+                    "\nCan't use CTRL-D to exit, you have to exit the "
+                    "application !\n")
+                self._more = False
+                self._update_ps(False)
+                self._show_ps()
+            return True
 
         return False
 
     def handle_c_key(self, event):
         intercepted = False
 
-        # Do not intercept so that the event is forwarded to the base class
-        # can handle it. In this case for copy that is: CTRL-C
         if event.modifiers() == Qt.ControlModifier:
-            self.ctrl_c_pressed_signal.emit()
+            self._handle_ctrl_c()
+            intercepted = True
+        elif event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
+            self.edit.copy()
+            intercepted = True
 
         return intercepted
 
     def handle_v_key(self, event):
-        if event.modifiers() == Qt.ControlModifier:
+        if event.modifiers() == Qt.ControlModifier or \
+                event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
             clipboard = QApplication.clipboard()
             mime_data = clipboard.mimeData(QClipboard.Clipboard)
             self.insertFromMimeData(mime_data)
@@ -345,6 +426,12 @@ class BaseConsole(QFrame):
     # Abstract
     def _get_buffer(self):
         return self.edit.toPlainText()[self._prompt_pos:]
+
+    def _get_line_until_cursor(self):
+        return self._get_buffer()[:self._cursor_offset()].rsplit('\n', 1)[-1]
+
+    def _get_line_after_cursor(self):
+        return self._get_buffer()[self._cursor_offset():].split('\n', 1)[0]
 
     def _clear_buffer(self):
         cursor = self.textCursor()
@@ -428,6 +515,10 @@ class BaseConsole(QFrame):
     def ctrl_d_exits_console(self, b):
         self._ctrl_d_exits = b
 
+    # Abstract
+    def _handle_ctrl_c(self):
+        pass
+
 
 class PythonConsole(BaseConsole):
     def __init__(self, parent=None, locals=None):
@@ -439,7 +530,6 @@ class PythonConsole(BaseConsole):
         self.interpreter.exit_signal.connect(self.exit)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
-        self.ctrl_c_pressed_signal.connect(self._handle_ctrl_c)
 
     def process_input(self, source):
         self._last_input = source
