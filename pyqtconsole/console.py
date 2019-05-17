@@ -279,15 +279,18 @@ class BaseConsole(QFrame):
     def handle_c_key(self, event):
         intercepted = False
 
-        # Do not intercept so that the event is forwarded to the base class
-        # can handle it. In this case for copy that is: CTRL-C
         if event.modifiers() == Qt.ControlModifier:
             self._handle_ctrl_c()
+            intercepted = True
+        elif event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
+            self.edit.copy()
+            intercepted = True
 
         return intercepted
 
     def handle_v_key(self, event):
-        if event.modifiers() == Qt.ControlModifier:
+        if event.modifiers() == Qt.ControlModifier or \
+                event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
             clipboard = QApplication.clipboard()
             mime_data = clipboard.mimeData(QClipboard.Clipboard)
             self.insertFromMimeData(mime_data)
