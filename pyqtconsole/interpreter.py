@@ -70,12 +70,8 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         else:
             InteractiveInterpreter.showtraceback(self)
 
-        self.stdout.write('\n')
-
     def showsyntaxerror(self, filename):
-        self.stdout.write('\n')
         InteractiveInterpreter.showsyntaxerror(self, filename)
-        self.stdout.write('\n')
         self.done_signal.emit(False, None)
 
 

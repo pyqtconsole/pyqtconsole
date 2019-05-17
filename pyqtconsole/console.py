@@ -40,6 +40,7 @@ class BaseConsole(QFrame):
 
         self._prompt_width = 0
         self._prompt_pos = 0
+        self._output_inserted = False
         self._tab_chars = 4 * ' '
         self._ctrl_d_exits = False
         self._copy_buffer = ''
@@ -152,6 +153,8 @@ class BaseConsole(QFrame):
         self._show_ps()
 
     def _show_ps(self):
+        if self._output_inserted and not self._more:
+            self._insert_output_text("\n")
         self._insert_prompt_text(self._ps)
 
     def _get_key_event_handlers(self):
@@ -325,6 +328,7 @@ class BaseConsole(QFrame):
         self.ensureCursorVisible()
 
         self._insert_prompt_text(prompt + '\n' * text.count('\n'))
+        self._output_inserted = True
 
         if lf:
             self.process_input('')
@@ -333,6 +337,7 @@ class BaseConsole(QFrame):
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)
         self._prompt_pos = cursor.position()
+        self._output_inserted = self._more
 
     def _insert_welcome_message(self, message):
         self._insert_output_text(message)
@@ -463,6 +468,7 @@ class PythonConsole(BaseConsole):
         else:
             self._last_input = '\n'
             self.stdout.write('^C\n')
+            self._output_inserted = False
             self._more = False
             self._update_ps(self._more)
             self._show_ps()
