@@ -161,6 +161,7 @@ class BaseConsole(QFrame):
             Qt.Key_Return:      self.handle_enter_key,
             Qt.Key_Enter:       self.handle_enter_key,
             Qt.Key_Backspace:   self.handle_backspace_key,
+            Qt.Key_Delete:      self.handle_delete_key,
             Qt.Key_Home:        self.handle_home_key,
             Qt.Key_Tab:         self.handle_tab_key,
             Qt.Key_Up:          self.handle_up_key,
@@ -223,6 +224,20 @@ class BaseConsole(QFrame):
             num = len(tab)-1 if buf.endswith(tab) else 1
             cursor.movePosition(
                 QTextCursor.PreviousCharacter,
+                QTextCursor.KeepAnchor, num)
+        self._remove_selected_input(cursor)
+        return True
+
+    def handle_delete_key(self, event):
+        self._keep_cursor_in_buffer()
+        cursor = self.textCursor()
+        offset = self._cursor_offset()
+        if not cursor.hasSelection() and offset < len(self._get_buffer()):
+            tab = self._tab_chars
+            buf = self._get_buffer()[offset:]
+            num = len(tab) if buf.startswith(tab) else 1
+            cursor.movePosition(
+                QTextCursor.NextCharacter,
                 QTextCursor.KeepAnchor, num)
         self._remove_selected_input(cursor)
         return True
