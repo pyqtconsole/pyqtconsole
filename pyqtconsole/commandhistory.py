@@ -32,5 +32,5 @@ class CommandHistory(QObject):
             return self._cmd_history[self._idx]
 
     def _insert_in_editor(self, str_):
-        self.parent()._clear_buffer()
-        self.parent()._insert_in_buffer(str_)
+        self.parent().clear_input_buffer()
+        self.parent().insert_input_text(str_)

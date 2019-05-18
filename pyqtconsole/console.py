@@ -167,7 +167,7 @@ class BaseConsole(QFrame):
 
     def insertFromMimeData(self, mime_data):
         if mime_data and mime_data.hasText():
-            self._insert_in_buffer(mime_data.text())
+            self.insert_input_text(mime_data.text())
 
     def filter_mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
@@ -191,26 +191,26 @@ class BaseConsole(QFrame):
 
             if not intercepted and event.text():
                 intercepted = True
-                self._insert_in_buffer(event.text())
+                self.insert_input_text(event.text())
 
         return intercepted
 
     def handle_enter_key(self, event):
         if event.modifiers() & Qt.ShiftModifier:
-            self._insert_in_buffer('\n')
+            self.insert_input_text('\n')
         else:
             cursor = self.textCursor()
             cursor.movePosition(QTextCursor.End)
             self.setTextCursor(cursor)
-            buffer = self._get_buffer()
-            self._insert_in_buffer('\n', show_ps=False)
+            buffer = self.input_buffer()
+            self.insert_input_text('\n', show_ps=False)
             self.process_input(buffer)
         return True
 
     def handle_backspace_key(self, event):
         self._keep_cursor_in_buffer()
         cursor = self.textCursor()
-        offset = self._cursor_offset()
+        offset = self.cursor_offset()
         if not cursor.hasSelection() and offset >= 1:
             tab = self._tab_chars
             buf = self._get_line_until_cursor()
@@ -232,8 +232,8 @@ class BaseConsole(QFrame):
     def handle_delete_key(self, event):
         self._keep_cursor_in_buffer()
         cursor = self.textCursor()
-        offset = self._cursor_offset()
-        if not cursor.hasSelection() and offset < len(self._get_buffer()):
+        offset = self.cursor_offset()
+        if not cursor.hasSelection() and offset < len(self.input_buffer()):
             tab = self._tab_chars
             left = self._get_line_until_cursor()
             right = self._get_line_after_cursor()
@@ -261,7 +261,7 @@ class BaseConsole(QFrame):
             tab = self._tab_chars
             buf = self._get_line_until_cursor()
             num = len(tab) - len(buf) % len(tab)
-            self._insert_in_buffer(tab[:num])
+            self.insert_input_text(tab[:num])
         event.accept()
         return True
 
@@ -270,7 +270,7 @@ class BaseConsole(QFrame):
         return True
 
     def _indent_selection(self, cursor, indent=True):
-        buf = self._get_buffer()
+        buf = self.input_buffer()
         tab = self._tab_chars
         pos0 = cursor.selectionStart() - self._prompt_pos
         pos1 = cursor.selectionEnd() - self._prompt_pos
@@ -290,8 +290,8 @@ class BaseConsole(QFrame):
             num = len(lines[i]) - len(line)
             pos0 += num if i == line0 else 0
             pos1 += num
-        self._clear_buffer()
-        self._insert_in_buffer('\n'.join(lines))
+        self.clear_input_buffer()
+        self.insert_input_text('\n'.join(lines))
         cursor.setPosition(self._prompt_pos + pos0)
         cursor.setPosition(self._prompt_pos + pos1, QTextCursor.KeepAnchor)
         return cursor
@@ -328,12 +328,12 @@ class BaseConsole(QFrame):
         return True
 
     def handle_left_key(self, event):
-        intercepted = self._cursor_offset() < 1
+        intercepted = self.cursor_offset() < 1
         return intercepted
 
     def handle_d_key(self, event):
 
-        if event.modifiers() == Qt.ControlModifier and not self._get_buffer():
+        if event.modifiers() == Qt.ControlModifier and not self.input_buffer():
             if self._ctrl_d_exits:
                 self.exit()
             else:
@@ -387,12 +387,9 @@ class BaseConsole(QFrame):
         self.setTextCursor(cursor)
         self.ensureCursorVisible()
 
-    def _cursor_offset(self):
-        return self.textCursor().position() - self._prompt_pos
-
     def _insert_output_text(self, text, lf=False, keep_buffer=False, prompt=''):
         if keep_buffer:
-            self._copy_buffer = self._get_buffer()
+            self._copy_buffer = self.input_buffer()
 
         cursor = self.textCursor()
         cursor.movePosition(QTextCursor.End)
@@ -412,27 +409,32 @@ class BaseConsole(QFrame):
         self._prompt_pos = cursor.position()
         self._output_inserted = self._more
 
-    def _insert_welcome_message(self, message):
-        self._insert_output_text(message)
-
-    # Abstract
-    def _get_buffer(self):
+    def input_buffer(self):
+        """Retrieve current input buffer in string form."""
         return self.edit.toPlainText()[self._prompt_pos:]
 
+    def cursor_offset(self):
+        """Get current cursor index within input buffer."""
+        return self.textCursor().position() - self._prompt_pos
+
     def _get_line_until_cursor(self):
-        return self._get_buffer()[:self._cursor_offset()].rsplit('\n', 1)[-1]
+        """Get current line of input buffer, up to cursor position."""
+        return self.input_buffer()[:self.cursor_offset()].rsplit('\n', 1)[-1]
 
     def _get_line_after_cursor(self):
-        return self._get_buffer()[self._cursor_offset():].split('\n', 1)[0]
+        """Get current line of input buffer, after cursor position."""
+        return self.input_buffer()[self.cursor_offset():].split('\n', 1)[0]
 
-    def _clear_buffer(self):
+    def clear_input_buffer(self):
+        """Clear input buffer."""
         cursor = self.textCursor()
         cursor.setPosition(self._prompt_pos)
         cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
         self._remove_selected_input(cursor)
         self.setTextCursor(cursor)
 
-    def _insert_in_buffer(self, text, show_ps=True):
+    def insert_input_text(self, text, show_ps=True):
+        """Insert text into input buffer."""
         self._keep_cursor_in_buffer()
         self.ensureCursorVisible()
 
@@ -465,7 +467,7 @@ class BaseConsole(QFrame):
         self._insert_output_text(data)
 
         if len(self._copy_buffer) > 0:
-            self._insert_in_buffer(self._copy_buffer)
+            self.insert_input_text(self._copy_buffer)
             self._copy_buffer = ''
 
     def _insert_prompt_text(self, text):

@@ -45,7 +45,7 @@ class AutoComplete(QObject):
             return False
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            if self.parent()._get_buffer().strip():
+            if self.parent().input_buffer().strip():
                 if self.completing():
                     self.complete()
                 else:
@@ -69,7 +69,7 @@ class AutoComplete(QObject):
 
     def init_completion_list(self, words):
         self.completer = QCompleter(words, self)
-        self.completer.setCompletionPrefix(self.parent()._get_buffer())
+        self.completer.setCompletionPrefix(self.parent().input_buffer())
         self.completer.setWidget(self.parent().edit)
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
@@ -83,7 +83,7 @@ class AutoComplete(QObject):
             self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
 
     def trigger_complete(self):
-        _buffer = self.parent()._get_buffer().strip()
+        _buffer = self.parent().input_buffer().strip()
         self.show_completion_suggestions(_buffer)
 
     def show_completion_suggestions(self, _buffer):
@@ -130,7 +130,7 @@ class AutoComplete(QObject):
             return False
 
     def insert_completion(self, completion):
-        _buffer = self.parent()._get_buffer().strip()
+        _buffer = self.parent().input_buffer().strip()
 
         # Handling the . operator in object oriented languages so we don't
         # overwrite the . when we are inserting the completion. Its not the .
@@ -141,19 +141,19 @@ class AutoComplete(QObject):
             _buffer = _buffer[idx:]
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            self.parent()._insert_in_buffer(completion[len(_buffer):])
+            self.parent().insert_input_text(completion[len(_buffer):])
         elif self.mode == COMPLETE_MODE.INLINE:
-            self.parent()._clear_buffer()
-            self.parent()._insert_in_buffer(completion)
+            self.parent().clear_input_buffer()
+            self.parent().insert_input_text(completion)
 
             words = self.parent().get_completions(completion)
 
             if len(words) == 1:
-                self.parent()._insert_in_buffer(' ')
+                self.parent().insert_input_text(' ')
 
     def update_completion(self, key):
         if self.completing():
-            _buffer = self.parent()._get_buffer()
+            _buffer = self.parent().input_buffer()
 
             if len(_buffer) > 1:
                 self.show_completion_suggestions(_buffer)
