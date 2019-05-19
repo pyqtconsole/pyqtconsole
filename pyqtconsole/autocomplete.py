@@ -41,7 +41,7 @@ class AutoComplete(QObject):
         return intercepted
 
     def handle_tab_key(self, event):
-        if self.parent().textCursor().hasSelection():
+        if self.parent()._textCursor().hasSelection():
             return False
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
