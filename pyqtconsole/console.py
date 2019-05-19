@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import threading
 import ctypes
+from abc import abstractmethod
 
 from .qt.QtCore import Qt, Signal, QThread, Slot, QEvent
 from .qt.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
@@ -431,17 +432,36 @@ class BaseConsole(QFrame):
         elif '\n' in text:
             self._insert_prompt_text('\n' * text.count('\n'))
 
-    # Asbtract
-    def get_completions(self, line):
-        return ['No completion support available']
-
     def set_auto_complete_mode(self, mode):
         if self.auto_complete:
             self.auto_complete.mode = mode
 
-    # Abstract
-    def process_input(self, line):
-        pass
+    def process_input(self, source):
+        """Handle a new source snippet confirmed by the user."""
+        self._last_input = source
+        self._more = self._run_source(source)
+        self._update_ps(self._more)
+        if self._more:
+            self._show_ps()
+        else:
+            self.input_applied_signal.emit(source)
+            self._update_prompt_pos()
+
+    def _handle_ctrl_c(self):
+        """Inject keyboard interrupt if code is being executed in a thread,
+        else cancel the current prompt."""
+        # There is a race condition here, we should lock on the value of
+        # executing() to avoid accidentally raising KeyboardInterrupt after
+        # execution has finished. Deal with this later…
+        if self._executing():
+            self._cancel()
+        else:
+            self._last_input = ''
+            self.stdout.write('^C\n')
+            self._output_inserted = False
+            self._more = False
+            self._update_ps(self._more)
+            self._show_ps()
 
     def _stdout_data_handler(self, data):
         self._insert_output_text(data)
@@ -471,15 +491,15 @@ class BaseConsole(QFrame):
             block = cursor.blockNumber() + 1
             del self._prompt_doc[block:block+num_lines]
 
-    # Abstract
-    def exit(self):
-        pass
+    def closeEvent(self, event):
+        """Exit interpreter when we're closing."""
+        self.exit()
+        event.accept()
 
     def _close(self):
         if self.window().isVisible():
             self.window().close()
 
-    # Abstract
     def set_tab(self, chars):
         self._tab_chars = chars
 
@@ -487,8 +507,26 @@ class BaseConsole(QFrame):
         self._ctrl_d_exits = b
 
     # Abstract
-    def _handle_ctrl_c(self):
+
+    @abstractmethod
+    def exit(self):
         pass
+
+    @abstractmethod
+    def _executing(self):
+        pass
+
+    @abstractmethod
+    def _cancel(self):
+        pass
+
+    @abstractmethod
+    def _run_source(self, source):
+        pass
+
+    @abstractmethod
+    def get_completions(self, line):
+        return ['No completion support available']
 
 
 class PythonConsole(BaseConsole):
@@ -504,16 +542,17 @@ class PythonConsole(BaseConsole):
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
 
-    def process_input(self, source):
-        """Handle a new source snippet confirmed by the user."""
-        self._last_input = source
-        self._more = self.interpreter.runsource(source, symbol='multi')
-        self._update_ps(self._more)
-        if self._more:
-            self._show_ps()
-        else:
-            self.input_applied_signal.emit(source)
-            self._update_prompt_pos()
+    def _executing(self):
+        return self.interpreter.executing()
+
+    def _cancel(self):
+        if self._thread:
+            self._thread.inject_exception(KeyboardInterrupt)
+            # wake up thread in case it is currently waiting on input:
+            self.stdin.flush()
+
+    def _run_source(self, source):
+        return self.interpreter.runsource(source, symbol='multi')
 
     def exit(self):
         """Exit interpreter."""
@@ -521,29 +560,6 @@ class PythonConsole(BaseConsole):
             self._thread.exit()
             self._thread = None
         self._close()
-
-    def _handle_ctrl_c(self):
-        """Inject keyboard interrupt if code is being executed in a thread,
-        else cancel the current prompt."""
-        # There is a race condition here, we should lock on the value of
-        # executing() to avoid accidentally raising KeyboardInterrupt after
-        # execution has finished. Deal with this later…
-        if self._thread and self.interpreter.executing():
-            self._thread.inject_exception(KeyboardInterrupt)
-            # wake up thread in case it is currently waiting on input:
-            self.stdin.flush()
-        else:
-            self._last_input = ''
-            self.stdout.write('^C\n')
-            self._output_inserted = False
-            self._more = False
-            self._update_ps(self._more)
-            self._show_ps()
-
-    def closeEvent(self, event):
-        """Exit interpreter when we're closing."""
-        self.exit()
-        event.accept()
 
     def get_completions(self, line):
         """Get completions. Used by the ``autocomplete`` extension."""
