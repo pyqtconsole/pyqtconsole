@@ -22,7 +22,6 @@ except ImportError:
 
 
 class BaseConsole(QTextEdit):
-    key_pressed_signal = Signal(object)
     set_complete_mode_signal = Signal(int)
 
     def __init__(self, parent = None):
@@ -119,8 +118,6 @@ class BaseConsole(QTextEdit):
         key = event.key()
         event.ignore()
 
-        self.key_pressed_signal.emit(event)
-
         handler = self._key_event_handlers.get(key)
         intercepted = handler and handler(event)
 
@@ -142,12 +139,11 @@ class BaseConsole(QTextEdit):
             event.accept()
 
     def handle_enter_key(self, event):
-        if not event.isAccepted():
-            cursor = self.textCursor()
-            cursor.movePosition(QTextCursor.EndOfLine)
-            self.setTextCursor(cursor)
-            self._parse_buffer()
-            return True
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.EndOfLine)
+        self.setTextCursor(cursor)
+        self._parse_buffer()
+        return True
 
     def handle_backspace_key(self, event):
         if self._cursor_offset() >= 1:
@@ -159,9 +155,7 @@ class BaseConsole(QTextEdit):
         return True
 
     def handle_tab_key(self, event):
-        if not event.isAccepted():
-            self._insert_in_buffer(self._tab_chars)
-
+        self._insert_in_buffer(self._tab_chars)
         return True
 
     def handle_home_key(self, event):

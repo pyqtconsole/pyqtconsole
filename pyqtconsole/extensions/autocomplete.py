@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ..qt.QtCore import Qt, QObject, QTimer
+from ..qt.QtCore import Qt, QObject, QEvent
 from ..qt.QtWidgets import QCompleter
 
 from .extension import Extension
@@ -20,29 +20,37 @@ class AutoComplete(Extension, QObject):
         self._last_key = None
 
     def install(self):
-        self.owner().key_pressed_signal.connect(self.key_pressed_handler)
+        self.owner().installEventFilter(self)
         self.owner().set_complete_mode_signal.connect(self.mode_set_handler)
         self.init_completion_list([])
 
     def mode_set_handler(self, mode):
         self.mode = mode
 
+    def eventFilter(self, widget, event):
+        if event.type() == QEvent.KeyPress:
+            return bool(self.key_pressed_handler(event))
+        return False
+
     def key_pressed_handler(self, event):
+        intercepted = False
         key = event.key()
 
         if key == Qt.Key_Tab:
-            self.handle_tab_key(event)
+            intercepted = self.handle_tab_key(event)
         elif key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
-            self.handle_complete_key(event)
+            intercepted = self.handle_complete_key(event)
         elif key == Qt.Key_Escape:
-            self.hide_completion_suggestions()
+            intercepted = self.hide_completion_suggestions()
 
         self._last_key = key
-        # Regardless of key pressed update list, if we are completing a
-        # word, highlight the first match !
-        QTimer.singleShot(0, lambda: self.update_completion(key))
+        self.update_completion(key)
+        return intercepted
 
     def handle_tab_key(self, event):
+        if self.owner().textCursor().hasSelection():
+            return False
+
         if self.mode == COMPLETE_MODE.DROPDOWN:
             if self.owner()._get_buffer().strip():
                 if self.completing():
@@ -51,17 +59,20 @@ class AutoComplete(Extension, QObject):
                     self.trigger_complete()
 
                 event.accept()
+                return True
 
         elif self.mode == COMPLETE_MODE.INLINE:
             if self._last_key == Qt.Key_Tab:
                 self.trigger_complete()
 
             event.accept()
+            return True
 
     def handle_complete_key(self, event):
         if self.completing():
             self.complete()
             event.accept()
+            return True
 
     def init_completion_list(self, words):
         self.completer = QCompleter(words, self)
@@ -116,6 +127,7 @@ class AutoComplete(Extension, QObject):
     def hide_completion_suggestions(self):
         if self.completing():
             self.completer.popup().close()
+            return True
 
     def completing(self):
         if self.mode == COMPLETE_MODE.DROPDOWN:
