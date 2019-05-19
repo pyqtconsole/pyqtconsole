@@ -108,9 +108,6 @@ class BaseConsole(QFrame):
         else:
             return False
 
-    def _document(self):
-        return self.edit.document()
-
     def _textCursor(self):
         return self.edit.textCursor()
 
@@ -302,37 +299,25 @@ class BaseConsole(QFrame):
         return True
 
     def _handle_up_key(self, event):
-        buffer_start = QTextCursor(self._document())
-        buffer_start.setPosition(self._prompt_pos)
-
-        cursor = self._textCursor()
         shift = event.modifiers() & Qt.ShiftModifier
-        if shift or cursor.blockNumber() > buffer_start.blockNumber():
+        if shift or '\n' in self.input_buffer()[:self.cursor_offset()]:
             self._move_cursor(QTextCursor.Up, select=shift)
         else:
             self.command_history.dec()
-
         return True
 
     def _handle_down_key(self, event):
-        buffer_end = QTextCursor(self._document())
-        buffer_end.movePosition(QTextCursor.End)
-
-        cursor = self._textCursor()
         shift = event.modifiers() & Qt.ShiftModifier
-        if shift or cursor.blockNumber() < buffer_end.blockNumber():
+        if shift or '\n' in self.input_buffer()[self.cursor_offset():]:
             self._move_cursor(QTextCursor.Down, select=shift)
         else:
             self.command_history.inc()
-
         return True
 
     def _handle_left_key(self, event):
-        intercepted = self.cursor_offset() < 1
-        return intercepted
+        return self.cursor_offset() < 1
 
     def _handle_d_key(self, event):
-
         if event.modifiers() == Qt.ControlModifier and not self.input_buffer():
             if self._ctrl_d_exits:
                 self.exit()
@@ -345,18 +330,14 @@ class BaseConsole(QFrame):
                 self._show_ps()
             return True
 
-        return False
-
     def _handle_c_key(self, event):
         intercepted = False
-
         if event.modifiers() == Qt.ControlModifier:
             self._handle_ctrl_c()
             intercepted = True
         elif event.modifiers() == Qt.ControlModifier | Qt.ShiftModifier:
             self.edit.copy()
             intercepted = True
-
         return intercepted
 
     def _handle_v_key(self, event):
@@ -399,7 +380,6 @@ class BaseConsole(QFrame):
 
         self._insert_prompt_text(prompt + '\n' * text.count('\n'))
         self._output_inserted = True
-
         if lf:
             self.process_input('')
 
@@ -517,7 +497,7 @@ class PythonConsole(BaseConsole):
 
     def __init__(self, parent=None, locals=None):
         super(PythonConsole, self).__init__(parent)
-        self.highlighter = PythonHighlighter(self._document())
+        self.highlighter = PythonHighlighter(self.edit.document())
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
