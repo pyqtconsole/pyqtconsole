@@ -148,6 +148,7 @@ class BaseConsole(QFrame):
 
     def _get_key_event_handlers(self):
         return {
+            Qt.Key_Escape:      self._handle_escape_key,
             Qt.Key_Return:      self._handle_enter_key,
             Qt.Key_Enter:       self._handle_enter_key,
             Qt.Key_Backspace:   self._handle_backspace_key,
@@ -192,6 +193,9 @@ class BaseConsole(QFrame):
                 self.insert_input_text(event.text())
 
         return intercepted
+
+    def _handle_escape_key(self, event):
+        return True
 
     def _handle_enter_key(self, event):
         if event.modifiers() & Qt.ShiftModifier:
