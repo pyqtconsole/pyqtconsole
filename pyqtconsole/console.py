@@ -164,6 +164,7 @@ class BaseConsole(QFrame):
             Qt.Key_Delete:      self.handle_delete_key,
             Qt.Key_Home:        self.handle_home_key,
             Qt.Key_Tab:         self.handle_tab_key,
+            Qt.Key_Backtab:     self.handle_backtab_key,
             Qt.Key_Up:          self.handle_up_key,
             Qt.Key_Down:        self.handle_down_key,
             Qt.Key_Left:        self.handle_left_key,
@@ -248,12 +249,48 @@ class BaseConsole(QFrame):
         return True
 
     def handle_tab_key(self, event):
-        # add spaces until next tabstop boundary:
-        tab = self._tab_chars
-        buf = self._get_line_until_cursor()
-        num = len(tab) - len(buf) % len(tab)
-        self._insert_in_buffer(tab[:num])
+        cursor = self.textCursor()
+        if cursor.hasSelection():
+            self.setTextCursor(self._indent_selection(cursor))
+        else:
+            # add spaces until next tabstop boundary:
+            tab = self._tab_chars
+            buf = self._get_line_until_cursor()
+            num = len(tab) - len(buf) % len(tab)
+            self._insert_in_buffer(tab[:num])
+        event.accept()
         return True
+
+    def handle_backtab_key(self, event):
+        self.setTextCursor(self._indent_selection(self.textCursor(), False))
+        return True
+
+    def _indent_selection(self, cursor, indent=True):
+        buf = self._get_buffer()
+        tab = self._tab_chars
+        pos0 = cursor.selectionStart() - self._prompt_pos
+        pos1 = cursor.selectionEnd() - self._prompt_pos
+        line0 = buf[:pos0].count('\n')
+        line1 = buf[:pos1].count('\n')
+        lines = buf.split('\n')
+        for i in range(line0, line1+1):
+            # Although it at first seemed appealing to me to indent to the
+            # next tab boundary, this leads to losing relative sub-tab
+            # indentations and is therefore not desirable. We should therefore
+            # always indent by a full tab:
+            line = lines[i]
+            if indent:
+                lines[i] = tab + line
+            else:
+                lines[i] = line[:len(tab)].lstrip() + line[len(tab):]
+            num = len(lines[i]) - len(line)
+            pos0 += num if i == line0 else 0
+            pos1 += num
+        self._clear_buffer()
+        self._insert_in_buffer('\n'.join(lines))
+        cursor.setPosition(self._prompt_pos + pos0)
+        cursor.setPosition(self._prompt_pos + pos1, QTextCursor.KeepAnchor)
+        return cursor
 
     def handle_home_key(self, event):
         select = event.modifiers() & Qt.ShiftModifier
