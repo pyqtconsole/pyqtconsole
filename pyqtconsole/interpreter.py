@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 import sys
 import contextlib
+from functools import partial
 
-from code import InteractiveConsole
+from code import InteractiveInterpreter
+
+from .qt.QtCore import QObject, Slot, Signal
 
 try:
     from builtins import exit       # py3
@@ -10,52 +13,31 @@ except ImportError:
     from __builtin__ import exit    # py2
 
 
-class PythonInterpreter(InteractiveConsole):
-    def __init__(self, stdin, stdout, local = {}):
-        InteractiveConsole.__init__(self, local)
-        self.local_ns = local
-        self.local_ns['exit'] = exit
+class PythonInterpreter(QObject, InteractiveInterpreter):
+
+    exec_signal = Signal(object)
+    done_signal = Signal(bool, object)
+    exit_signal = Signal(object)
+
+    def __init__(self, stdin, stdout, locals=None):
+        QObject.__init__(self)
+        InteractiveInterpreter.__init__(self, locals)
+        self.locals['exit'] = exit
         self.stdin = stdin
         self.stdout = stdout
-
-        self._running = True
-        self._last_input = ''
-        self._more = False
-        self._current_line = 0
         self._executing = False
-
-        self._inp = 'IN [%s]: '
-        self._morep = '...: '
-        self._outp = 'OUT[%s]: '
-        self._p = self._inp % self._current_line
-        self._print_in_prompt()
-
-    def _update_in_prompt(self, _more, _input):
-        # We need to show the more prompt of the input was incomplete
-        # If the input is complete increase the input number and show
-        # the in prompt
-        if not _more:
-            # Only increase the input number if the input was complete
-            # last prompt was the more prompt (and we know that we don't have
-            # more input to expect). Obviously do not increase for CR
-            if _input != '\n' or self._p == self._morep:
-                self._current_line += 1
-
-            self._p = self._inp % self._current_line
-        else:
-            self._p = (len(self._p) - len(self._morep)) * ' ' + self._morep
-
-    def _print_in_prompt(self):
-        self.stdout.write(self._p)
+        self.compile = partial(compile_multi, self.compile)
 
     def executing(self):
         return self._executing
 
-    def push(self, line):
-        return InteractiveConsole.push(self, line)
-
     def runcode(self, code):
+        self.exec_signal.emit(code)
+
+    @Slot(object)
+    def exec_(self, codes):
         self._executing = True
+        result = None
 
         # Redirect IO and disable excepthook, this is the only place were we
         # redirect IO, since we don't how IO is handled within the code we
@@ -63,19 +45,18 @@ class PythonInterpreter(InteractiveConsole):
         # user are doing in it.
         try:
             with redirected_io(self.stdout), disabled_excepthook():
-                return InteractiveConsole.runcode(self, code)
-        except SystemExit:
-            self.exit()
+                for code, mode in codes:
+                    if mode == 'eval':
+                        result = eval(code, self.locals)
+                    else:
+                        exec(code, self.locals)
+        except SystemExit as e:
+            self.exit_signal.emit(e)
+        except:
+            self.showtraceback()
         finally:
             self._executing = False
-
-    def raw_input(self, prompt=None, timeout=None):
-        line = self.stdin.readline(timeout)
-
-        if line != '\n':
-            line = line.strip('\n')
-
-        return line
+            self.done_signal.emit(True, result)
 
     def write(self, data):
         self.stdout.write(data)
@@ -87,51 +68,44 @@ class PythonInterpreter(InteractiveConsole):
         if type_ == KeyboardInterrupt:
             self.stdout.write('KeyboardInterrupt\n')
         else:
-            InteractiveConsole.showtraceback(self)
-
-        self.stdout.write('\n')
+            InteractiveInterpreter.showtraceback(self)
 
     def showsyntaxerror(self, filename):
-        self.stdout.write('\n')
-        InteractiveConsole.showsyntaxerror(self, filename)
-        self.stdout.write('\n')
+        InteractiveInterpreter.showsyntaxerror(self, filename)
+        self.done_signal.emit(False, None)
 
-    def _rep_line(self, line):
-        self._last_input = line
-        self._more = self.push(line)
-        self._update_in_prompt(self._more, self._last_input)
-        self._print_in_prompt()
 
-    def repl(self):
-        self._running = True
+def compile_multi(compiler, source, filename, symbol):
+    if symbol != 'multi':
+        return [(compiler(source, filename, symbol), symbol)]
 
-        while self._running:
-            try:
-                line = self.raw_input(timeout = None)
+    # First, check if the source compiles at all, otherwise the rest will be
+    # wasted effort. This raises an exception if there is a SyntaxError, or
+    # returns None if the code is incomplete:
+    if compiler(source, symbol, 'exec') is None:
+        return None
 
-                if line:
-                    self._rep_line(line)
-            except KeyboardInterrupt:
-                self.handle_ctrl_c()
+    lines = source.split('\n')
 
-    def handle_ctrl_c(self):
-        self.resetbuffer()
-        self._last_input = '\n'
-        self._more = False
-        self.stdout.write('^C\n')
-        self._update_in_prompt(self._more, self._last_input)
-        self._print_in_prompt()
-
-    def repl_nonblock(self):
-        line = self.raw_input(timeout = 0)
-
-        if line:
-            self._rep_line(line)
-
-    def exit(self):
-        if self._running:
-            self._running = False
-            self.stdout.close()
+    for i, line in enumerate(lines):
+        last_line = i != len(lines) - 1
+        if last_line and (line.startswith((' ', '\t', '#')) or not line):
+            continue
+        exec_source = '\n'.join(lines[:i])
+        single_source = '\n'.join(lines[i:])
+        try:
+            exec_code = compiler(exec_source, symbol, 'exec')
+            single_code = compiler(single_source, symbol, 'single')
+            if exec_code and single_code:
+                try:
+                    expr_code = compiler(single_source, symbol, 'eval')
+                    if expr_code:
+                        return [(exec_code, 'exec'), (expr_code, 'eval')]
+                except SyntaxError:
+                    pass
+                return [(exec_code, 'exec'), (single_code, 'exec')]
+        except SyntaxError:
+            continue
 
 
 @contextlib.contextmanager

@@ -31,8 +31,30 @@ STYLES = {
     'comment': format('darkGreen', 'italic'),
     'self': format('black', 'italic'),
     'numbers': format('brown'),
-    'prompt': format('darkBlue', 'bold'),
+    'inprompt': format('darkBlue', 'bold'),
+    'outprompt': format('darkRed', 'bold'),
 }
+
+
+class PromptHighlighter(object):
+
+    def __init__(self):
+        self.rules = [
+            # Match the prompt incase of a console
+            (QRegExp(r'IN[^\:]*'), 0, STYLES['inprompt']),
+            (QRegExp(r'OUT[^\:]*'), 0, STYLES['outprompt']),
+            # Numeric literals
+            (QRegExp(r'\b[+-]?[0-9]+\b'), 0, STYLES['numbers']),
+        ]
+
+    def highlight(self, text):
+        for expression, nth, format in self.rules:
+            index = expression.indexIn(text, 0)
+            while index >= 0:
+                index = expression.pos(nth)
+                length = len(expression.cap(nth))
+                yield (index, length, format)
+                index = expression.indexIn(text, index + length)
 
 
 class PythonHighlighter(QSyntaxHighlighter):
@@ -60,10 +82,6 @@ class PythonHighlighter(QSyntaxHighlighter):
         rules += [
             # 'self'
             #(r'\bself\b', 0, STYLES['self']),
-
-            # Match the prompt incase of a console
-            (r'IN[^\:]*', 0, STYLES['prompt']),
-            (r'OUT[^\:]*', 0, STYLES['prompt']),
 
             # Double-quoted string, possibly containing escape sequences
             (r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
