@@ -3,6 +3,7 @@ import sys
 import contextlib
 from functools import partial
 
+import ast
 from code import InteractiveInterpreter
 
 from .qt.QtCore import QObject, Slot, Signal
@@ -76,36 +77,30 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
 
 
 def compile_multi(compiler, source, filename, symbol):
+    """If mode is 'multi', split code into individual toplevel expressions or
+    statements. Returns a list of tuples ``(code, mode)``. """
     if symbol != 'multi':
         return [(compiler(source, filename, symbol), symbol)]
-
-    # First, check if the source compiles at all, otherwise the rest will be
-    # wasted effort. This raises an exception if there is a SyntaxError, or
-    # returns None if the code is incomplete:
+    # First, check if the source compiles at all. This raises an exception if
+    # there is a SyntaxError, or returns None if the code is incomplete:
     if compiler(source, symbol, 'exec') is None:
         return None
+    # Now split into individual 'single' units:
+    module = ast.parse(source)
+    return [
+        compile_single_node(node, filename)
+        for node in module.body
+    ]
 
-    lines = source.split('\n')
 
-    for i, line in enumerate(lines):
-        last_line = i != len(lines) - 1
-        if last_line and (line.startswith((' ', '\t', '#')) or not line):
-            continue
-        exec_source = '\n'.join(lines[:i])
-        single_source = '\n'.join(lines[i:])
-        try:
-            exec_code = compiler(exec_source, symbol, 'exec')
-            single_code = compiler(single_source, symbol, 'single')
-            if exec_code and single_code:
-                try:
-                    expr_code = compiler(single_source, symbol, 'eval')
-                    if expr_code:
-                        return [(exec_code, 'exec'), (expr_code, 'eval')]
-                except SyntaxError:
-                    pass
-                return [(exec_code, 'exec'), (single_code, 'exec')]
-        except SyntaxError:
-            continue
+def compile_single_node(node, filename):
+    """Compile a 'single' ast.node (expression or statement)."""
+    mode = 'eval' if isinstance(node, ast.Expr) else 'exec'
+    if mode == 'eval':
+        root = ast.Expression(node.value)
+    else:
+        root = ast.Module([node])
+    return (compile(root, filename, mode), mode)
 
 
 @contextlib.contextmanager
