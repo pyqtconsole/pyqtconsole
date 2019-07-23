@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-__version__ = '1.1.1'
+__version__ = '1.1.3'
 __description__ = 'Light weight python interpreter, easy to embed into Qt applications'
 __author__ = 'Marcus Oskarsson'
 __author_email__ = 'marcus.oscarsson@esrf.fr'
