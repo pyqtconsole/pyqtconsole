@@ -22,6 +22,12 @@ except ImportError:
     jedi = None
 
 
+try:                        # PyQt >= 5.11
+    QueuedConnection = Qt.ConnectionType.QueuedConnection
+except AttributeError:      # PyQt < 5.11
+    QueuedConnection = Qt.QueuedConnection
+
+
 class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
@@ -579,14 +585,14 @@ class PythonConsole(BaseConsole):
         self._thread = Thread()
         self.interpreter.moveToThread(self._thread)
         self.interpreter.exec_signal.connect(
-            self.interpreter.exec_, Qt.ConnectionType.QueuedConnection)
+            self.interpreter.exec_, QueuedConnection)
         return self._thread
 
     def eval_queued(self):
         """Setup connections to execute code snippets in later mainloop
         iterations in the main thread."""
         return self.interpreter.exec_signal.connect(
-            self.interpreter.exec_, Qt.ConnectionType.QueuedConnection)
+            self.interpreter.exec_, QueuedConnection)
 
     def eval_executor(self, spawn):
         """Exec snippets using the given executor function (e.g.
