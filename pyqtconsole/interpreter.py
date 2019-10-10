@@ -8,11 +8,6 @@ from code import InteractiveInterpreter
 
 from .qt.QtCore import QObject, Slot, Signal
 
-try:
-    from builtins import exit       # py3
-except ImportError:
-    from __builtin__ import exit    # py2
-
 
 class PythonInterpreter(QObject, InteractiveInterpreter):
 
@@ -23,7 +18,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
     def __init__(self, stdin, stdout, locals=None):
         QObject.__init__(self)
         InteractiveInterpreter.__init__(self, locals)
-        self.locals['exit'] = exit
+        self.locals['exit'] = Exit()
         self.stdin = stdin
         self.stdout = stdout
         self._executing = False
@@ -131,3 +126,12 @@ def redirected_io(stdout):
             sys.stdout = old_stdout
         if sys.stderr is stdout:
             sys.stderr = old_stderr
+
+
+# We use a custom exit function to avoid issues with environments such as
+# spyder, where `builtins.exit` is not available, see #26:
+class Exit:
+    def __repr__(self):
+        return "Type exit() to exit this console."
+    def __call__(self, *args):
+        raise SystemExit(*args)
