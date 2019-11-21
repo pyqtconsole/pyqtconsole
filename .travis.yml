@@ -1,0 +1,27 @@
+language: python
+python:
+  - "3.8"
+  - "3.7"
+  - "3.6"
+  - "3.5"
+  - "3.4"
+  - "2.7"
+
+install:
+  - python setup.py sdist bdist_wheel
+  - pip install dist/*.whl
+  - pip install twine
+
+script:
+  - twine check dist/*
+
+jobs:
+  include:
+    - stage: deploy
+      name: Upload release to PyPI
+      if: tag is present
+      script: twine upload dist/*
+      env:
+        - TWINE_USERNAME=pyqtconsole
+        # TWINE_PASSWORD:
+        - secure: "bi5Ll+x+tyxbULmLdDF0IBfMzFHOjdbCFxXOY25gzRNDYC3ttwMsPSFji9Vxun4+ChRDqqfxiemn76cq7zM7atPUocI07LZYKhIH5MGdy9hqefdSzobuo42BfgoVAXtQxAu1wLIGaG1RYgnIJt6h+hlTXa8na8DebsHECJzpURdyQmleJEq2AORmkNDPZdT4b6+d/rygxhE3AaIOpM2r6q2aT7bryC6eI+Q6r9cQKoqIWjeR3js2ZidBwZQo6csnZZ6vOx5VYAO8AIHs7Ru4sYK+lNxFZjBLHWuS/wKqKp1mvDPUpe6oasBuSShowlNWSlutE0QE+VPtNC1+zimhd2uhiABYwtAvSkmRh6q8hkiC8Dcd3/0C99tL2PcIk6erAsEqgHUzdDRILC6Kyi5wrPiT2Bos0OVmDX1T9FGRcmEb/hFG7zrpeC24241Z/nAVhQWJittMWgWbjJqE4JK6GQcfR6Bk7uxkireiflwqEj+F5aYd2XKt4iOyGv12JimviglvEeQIy4y8mhO9fRKTEvYAFXR2r/BgRvHWN81N1KxULqiRJMsgimT0qjWTRYzXBjwSbPa6akLVSwa3U8W0JPQqIXnEvRn05vXfEkBiyD1fSnKxDwnHL67jSqlN5XDKXLT8xWpVq53B3zwmet0yjU5owEtcSUhkkyHBR/UYWFI="
