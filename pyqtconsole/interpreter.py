@@ -78,10 +78,18 @@ def compile_multi(compiler, source, filename, symbol):
         return [(compiler(source, filename, symbol), symbol)]
     # First, check if the source compiles at all. This raises an exception if
     # there is a SyntaxError, or returns None if the code is incomplete:
-    if compiler(source, symbol, 'exec') is None:
+    if compiler(source, filename, 'exec') is None:
         return None
     # Now split into individual 'single' units:
     module = ast.parse(source)
+    # When entering a code block, the standard python interpreter waits for an
+    # additional empty line to apply the input. We adhere to this convention,
+    # checked by `compiler(..., 'single')`:
+    if module.body:
+        block_lineno = module.body[-1].lineno
+        block_source = source[find_nth('\n' + source, '\n', block_lineno):]
+        if compiler(block_source, filename, 'single') is None:
+            return None
     return [
         compile_single_node(node, filename)
         for node in module.body
@@ -99,6 +107,11 @@ def compile_single_node(node, filename):
         else:
             root = ast.Module([node])
     return (compile(root, filename, mode), mode)
+
+
+def find_nth(string, char, n):
+    """Find the n'th occurence of a character within a string."""
+    return [i for i, c in enumerate(string) if c == char][n-1]
 
 
 @contextlib.contextmanager
