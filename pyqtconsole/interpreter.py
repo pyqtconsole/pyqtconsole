@@ -94,7 +94,10 @@ def compile_single_node(node, filename):
     if mode == 'eval':
         root = ast.Expression(node.value)
     else:
-        root = ast.Module([node])
+        if sys.version_info >= (3, 8):
+            root = ast.Module([node], type_ignores=[])
+        else:
+            root = ast.Module([node])
     return (compile(root, filename, mode), mode)
 
 
