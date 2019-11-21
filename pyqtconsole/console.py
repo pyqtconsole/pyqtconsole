@@ -34,12 +34,12 @@ class BaseConsole(QFrame):
 
     input_applied_signal = Signal(str)
 
-    def __init__(self, parent = None):
+    def __init__(self, parent=None, formats=None):
         super(BaseConsole, self).__init__(parent)
 
         self.edit = edit = InputArea()
         self.pbar = pbar = PromptArea(
-            edit, self._get_prompt_text, PromptHighlighter())
+            edit, self._get_prompt_text, PromptHighlighter(formats=formats))
 
         layout = QHBoxLayout()
         layout.addWidget(pbar)
@@ -543,9 +543,9 @@ class PythonConsole(BaseConsole):
 
     """Interactive python GUI console."""
 
-    def __init__(self, parent=None, locals=None):
-        super(PythonConsole, self).__init__(parent)
-        self.highlighter = PythonHighlighter(self.edit.document())
+    def __init__(self, parent=None, locals=None, formats=None):
+        super(PythonConsole, self).__init__(parent, formats=formats)
+        self.highlighter = PythonHighlighter(self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)

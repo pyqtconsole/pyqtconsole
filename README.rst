@@ -58,8 +58,31 @@ Embedding
   consideration (at least to some extent) for longer running processes. The
   best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
 
-* *trollius (asyncio)* - Runs the interpreter in a asyncio coroutine
-  `_trollius.py`_. Still experimental
+Customizing syntax highlighting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The coloring of the syntax highlighting can be customized by passing a
+``formats`` dictionary to the ``PythonConsole`` constructer. This dictionary
+must be shaped as follows:
+
+.. code-block:: python
+
+    import pyqtconsole.highlighter as hl
+    console = PythonConsole(formats={
+        'keyword':    hl.format('blue', 'bold'),
+        'operator':   hl.format('red'),
+        'brace':      hl.format('darkGray'),
+        'defclass':   hl.format('black', 'bold'),
+        'string':     hl.format('magenta'),
+        'string2':    hl.format('darkMagenta'),
+        'comment':    hl.format('darkGreen', 'italic'),
+        'self':       hl.format('black', 'italic'),
+        'numbers':    hl.format('brown'),
+        'inprompt':   hl.format('darkBlue', 'bold'),
+        'outprompt':  hl.format('darkRed', 'bold'),
+    })
+
+All keys are optional and default to the value shown above if left unspecified.
 
 Credits
 ~~~~~~~

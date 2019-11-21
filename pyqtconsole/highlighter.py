@@ -38,13 +38,14 @@ STYLES = {
 
 class PromptHighlighter(object):
 
-    def __init__(self):
+    def __init__(self, formats=None):
+        self.styles = styles = dict(STYLES, **formats)
         self.rules = [
             # Match the prompt incase of a console
-            (QRegExp(r'IN[^\:]*'), 0, STYLES['inprompt']),
-            (QRegExp(r'OUT[^\:]*'), 0, STYLES['outprompt']),
+            (QRegExp(r'IN[^\:]*'), 0, styles['inprompt']),
+            (QRegExp(r'OUT[^\:]*'), 0, styles['outprompt']),
             # Numeric literals
-            (QRegExp(r'\b[+-]?[0-9]+\b'), 0, STYLES['numbers']),
+            (QRegExp(r'\b[+-]?[0-9]+\b'), 0, styles['numbers']),
         ]
 
     def highlight(self, text):
@@ -63,19 +64,21 @@ class PythonHighlighter(QSyntaxHighlighter):
     # Python keywords
     keywords = keyword.kwlist
 
-    def __init__(self, document):
+    def __init__(self, document, formats=None):
         QSyntaxHighlighter.__init__(self, document)
+
+        self.styles = styles = dict(STYLES, **formats)
 
         # Multi-line strings (expression, flag, style)
         # FIXME: The triple-quotes in these two lines will mess up the
         # syntax highlighting from this point onward
-        self.tri_single = (QRegExp("'''"), 1, STYLES['string2'])
-        self.tri_double = (QRegExp('"""'), 2, STYLES['string2'])
+        self.tri_single = (QRegExp("'''"), 1, styles['string2'])
+        self.tri_double = (QRegExp('"""'), 2, styles['string2'])
 
         rules = []
 
         # Keyword, operator, and brace rules
-        rules += [(r'\b%s\b' % w, 0, STYLES['keyword'])
+        rules += [(r'\b%s\b' % w, 0, styles['keyword'])
             for w in PythonHighlighter.keywords]
 
         # All other rules
@@ -84,22 +87,22 @@ class PythonHighlighter(QSyntaxHighlighter):
             #(r'\bself\b', 0, STYLES['self']),
 
             # Double-quoted string, possibly containing escape sequences
-            (r'"[^"\\]*(\\.[^"\\]*)*"', 0, STYLES['string']),
+            (r'"[^"\\]*(\\.[^"\\]*)*"', 0, styles['string']),
             # Single-quoted string, possibly containing escape sequences
-            (r"'[^'\\]*(\\.[^'\\]*)*'", 0, STYLES['string']),
+            (r"'[^'\\]*(\\.[^'\\]*)*'", 0, styles['string']),
 
             # 'def' followed by an identifier
-            (r'\bdef\b\s*(\w+)', 1, STYLES['defclass']),
+            (r'\bdef\b\s*(\w+)', 1, styles['defclass']),
             # 'class' followed by an identifier
-            (r'\bclass\b\s*(\w+)', 1, STYLES['defclass']),
+            (r'\bclass\b\s*(\w+)', 1, styles['defclass']),
 
             # From '#' until a newline
-            (r'#[^\n]*', 0, STYLES['comment']),
+            (r'#[^\n]*', 0, styles['comment']),
 
             # Numeric literals
-            (r'\b[+-]?[0-9]+[lL]?\b', 0, STYLES['numbers']),
-            (r'\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b', 0, STYLES['numbers']),
-            (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0, STYLES['numbers']),
+            (r'\b[+-]?[0-9]+[lL]?\b', 0, styles['numbers']),
+            (r'\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b', 0, styles['numbers']),
+            (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0, styles['numbers']),
         ]
 
         # Build a QRegExp for each pattern
