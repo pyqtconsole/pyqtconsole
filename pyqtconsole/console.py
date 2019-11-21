@@ -379,7 +379,8 @@ class BaseConsole(QFrame):
         self._setTextCursor(cursor)
         self.ensureCursorVisible()
 
-    def _insert_output_text(self, text, lf=False, keep_buffer=False, prompt=''):
+    def _insert_output_text(self, text,
+                            lf=False, keep_buffer=False, prompt=''):
         if keep_buffer:
             self._copy_buffer = self.input_buffer()
 
@@ -545,8 +546,10 @@ class PythonConsole(BaseConsole):
 
     def __init__(self, parent=None, locals=None, formats=None):
         super(PythonConsole, self).__init__(parent, formats=formats)
-        self.highlighter = PythonHighlighter(self.edit.document(), formats=formats)
-        self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
+        self.highlighter = PythonHighlighter(
+            self.edit.document(), formats=formats)
+        self.interpreter = PythonInterpreter(
+            self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)

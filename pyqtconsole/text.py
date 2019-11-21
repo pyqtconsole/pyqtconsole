@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+
 def long_substr(data):
     substr = ''
     if len(data) > 1 and len(data[0]) > 0:
@@ -23,17 +24,17 @@ def is_substr(find, data):
 
 
 default_opts = {
-    'arrange_array'    : False,  # Check if file has changed since last time
-    'arrange_vertical' : True,
-    'array_prefix'     : '',
-    'array_suffix'     : '',
-    'colfmt'           : None,
-    'colsep'           : '  ',
-    'displaywidth'     : 80,
-    'lineprefix'       : '',
-    'linesuffix'       : "\n",
-    'ljust'            : None,
-    'term_adjust'      : False
+    'arrange_array':     False,  # Check if file has changed since last time
+    'arrange_vertical':  True,
+    'array_prefix':      '',
+    'array_suffix':      '',
+    'colfmt':            None,
+    'colsep':            '  ',
+    'displaywidth':      80,
+    'lineprefix':        '',
+    'linesuffix':        "\n",
+    'ljust':             None,
+    'term_adjust':       False
     }
 
 
@@ -41,7 +42,7 @@ def get_option(key, options):
     return options.get(key, default_opts.get(key))
 
 
-def columnize(array, displaywidth=80, colsep = '  ',
+def columnize(array, displaywidth=80, colsep='  ',
               arrange_vertical=True, ljust=True, lineprefix='',
               opts={}):
     """Return a list of strings as a compact set of columns arranged
@@ -66,25 +67,27 @@ def columnize(array, displaywidth=80, colsep = '  ',
         raise TypeError((
             'array needs to be an instance of a list or a tuple'))
 
-    o = {}
     if len(opts.keys()) > 0:
-        for key in default_opts.keys():
-            o[key] = get_option(key, opts)
+        o = {key: get_option(key, opts) for key in default_opts}
         if o['arrange_array']:
-            o['array_prefix'] = '['
-            o['lineprefix']   = ' '
-            o['linesuffix']   = ",\n"
-            o['array_suffix'] = "]\n"
-            o['colsep']       = ', '
-            o['arrange_vertical'] = False
+            o.update({
+                'array_prefix':      '[',
+                'lineprefix':        ' ',
+                'linesuffix':        ",\n",
+                'array_suffix':      "]\n",
+                'colsep':            ', ',
+                'arrange_vertical':  False,
+            })
 
     else:
         o = default_opts.copy()
-        o['displaywidth']     = displaywidth
-        o['colsep']           = colsep
-        o['arrange_vertical'] = arrange_vertical
-        o['ljust']            = ljust
-        o['lineprefix']       = lineprefix
+        o.update({
+            'displaywidth':      displaywidth,
+            'colsep':            colsep,
+            'arrange_vertical':  arrange_vertical,
+            'ljust':             ljust,
+            'lineprefix':        lineprefix,
+        })
 
     # if o['ljust'] is None:
     #     o['ljust'] = !(list.all?{|datum| datum.kind_of?(Numeric)})
@@ -109,7 +112,8 @@ def columnize(array, displaywidth=80, colsep = '  ',
 
     o['displaywidth'] = max(4, o['displaywidth'] - len(o['lineprefix']))
     if o['arrange_vertical']:
-        array_index = lambda nrows, row, col: nrows*col + row
+        def array_index(nrows, row, col):
+            return nrows*col + row
         # Try every row count from 1 upwards
         for nrows in range(1, size):
             ncols = (size+nrows-1) // nrows
@@ -120,7 +124,8 @@ def columnize(array, displaywidth=80, colsep = '  ',
                 colwidth = 0
                 for row in range(nrows):
                     i = array_index(nrows, row, col)
-                    if i >= size: break
+                    if i >= size:
+                        break
                     x = array[i]
                     colwidth = max(colwidth, len(x))
                 colwidths.append(colwidth)
@@ -154,24 +159,26 @@ def columnize(array, displaywidth=80, colsep = '  ',
                              o['linesuffix'])
         return s
     else:
-        array_index = lambda ncols, row, col: ncols*(row-1) + col
+        def array_index(ncols, row, col):
+            return ncols*(row-1) + col
         # Try every column count from size downwards
         colwidths = []
         for ncols in range(size, 0, -1):
             # Try every row count from 1 upwards
             min_rows = (size+ncols-1) // ncols
-            nrows = min_rows -1
+            nrows = min_rows - 1
             while nrows < size:
                 nrows += 1
                 rounded_size = nrows * ncols
                 colwidths = []
-                totwidth  = -len(o['colsep'])
+                totwidth = -len(o['colsep'])
                 for col in range(ncols):
                     # get max column width for this column
-                    colwidth  = 0
+                    colwidth = 0
                     for row in range(1, nrows+1):
                         i = array_index(ncols, row, col)
-                        if i >= rounded_size: break
+                        if i >= rounded_size:
+                            break
                         elif i < size:
                             x = array[i]
                             colwidth = max(colwidth, len(x))
@@ -182,7 +189,7 @@ def columnize(array, displaywidth=80, colsep = '  ',
                 if totwidth <= o['displaywidth'] and i >= rounded_size-1:
                     # Found the right nrows and ncols
                     # print "right nrows and ncols"
-                    nrows  = row
+                    nrows = row
                     break
                 elif totwidth >= o['displaywidth']:
                     # print "reduce ncols", ncols
@@ -205,7 +212,8 @@ def columnize(array, displaywidth=80, colsep = '  ',
                 i = array_index(ncols, row, col)
                 if i >= size:
                     break
-                else: x = array[i]
+                else:
+                    x = array[i]
                 texts.append(x)
             for col in range(len(texts)):
                 if o['ljust']:
@@ -224,11 +232,12 @@ def columnize(array, displaywidth=80, colsep = '  ',
             s += o['array_suffix']
         return s
 
-if __name__=='__main__':
-    print(columnize(list(range(12)),
-                      opts={'displaywidth':6, 'arrange_array':True}))
-    print(columnize(list(range(12)),
-                      opts={'displaywidth':10, 'arrange_array':True}))
+
+if __name__ == '__main__':
+    print(columnize(
+        list(range(12)), opts={'displaywidth': 6, 'arrange_array': True}))
+    print(columnize(
+        list(range(12)), opts={'displaywidth': 10, 'arrange_array': True}))
     for t in ((4, 4,), (4, 7), (100, 80)):
         width = t[1]
         data = [str(i) for i in range(t[0])]
@@ -243,28 +252,29 @@ if __name__=='__main__':
     print(columnize(["oneitem"]))
     print(columnize(("one", "two", "three",)))
     data = (
-        "one",       "two",         "three",
-        "for",       "five",        "six",
-        "seven",     "eight",       "nine",
-        "ten",       "eleven",      "twelve",
-        "thirteen",  "fourteen",    "fifteen",
-        "sixteen",   "seventeen",   "eightteen",
-        "nineteen",  "twenty",      "twentyone",
-        "twentytwo", "twentythree", "twentyfour",
-        "twentyfive","twentysix",   "twentyseven",)
+        "one",          "two",          "three",
+        "for",          "five",         "six",
+        "seven",        "eight",        "nine",
+        "ten",          "eleven",       "twelve",
+        "thirteen",     "fourteen",     "fifteen",
+        "sixteen",      "seventeen",    "eightteen",
+        "nineteen",     "twenty",       "twentyone",
+        "twentytwo",    "twentythree",  "twentyfour",
+        "twentyfive",   "twentysix",    "twentyseven",
+    )
     print(columnize(data))
     print(columnize(data, arrange_vertical=False))
     data = [str(i) for i in range(55)]
-    print(columnize(data, opts={'displaywidth':39, 'arrange_array':True}))
+    print(columnize(data, opts={'displaywidth': 39, 'arrange_array': True}))
     print(columnize(data, displaywidth=39, ljust=False,
                     colsep=', ', lineprefix='    '))
     print(columnize(data, displaywidth=39, ljust=False,
                     arrange_vertical=False,
-                    colsep = ', '))
+                    colsep=', '))
 
     print(columnize(data, displaywidth=39, ljust=False,
                     arrange_vertical=False,
-                    colsep = ', ', lineprefix='    '))
+                    colsep=', ', lineprefix='    '))
 
     import sys
     try:

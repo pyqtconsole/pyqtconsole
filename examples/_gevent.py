@@ -1,6 +1,7 @@
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
-#/usr/bin/python
-from gevent import monkey; monkey.patch_all()
+
+from gevent import monkey; monkey.patch_all()   # noqa
 
 import gevent
 import sys
@@ -23,7 +24,8 @@ class GEventProcessing:
         # Limit the IDLE handler's frequency while still allow for gevent
         # to trigger a microthread anytime
         self._idle_period = idle_period
-        # IDLE timer: on_idle is called whenever no Qt events left for processing
+        # IDLE timer: on_idle is called whenever no Qt events left for
+        # processing
         self._timer = QTimer()
         self._timer.timeout.connect(self.process_events)
         self._timer.start(0)

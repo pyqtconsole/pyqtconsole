@@ -79,12 +79,12 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         # Keyword, operator, and brace rules
         rules += [(r'\b%s\b' % w, 0, styles['keyword'])
-            for w in PythonHighlighter.keywords]
+                  for w in PythonHighlighter.keywords]
 
         # All other rules
         rules += [
             # 'self'
-            #(r'\bself\b', 0, STYLES['self']),
+            # (r'\bself\b', 0, STYLES['self']),
 
             # Double-quoted string, possibly containing escape sequences
             (r'"[^"\\]*(\\.[^"\\]*)*"', 0, styles['string']),
@@ -102,13 +102,13 @@ class PythonHighlighter(QSyntaxHighlighter):
             # Numeric literals
             (r'\b[+-]?[0-9]+[lL]?\b', 0, styles['numbers']),
             (r'\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b', 0, styles['numbers']),
-            (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0, styles['numbers']),
+            (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0,
+             styles['numbers']),
         ]
 
         # Build a QRegExp for each pattern
         self.rules = [(QRegExp(pat), index, fmt)
-            for (pat, index, fmt) in rules]
-
+                      for (pat, index, fmt) in rules]
 
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
@@ -130,7 +130,6 @@ class PythonHighlighter(QSyntaxHighlighter):
         in_multiline = self.match_multiline(text, *self.tri_single)
         if not in_multiline:
             in_multiline = self.match_multiline(text, *self.tri_double)
-
 
     def match_multiline(self, text, delimiter, in_state, style):
         """Do highlighting of multi-line strings. ``delimiter`` should be a

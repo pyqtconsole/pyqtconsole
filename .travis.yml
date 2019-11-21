@@ -10,10 +10,17 @@ python:
 install:
   - python setup.py sdist bdist_wheel
   - pip install dist/*.whl
-  - pip install twine
+  - pip install twine flake8
 
 script:
   - twine check dist/*
+
+  # flake8 is a static analysis tool based on:
+  # - pyflakes: static analysis (syntax errors, unused variables, etc)
+  # - pycodestyle: style checks
+  # - mccabe: complexity analysis
+  - flake8 --exclude 'pyqtconsole/qt,build'
+  - flake8 --exclude '' pyqtconsole/qt --ignore F401,F403,F811
 
 jobs:
   include:
