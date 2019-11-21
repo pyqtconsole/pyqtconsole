@@ -58,9 +58,6 @@ Embedding
   consideration (at least to some extent) for longer running processes. The
   best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
 
-* *trollius (asyncio)* - Runs the interpreter in a asyncio coroutine
-  `_trollius.py`_. Still experimental
-
 Credits
 ~~~~~~~
 
