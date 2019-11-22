@@ -10,7 +10,7 @@ python:
 install:
   - python setup.py sdist bdist_wheel
   - pip install dist/*.whl
-  - pip install twine flake8
+  - pip install twine flake8 pytest
 
 script:
   - twine check dist/*
@@ -21,6 +21,7 @@ script:
   # - mccabe: complexity analysis
   - flake8 --exclude 'pyqtconsole/qt,build'
   - flake8 --exclude '' pyqtconsole/qt --ignore F401,F403,F811
+  - pytest
 
 jobs:
   include:
