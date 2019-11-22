@@ -1,6 +1,8 @@
 pyqtconsole
 ===========
 
+|Version| |Python| |License| |Tests|
+
 pyqtconsole is a light weight python console for Qt applications. Its made to
 be easy to embed in other Qt applications and comes with some examples that
 shows how this can be done. The interpreter can run in a separate thread, in
@@ -98,3 +100,22 @@ both versions 4 and 5 of Qt.
 .. _`_gevent.py`: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_gevent.py
 .. _`_trollius.py`: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_trollius.py
 .. _pyQode: https://github.com/pyQode/pyqode.qt
+
+
+.. Badges:
+
+.. |Version| image::    https://img.shields.io/pypi/v/pyqtconsole.svg
+   :target:             https://pypi.org/project/pyqtconsole
+   :alt:                Latest Version
+
+.. |Python| image::     https://img.shields.io/pypi/pyversions/pyqtconsole.svg
+   :target:             https://pypi.org/project/pyqtconsole#files
+   :alt:                Python versions
+
+.. |License| image::    https://img.shields.io/pypi/l/pyqtconsole.svg
+   :target:             https://github.com/marcus-oscarsson/pyqtconsole/blob/master/LICENSE
+   :alt:                License: MIT
+
+.. |Tests| image::      https://api.travis-ci.org/marcus-oscarsson/pyqtconsole.svg?branch=master
+   :target:             https://travis-ci.org/marcus-oscarsson/pyqtconsole
+   :alt:                Test status
