@@ -2,7 +2,9 @@
 from threading import Condition
 from .qt.QtCore import QObject, Signal
 
+
 class Stream(QObject):
+
     write_event = Signal(str)
     flush_event = Signal(str)
     close_event = Signal()
@@ -24,7 +26,7 @@ class Stream(QObject):
 
         return data
 
-    def readline(self, timeout = None):
+    def readline(self, timeout=None):
         data = ''
 
         try:
@@ -41,9 +43,9 @@ class Stream(QObject):
                     if not notfied:
                         break
 
-                # Check if there really is something in the buffer after waiting
-                # for line_cond. There might have been a timeout, and there is
-                # still no data available
+                # Check if there really is something in the buffer after
+                # waiting for line_cond. There might have been a timeout, and
+                # there is still no data available
                 if first_linesep > -1:
                     data = self._buffer[0:first_linesep+1]
 

@@ -48,7 +48,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
                         exec(code, self.locals)
         except SystemExit as e:
             self.exit_signal.emit(e)
-        except:
+        except BaseException:
             self.showtraceback()
         finally:
             self._executing = False
@@ -147,7 +147,9 @@ def redirected_io(stdout):
 # We use a custom exit function to avoid issues with environments such as
 # spyder, where `builtins.exit` is not available, see #26:
 class Exit:
+
     def __repr__(self):
         return "Type exit() to exit this console."
+
     def __call__(self, *args):
         raise SystemExit(*args)

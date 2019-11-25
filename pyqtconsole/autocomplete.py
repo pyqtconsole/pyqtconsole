@@ -71,16 +71,14 @@ class AutoComplete(QObject):
         self.completer = QCompleter(words, self)
         self.completer.setCompletionPrefix(self.parent().input_buffer())
         self.completer.setWidget(self.parent().edit)
+        self.completer.setCaseSensitivity(Qt.CaseSensitive)
+        self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
             self.completer.setCompletionMode(QCompleter.PopupCompletion)
-            self.completer.setCaseSensitivity(Qt.CaseSensitive)
-            self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
             self.completer.activated.connect(self.insert_completion)
         else:
             self.completer.setCompletionMode(QCompleter.InlineCompletion)
-            self.completer.setCaseSensitivity(Qt.CaseSensitive)
-            self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
 
     def trigger_complete(self):
         _buffer = self.parent().input_buffer().strip()
@@ -114,7 +112,7 @@ class AutoComplete(QObject):
             cr.setWidth(popup_width)
             self.completer.complete(cr)
         elif self.mode == COMPLETE_MODE.INLINE:
-            cl = columnize(words, colsep = '  |  ')
+            cl = columnize(words, colsep='  |  ')
             self.parent()._insert_output_text(
                 '\n\n' + cl + '\n', lf=True, keep_buffer=True)
 
@@ -125,7 +123,8 @@ class AutoComplete(QObject):
 
     def completing(self):
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            return self.completer.popup() and self.completer.popup().isVisible()
+            return (self.completer.popup() and
+                    self.completer.popup().isVisible())
         else:
             return False
 
@@ -159,7 +158,7 @@ class AutoComplete(QObject):
                 self.show_completion_suggestions(_buffer)
                 self.completer.setCurrentRow(0)
                 model = self.completer.completionModel()
-                self.completer.popup().setCurrentIndex(model.index(0,0))
+                self.completer.popup().setCurrentIndex(model.index(0, 0))
             else:
                 self.completer.popup().hide()
 
