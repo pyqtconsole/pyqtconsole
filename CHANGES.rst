@@ -1,6 +1,13 @@
 Changelog
 ~~~~~~~~~
 
+v1.1.5
+------
+Date: 25.11.2019
+
+- fix TypeError in highlighter when called without formats
+
+
 v1.1.4
 ------
 Date: 21.11.2019
