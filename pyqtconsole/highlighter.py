@@ -39,7 +39,7 @@ STYLES = {
 class PromptHighlighter(object):
 
     def __init__(self, formats=None):
-        self.styles = styles = dict(STYLES, **formats)
+        self.styles = styles = dict(STYLES, **(formats or {}))
         self.rules = [
             # Match the prompt incase of a console
             (QRegExp(r'IN[^\:]*'), 0, styles['inprompt']),
@@ -67,7 +67,7 @@ class PythonHighlighter(QSyntaxHighlighter):
     def __init__(self, document, formats=None):
         QSyntaxHighlighter.__init__(self, document)
 
-        self.styles = styles = dict(STYLES, **formats)
+        self.styles = styles = dict(STYLES, **(formats or {}))
 
         # Multi-line strings (expression, flag, style)
         # FIXME: The triple-quotes in these two lines will mess up the
