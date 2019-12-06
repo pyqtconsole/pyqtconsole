@@ -168,6 +168,7 @@ class BaseConsole(QFrame):
             Qt.Key_D:           self._handle_d_key,
             Qt.Key_C:           self._handle_c_key,
             Qt.Key_V:           self._handle_v_key,
+            Qt.Key_U:           self._handle_u_key,
         }
 
     def insertFromMimeData(self, mime_data):
@@ -350,6 +351,12 @@ class BaseConsole(QFrame):
             self.edit.copy()
             intercepted = True
         return intercepted
+
+    def _handle_u_key(self, event):
+        if event.modifiers() == Qt.ControlModifier and self.input_buffer():
+            self.clear_input_buffer()
+            return True
+        return False
 
     def _handle_v_key(self, event):
         if event.modifiers() == Qt.ControlModifier or \
