@@ -1,7 +1,7 @@
 """
 Wrapping over the various qt bindings. It is used to write qt bindings
 indenpendent library or application. it Utomatically selects the first
-available API (PyQt5, PyQt4 and finally PySide).
+available API (PyQt5, PyQt4, PySide and finally PySide2).
 
 You can force the use of one specific bindings (e.g. if your application is
 using one specific bindings and you need to use library that use pyqode.qt) by
@@ -45,6 +45,18 @@ importing pyqode::
     >>> from pyqode.qt import QtGui, QtWidgets, QtCore
     >>> print(QtWidgets.QWidget)
 
+
+PySide2
+++++++
+
+Set the QT_API environment variable to 'PySide2' (case insensitive) before
+importing pyqode::
+
+    >>> import os
+    >>> os.environ['QT_API'] = 'PySide2'
+    >>> from pyqode.qt import QtGui, QtWidgets, QtCore
+    >>> print(QtWidgets.QWidget)
+
 """
 import os
 import sys
@@ -64,6 +76,8 @@ PYQT4_API = [
 ]
 #: names of the expected PySide api
 PYSIDE_API = ['pyside']
+#: names of the expected PySide2 api
+PYSIDE2_API = ['pyside2']
 
 
 class PythonQtError(Exception):
@@ -100,6 +114,7 @@ def autodetect():
     1) PyQt5
     2) PyQt4
     3) PySide
+    4) PySide2
     """
     logging.getLogger(__name__).debug('auto-detecting QT_API')
     try:
@@ -121,7 +136,13 @@ def autodetect():
                 os.environ[QT_API] = PYSIDE_API[0]
                 logging.getLogger(__name__).debug('imported PySide')
             except ImportError:
-                raise PythonQtError('No Qt bindings could be found')
+                try:
+                    logging.getLogger(__name__).debug('trying PySide2')
+                    import PySide2
+                    os.environ[QT_API] = PYSIDE2_API[0]
+                    logging.getLogger(__name__).debug('imported PySide2')
+                except ImportError:
+                    raise PythonQtError('No Qt bindings could be found')
 
 
 if QT_API in os.environ:
@@ -143,6 +164,11 @@ if QT_API in os.environ:
             import PySide
             os.environ[QT_API] = PYSIDE_API[0]
             logging.getLogger(__name__).debug('imported PySide')
+        elif os.environ[QT_API].lower() in PYSIDE2_API:
+            logging.getLogger(__name__).debug('importing PySide2')
+            import PySide2
+            os.environ[QT_API] = PYSIDE2_API[0]
+            logging.getLogger(__name__).debug('imported PySide2')
     except ImportError:
         logging.getLogger(__name__).warning(
             'failed to import the selected QT_API: %s',
