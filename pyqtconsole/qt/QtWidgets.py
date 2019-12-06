@@ -2,14 +2,16 @@
 Provides widget classes and functions.
 
 .. warning:: All PyQt4/PySide gui classes are exposed but when you use
-    PyQt5, those classes are not available. Therefore, you should treat/use
-    this package as if it was ``PyQt5.QtWidgets`` module.
+    PyQt5/PySide2, those classes are not available. Therefore, you should
+    treat/use this package as if it was
+    ``PyQt5.QtWidgets``/``PySide2.QtWidgets`` module.
 """
 import os
 from . import QT_API
 from . import PYQT5_API
 from . import PYQT4_API
 from . import PYSIDE_API
+from . import PYSIDE2_API
 
 if os.environ[QT_API] in PYQT5_API:
     from PyQt5.QtWidgets import *
@@ -44,3 +46,5 @@ elif os.environ[QT_API] in PYQT4_API:
                 options)
 elif os.environ[QT_API] in PYSIDE_API:
     from PySide.QtGui import *
+elif os.environ[QT_API] in PYSIDE2_API:
+    from PySide2.QtWidgets import *
