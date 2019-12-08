@@ -3,9 +3,9 @@ import threading
 import ctypes
 from abc import abstractmethod
 
-from .qt.QtCore import Qt, Signal, QThread, Slot, QEvent
-from .qt.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
-from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
+from qtpy.QtCore import Qt, Signal, QThread, Slot, QEvent
+from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
+from qtpy.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream

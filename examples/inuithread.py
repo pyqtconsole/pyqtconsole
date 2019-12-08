@@ -3,7 +3,7 @@
 
 import sys
 
-from pyqtconsole.qt.QtWidgets import QApplication
+from qtpy.QtWidgets import QApplication
 from pyqtconsole.console import PythonConsole
 from pyqtconsole.highlighter import format
 

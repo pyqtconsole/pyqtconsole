@@ -6,7 +6,7 @@ from functools import partial
 import ast
 from code import InteractiveInterpreter
 
-from .qt.QtCore import QObject, Slot, Signal
+from qtpy.QtCore import QObject, Slot, Signal
 
 
 class PythonInterpreter(QObject, InteractiveInterpreter):
