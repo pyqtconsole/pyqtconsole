@@ -144,6 +144,7 @@ class BaseConsole(QFrame):
         if executed and self._last_input:
             self._current_line += 1
         self._more = False
+        self._show_cursor()
         self._update_ps(self._more)
         self._show_ps()
 
@@ -186,6 +187,12 @@ class BaseConsole(QFrame):
         key = event.key()
         event.ignore()
 
+        if self._executing():
+            # ignore all key presses while executing, except for Ctrl-C
+            if event.modifiers() == Qt.ControlModifier and key == Qt.Key_C:
+                self._handle_ctrl_c()
+            return True
+
         handler = self._key_event_handlers.get(key)
         intercepted = handler and handler(event)
 
@@ -212,6 +219,7 @@ class BaseConsole(QFrame):
             cursor.movePosition(QTextCursor.End)
             self._setTextCursor(cursor)
             buffer = self.input_buffer()
+            self._hide_cursor()
             self.insert_input_text('\n', show_ps=False)
             self.process_input(buffer)
         return True
@@ -367,6 +375,12 @@ class BaseConsole(QFrame):
             return True
         return False
 
+    def _hide_cursor(self):
+        self.edit.setCursorWidth(0)
+
+    def _show_cursor(self):
+        self.edit.setCursorWidth(1)
+
     def _move_cursor(self, position, select=False):
         cursor = self._textCursor()
         mode = QTextCursor.KeepAnchor if select else QTextCursor.MoveAnchor
@@ -461,6 +475,7 @@ class BaseConsole(QFrame):
         self._update_ps(self._more)
         if self._more:
             self._show_ps()
+            self._show_cursor()
         else:
             self.input_applied_signal.emit(source)
             self._update_prompt_pos()
