@@ -3,7 +3,7 @@ import threading
 import ctypes
 from abc import abstractmethod
 
-from qtpy.QtCore import Qt, Signal, QThread, Slot, QEvent
+from qtpy.QtCore import Qt, QThread, Slot, QEvent
 from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
 from qtpy.QtGui import QFontMetrics, QTextCursor, QClipboard
 
@@ -31,8 +31,6 @@ except AttributeError:      # PyQt < 5.11
 class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
-
-    input_applied_signal = Signal(str)
 
     def __init__(self, parent=None, formats=None):
         super(BaseConsole, self).__init__(parent)
@@ -323,7 +321,7 @@ class BaseConsole(QFrame):
         if shift or '\n' in self.input_buffer()[:self.cursor_offset()]:
             self._move_cursor(QTextCursor.Up, select=shift)
         else:
-            self.command_history.dec()
+            self.command_history.dec(self.input_buffer())
         return True
 
     def _handle_down_key(self, event):
@@ -477,7 +475,7 @@ class BaseConsole(QFrame):
             self._show_ps()
             self._show_cursor()
         else:
-            self.input_applied_signal.emit(source)
+            self.command_history.add(source)
             self._update_prompt_pos()
 
     def _handle_ctrl_c(self):
