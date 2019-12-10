@@ -1,5 +1,5 @@
-from .qt.QtCore import QRegExp
-from .qt.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter)
+from qtpy.QtCore import QRegExp
+from qtpy.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter)
 
 import keyword
 

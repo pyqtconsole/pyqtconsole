@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .qt.QtCore import QObject
+from qtpy.QtCore import QObject
 
 
 class CommandHistory(QObject):
@@ -7,28 +7,33 @@ class CommandHistory(QObject):
         super(CommandHistory, self).__init__(parent)
         self._cmd_history = []
         self._idx = 0
-        parent.input_applied_signal.connect(self.add)
+        self._pending_input = ''
 
     def add(self, str_):
         if str_:
             self._cmd_history.append(str_)
 
+        self._pending_input = ''
         self._idx = len(self._cmd_history)
 
     def inc(self):
         # index starts at 0 so + 1 to make sure that we are within the
         # limits of the list
-        if len(self._cmd_history) and (self._idx + 1) < len(self._cmd_history):
-            self._idx += 1
+        if self._cmd_history:
+            self._idx = min(self._idx + 1, len(self._cmd_history))
             self._insert_in_editor(self.current())
 
-    def dec(self):
+    def dec(self, _input):
+        if self._idx == len(self._cmd_history):
+            self._pending_input = _input
         if len(self._cmd_history) and self._idx > 0:
             self._idx -= 1
             self._insert_in_editor(self.current())
 
     def current(self):
-        if len(self._cmd_history):
+        if self._idx == len(self._cmd_history):
+            return self._pending_input
+        else:
             return self._cmd_history[self._idx]
 
     def _insert_in_editor(self, str_):

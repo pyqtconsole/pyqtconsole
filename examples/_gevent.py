@@ -6,8 +6,8 @@ from gevent import monkey; monkey.patch_all()   # noqa
 import gevent
 import sys
 
-from pyqtconsole.qt.QtCore import QTimer
-from pyqtconsole.qt.QtWidgets import QApplication
+from qtpy.QtCore import QTimer
+from qtpy.QtWidgets import QApplication
 from pyqtconsole.console import PythonConsole
 
 

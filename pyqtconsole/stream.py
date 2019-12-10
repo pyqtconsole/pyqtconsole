@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from threading import Condition
-from .qt.QtCore import QObject, Signal
+from qtpy.QtCore import QObject, Signal
 
 
 class Stream(QObject):

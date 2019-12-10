@@ -91,16 +91,14 @@ All keys are optional and default to the value shown above if left unspecified.
 Credits
 ~~~~~~~
 
-The .qt sub module was taken from the pyQode_. And provides Qt4 and Qt5
-compatibility, the console is tested under both Qt4 and Qt5. The .qt sub
-module is included for easy distribution and to provide working examples for
-both versions 4 and 5 of Qt.
+This module depends on QtPy which provides a compatibility layer for
+Qt4 and Qt5. The console is tested under both Qt4 and Qt5.
 
 
 .. _threaded.py: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/threaded.py
 .. _inuithread.py: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/inuithread.py
 .. _`_gevent.py`: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_gevent.py
-.. _pyQode: https://github.com/pyQode/pyqode.qt
+.. _QtPy: https://github.com/spyder-ide/qtpy
 
 
 .. Badges:

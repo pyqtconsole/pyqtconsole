@@ -3,9 +3,9 @@ import threading
 import ctypes
 from abc import abstractmethod
 
-from .qt.QtCore import Qt, Signal, QThread, Slot, QEvent
-from .qt.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
-from .qt.QtGui import QFontMetrics, QTextCursor, QClipboard
+from qtpy.QtCore import Qt, QThread, Slot, QEvent
+from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
+from qtpy.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
@@ -31,8 +31,6 @@ except AttributeError:      # PyQt < 5.11
 class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
-
-    input_applied_signal = Signal(str)
 
     def __init__(self, parent=None, formats=None):
         super(BaseConsole, self).__init__(parent)
@@ -144,6 +142,7 @@ class BaseConsole(QFrame):
         if executed and self._last_input:
             self._current_line += 1
         self._more = False
+        self._show_cursor()
         self._update_ps(self._more)
         self._show_ps()
 
@@ -186,6 +185,12 @@ class BaseConsole(QFrame):
         key = event.key()
         event.ignore()
 
+        if self._executing():
+            # ignore all key presses while executing, except for Ctrl-C
+            if event.modifiers() == Qt.ControlModifier and key == Qt.Key_C:
+                self._handle_ctrl_c()
+            return True
+
         handler = self._key_event_handlers.get(key)
         intercepted = handler and handler(event)
 
@@ -212,6 +217,7 @@ class BaseConsole(QFrame):
             cursor.movePosition(QTextCursor.End)
             self._setTextCursor(cursor)
             buffer = self.input_buffer()
+            self._hide_cursor()
             self.insert_input_text('\n', show_ps=False)
             self.process_input(buffer)
         return True
@@ -315,7 +321,7 @@ class BaseConsole(QFrame):
         if shift or '\n' in self.input_buffer()[:self.cursor_offset()]:
             self._move_cursor(QTextCursor.Up, select=shift)
         else:
-            self.command_history.dec()
+            self.command_history.dec(self.input_buffer())
         return True
 
     def _handle_down_key(self, event):
@@ -366,6 +372,12 @@ class BaseConsole(QFrame):
             self.insertFromMimeData(mime_data)
             return True
         return False
+
+    def _hide_cursor(self):
+        self.edit.setCursorWidth(0)
+
+    def _show_cursor(self):
+        self.edit.setCursorWidth(1)
 
     def _move_cursor(self, position, select=False):
         cursor = self._textCursor()
@@ -461,8 +473,9 @@ class BaseConsole(QFrame):
         self._update_ps(self._more)
         if self._more:
             self._show_ps()
+            self._show_cursor()
         else:
-            self.input_applied_signal.emit(source)
+            self.command_history.add(source)
             self._update_prompt_pos()
 
     def _handle_ctrl_c(self):

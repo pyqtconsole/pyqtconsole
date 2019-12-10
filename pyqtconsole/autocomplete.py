@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from .qt.QtCore import Qt, QObject, QEvent
-from .qt.QtWidgets import QCompleter
+from qtpy.QtCore import Qt, QObject, QEvent
+from qtpy.QtWidgets import QCompleter
 
 from .text import columnize, long_substr
 
