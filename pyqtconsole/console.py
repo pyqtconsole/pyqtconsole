@@ -591,6 +591,7 @@ class PythonConsole(BaseConsole):
         """Exit interpreter."""
         if self._thread:
             self._thread.exit()
+            self._thread.wait()
             self._thread = None
         self._close()
 
