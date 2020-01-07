@@ -522,6 +522,15 @@ class BaseConsole(QFrame):
             block = cursor.blockNumber() + 1
             del self._prompt_doc[block:block+num_lines]
 
+    def closeEvent(self, event):
+        """Exit interpreter when we're closing."""
+        self.exit()
+        event.accept()
+
+    def _close(self):
+        if self.window().isVisible():
+            self.window().close()
+
     def set_tab(self, chars):
         self._tab_chars = chars
 
@@ -578,15 +587,13 @@ class PythonConsole(BaseConsole):
     def _run_source(self, source):
         return self.interpreter.runsource(source, symbol='multi')
 
-    def hideEvent(self, _event):
+    def exit(self):
+        """Exit interpreter."""
         if self._thread:
             self._thread.exit()
             self._thread.wait()
             self._thread = None
-
-    def exit(self):
-        """Exit interpreter."""
-        self.close()
+        self._close()
 
     def get_completions(self, line):
         """Get completions. Used by the ``autocomplete`` extension."""
