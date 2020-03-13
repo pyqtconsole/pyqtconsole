@@ -40,7 +40,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         # are running. Same thing for the except hook, we don't know what the
         # user are doing in it.
         try:
-            with redirected_io(self.stdout), disabled_excepthook():
+            with redirected_io(self.stdout):
                 for code, mode in codes:
                     if mode == 'eval':
                         result = eval(code, self.locals)
@@ -64,10 +64,12 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         if type_ == KeyboardInterrupt:
             self.stdout.write('KeyboardInterrupt\n')
         else:
-            InteractiveInterpreter.showtraceback(self)
+            with disabled_excepthook():
+                InteractiveInterpreter.showtraceback(self)
 
     def showsyntaxerror(self, filename):
-        InteractiveInterpreter.showsyntaxerror(self, filename)
+        with disabled_excepthook():
+            InteractiveInterpreter.showsyntaxerror(self, filename)
         self.done_signal.emit(False, None)
 
 
