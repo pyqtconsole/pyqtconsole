@@ -68,6 +68,8 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
                 InteractiveInterpreter.showtraceback(self)
 
     def showsyntaxerror(self, filename):
+        self.stdout.write('\n')
+
         with disabled_excepthook():
             InteractiveInterpreter.showsyntaxerror(self, filename)
         self.done_signal.emit(False, None)
