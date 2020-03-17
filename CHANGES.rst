@@ -1,6 +1,22 @@
 Changelog
 ~~~~~~~~~
 
+v1.2.0
+------
+Date: 17.03.2020
+
+- add PySide2 compatibility
+- add Ctrl-U shortcut to clear the input buffer
+- use standard QtPy package to provide the compatibility layer
+- hide the cursor during the execution of a python command
+- mimic shell behaviour when using up and down key to go to end of history
+- fix crash when closing the interpreter window of the threaded example
+- disable excepthook on displaying exception
+- write '\n' before syntax errors for consistency
+
+Thanks to @roberthdevries and @irgolic for their contributions!
+
+
 v1.1.5
 ------
 Date: 25.11.2019
