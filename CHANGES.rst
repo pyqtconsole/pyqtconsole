@@ -1,6 +1,13 @@
 Changelog
 ~~~~~~~~~
 
+v1.2.1
+------
+Date: 17.03.2020
+
+- fix accepting input with AltGr modifier on win10 (#53)
+
+
 v1.2.0
 ------
 Date: 17.03.2020
