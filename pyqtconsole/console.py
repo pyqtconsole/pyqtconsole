@@ -194,10 +194,12 @@ class BaseConsole(QFrame):
         handler = self._key_event_handlers.get(key)
         intercepted = handler and handler(event)
 
-        # Make sure that we can't move the cursor outside of the editing buffer
-        # If outside buffer and no modifiers used move the cursor back into to
-        # the buffer
-        if not event.modifiers() & Qt.ControlModifier:
+        # Assumes that Control+Key is a movement command, i.e. should not be
+        # handled as text insertion. However, on win10 AltGr is reported as
+        # Alt+Control which is why we handle this case like regular
+        # keypresses, see #53:
+        if not event.modifiers() & Qt.ControlModifier or \
+                event.modifiers() & Qt.AltModifier:
             self._keep_cursor_in_buffer()
 
             if not intercepted and event.text():
