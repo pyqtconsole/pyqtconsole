@@ -600,7 +600,14 @@ class PythonConsole(BaseConsole):
     def get_completions(self, line):
         """Get completions. Used by the ``autocomplete`` extension."""
         script = jedi.Interpreter(line, [self.interpreter.locals])
-        return [comp.name for comp in script.completions()]
+
+        try:
+            comps = script.complete()
+        except AttributeError:
+            # Jedi < 0.16.0 named the method differently
+            comps = script.completions()
+
+        return [comp.name for comp in comps]
 
     def push_local_ns(self, name, value):
         """Set a variable in the local namespace."""
