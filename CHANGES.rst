@@ -1,6 +1,13 @@
 Changelog
 ~~~~~~~~~
 
+v1.2.2
+------
+Date: 18.10.2021
+
+- fixed PyQt warning because of explicit integer type
+- fixed jedi autocomplete because of method rename
+
 v1.2.1
 ------
 Date: 17.03.2020
