@@ -29,7 +29,7 @@ class PromptArea(QWidget):
                 edit.contentOffset()).top()
             if not block.isVisible() or block_top > event.rect().bottom():
                 break
-            rect = QRect(0, block_top, self.width(), height)
+            rect = QRect(0, int(block_top), self.width(), height)
             self.draw_block(painter, rect, block, first)
             first = False
             block = block.next()
