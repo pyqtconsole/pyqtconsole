@@ -115,6 +115,6 @@ Qt4 and Qt5. The console is tested under both Qt4 and Qt5.
    :target:             https://github.com/marcus-oscarsson/pyqtconsole/blob/master/LICENSE
    :alt:                License: MIT
 
-.. |Tests| image::      https://api.travis-ci.org/marcus-oscarsson/pyqtconsole.svg?branch=master
-   :target:             https://travis-ci.org/marcus-oscarsson/pyqtconsole
+.. |Tests| image::      https://github.com/pyqtconsole/pyqtconsole/workflows/Tests/badge.svg
+   :target:             https://github.com/pyqtconsole/pyqtconsole/actions?query=Tests
    :alt:                Test status

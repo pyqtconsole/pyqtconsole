@@ -1,25 +1,54 @@
-name: Unittests
-
-on: [push, pull_request]
+name: Tests
+on:
+  push:
+  pull_request:
 
 jobs:
-  tests:
+  test:
     strategy:
-        fail-fast: false
-        matrix:
-            python-version: ["3.7", "3.8", "3.9", "3.10"]
-            os: [macos-latest, ubuntu-latest, windows-latest]
+      fail-fast: false
+      matrix:
+        python:
+          - "3.7"
+          - "3.8"
+          - "3.9"
+          - "3.10"
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
-      - name: python
-        uses: actions/setup-python@v1
+      - uses: actions/setup-python@v2
         with:
-            python-version: ${{ matrix.python-version }}
-      - name: install
-        run: |
-          pip install .
-          pip install pytest
-      - name: test
-        run: pytest
+          python-version: ${{ matrix.python }}
+
+      - run: pip install build
+      - run: python -m build .
+
+      - run: pip install dist/*.whl
+        shell: bash
+
+      - run: pip install pytest
+      - run: pytest
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: dist ${{ matrix.os }} ${{ matrix.python }}
+          path: dist/
+
+  deploy:
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: dist ubuntu-latest 3.10
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@master
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_TOKEN }}
