@@ -45,7 +45,7 @@ class AutoComplete(QObject):
             return False
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            if self.parent().input_buffer().strip():
+            if self.parent().input_buffer().split("\n")[-1].strip():
                 if self.completing():
                     self.complete()
                 else:
