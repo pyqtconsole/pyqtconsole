@@ -141,13 +141,14 @@ class PythonHighlighter(QSyntaxHighlighter):
                 add = m.end() - m.start()
             else:
                 start = -1
+                add = -1
 
         # As long as there's a delimiter match on this line...
         while start >= 0:
             # Look for the ending delimiter
             m = delimiter.search(text, start + add)
             # Ending delimiter on this line?
-            if m and ((end := m.start()) >= add):
+            if m and (m.start() >= add):
                 # length = end - start + add + m.end() - m.start()
                 length = add + m.end() - start
                 self.setCurrentBlockState(0)
