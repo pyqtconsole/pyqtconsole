@@ -1,6 +1,13 @@
 Changelog
 ~~~~~~~~~
 
+v1.2.3
+------
+Date: 19.09.2023
+
+- fixed indentation and autocomplete conflict (#74)
+- replaced ``QRegExp`` for compatibility with QT6 (#76)
+
 v1.2.2
 ------
 Date: 18.10.2021
