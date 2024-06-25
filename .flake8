@@ -1,0 +1,4 @@
+# Flake8 config is not supported in pyproject.toml (yet)
+
+[flake8]
+max-line-length = 82

@@ -1,6 +1,11 @@
 Changelog
 ~~~~~~~~~
 
+Unreleased
+----------
+
+- migrated from ``setup.py`` + ``setup.cfg`` to ``pyproject.toml``
+
 v1.2.3
 ------
 Date: 19.09.2023
