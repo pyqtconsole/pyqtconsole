@@ -9,14 +9,13 @@ authors = [
     {name = "Marcus Oskarsson", email = "marcus.oscarsson@esrf.fr"}
 ]
 description = "Light-weight python interpreter, easy to embed into Qt applications"
-requires-python = ">=2.7"
+requires-python = ">=3.8"
 keywords = ["interactive", "interpreter", "console", "shell", "autocompletion", "jedi", "qt"]
 license = {text = "MIT"}
 classifiers = [
     "Environment :: X11 Applications :: Qt",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 2.7",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Interpreters",
     "Topic :: Software Development :: User Interfaces",
