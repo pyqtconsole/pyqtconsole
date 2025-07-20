@@ -67,11 +67,11 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
             with disabled_excepthook():
                 InteractiveInterpreter.showtraceback(self)
 
-    def showsyntaxerror(self, filename):
+    def showsyntaxerror(self, filename, **kwargs):
         self.stdout.write('\n')
 
         with disabled_excepthook():
-            InteractiveInterpreter.showsyntaxerror(self, filename)
+            InteractiveInterpreter.showsyntaxerror(self, filename, **kwargs)
         self.done_signal.emit(False, None)
 
 
