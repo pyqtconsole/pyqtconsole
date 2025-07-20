@@ -67,11 +67,12 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
             with disabled_excepthook():
                 InteractiveInterpreter.showtraceback(self)
 
-    def showsyntaxerror(self, filename):
+    def showsyntaxerror(self, filename=None, **kwargs):
         self.stdout.write('\n')
 
         with disabled_excepthook():
-            InteractiveInterpreter.showsyntaxerror(self, filename)
+            # It seems Python 3.13 requires **kwargs, older versions don't
+            InteractiveInterpreter.showsyntaxerror(self, filename, **kwargs)
         self.done_signal.emit(False, None)
 
 
