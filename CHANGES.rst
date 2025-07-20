@@ -6,6 +6,7 @@ Unreleased
 
 - migrated from ``setup.py`` + ``setup.cfg`` to ``pyproject.toml``
 - dropped support for Python 3.8 and added 3.13 (no code changes)
+- fixed issue with displaying syntax errors for Python 3.13
 
 v1.2.3
 ------
