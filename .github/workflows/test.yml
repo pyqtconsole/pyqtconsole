@@ -9,11 +9,11 @@ jobs:
       fail-fast: false
       matrix:
         python:
-          - "3.8"
           - "3.9"
           - "3.10"
           - "3.11"
           - "3.12"
+          - "3.13"
         os:
           - macos-latest
           - ubuntu-latest
@@ -21,8 +21,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
 
@@ -41,7 +41,7 @@ jobs:
       - run: pip install pytest
       - run: pytest
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: dist ${{ matrix.os }} ${{ matrix.python }}
           path: dist/
@@ -51,7 +51,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/download-artifact@v4.1.7
+      - uses: actions/download-artifact@v4
         with:
           name: dist ubuntu-latest 3.10
           path: dist/

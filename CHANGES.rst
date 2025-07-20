@@ -5,6 +5,7 @@ Unreleased
 ----------
 
 - migrated from ``setup.py`` + ``setup.cfg`` to ``pyproject.toml``
+- dropped support for Python 3.8 and added 3.13 (no code changes)
 
 v1.2.3
 ------
