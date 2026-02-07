@@ -2,6 +2,7 @@
 import threading
 import ctypes
 from abc import abstractmethod
+import subprocess
 
 from qtpy.QtCore import Qt, QThread, Slot, QEvent
 from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
@@ -480,14 +481,47 @@ class BaseConsole(QFrame):
     def process_input(self, source):
         """Handle a new source snippet confirmed by the user."""
         self._last_input = source
-        self._more = self._run_source(source)
-        self._update_ps(self._more)
-        if self._more:
-            self._show_ps()
+        
+        # Check if this is a system command (starts with !)
+        if source.strip().startswith('!'):
+            self._run_system_command(source.strip()[1:])
+            self._more = False
+            if self._last_input:
+                self._current_line += 1
             self._show_cursor()
-        else:
+            self._update_ps(self._more)
             self.command_history.add(source)
             self._update_prompt_pos()
+            self._show_ps()
+        else:
+            self._more = self._run_source(source)
+            self._update_ps(self._more)
+            if self._more:
+                self._show_ps()
+                self._show_cursor()
+            else:
+                self.command_history.add(source)
+                self._update_prompt_pos()
+    
+    def _run_system_command(self, command):
+        """Execute a system command and display its output."""
+        try:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True
+            )
+            if result.stdout:
+                self._insert_output_text(result.stdout)
+            if result.stderr:
+                self._insert_output_text(result.stderr)
+            if result.returncode != 0:
+                self._insert_output_text(f'\n[Exit code: {result.returncode}]\n')
+        except subprocess.TimeoutExpired:
+            self._insert_output_text('\n[Command timed out]\n')
+        except Exception as e:
+            self._insert_output_text(f'\n[Error: {str(e)}]\n')
 
     def _handle_ctrl_c(self):
         """Inject keyboard interrupt if code is being executed in a thread,
