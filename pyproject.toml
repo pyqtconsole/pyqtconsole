@@ -29,7 +29,7 @@ dependencies = [
 dev = ["flake8"]
 
 [project.urls]
-Homepage = "https://github.com/marcus-oscarsson/pyqtconsole"
+Homepage = "https://github.com/pyqtconsole/pyqtconsole"
 
 [tool.setuptools]
 license-files = ["LICENSE"]

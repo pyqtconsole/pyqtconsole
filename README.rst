@@ -95,9 +95,9 @@ This module depends on QtPy which provides a compatibility layer for
 Qt4 and Qt5. The console is tested under both Qt4 and Qt5.
 
 
-.. _threaded.py: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/threaded.py
-.. _inuithread.py: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/inuithread.py
-.. _`_gevent.py`: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_gevent.py
+.. _threaded.py: https://github.com/pyqtconsole/pyqtconsole/blob/master/examples/threaded.py
+.. _inuithread.py: https://github.com/pyqtconsole/pyqtconsole/blob/master/examples/inuithread.py
+.. _`_gevent.py`: https://github.com/pyqtconsole/pyqtconsole/blob/master/examples/_gevent.py
 .. _QtPy: https://github.com/spyder-ide/qtpy
 
 
@@ -112,7 +112,7 @@ Qt4 and Qt5. The console is tested under both Qt4 and Qt5.
    :alt:                Python versions
 
 .. |License| image::    https://img.shields.io/pypi/l/pyqtconsole.svg
-   :target:             https://github.com/marcus-oscarsson/pyqtconsole/blob/master/LICENSE
+   :target:             https://github.com/pyqtconsole/pyqtconsole/blob/master/LICENSE
    :alt:                License: MIT
 
 .. |Tests| image::      https://github.com/pyqtconsole/pyqtconsole/workflows/Tests/badge.svg
