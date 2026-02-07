@@ -109,9 +109,20 @@ class PythonHighlighter(QSyntaxHighlighter):
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
         """
-        # Do other syntax formatting
+        # Find all positions inside strings
+        string_positions = {
+            pos
+            for expression, nth, fmt in self.rules
+            if fmt == self.styles['string']
+            for m in expression.finditer(text)
+            for pos in range(m.start(nth), m.end(nth))
+        }
+        
+        # Apply formatting, skipping comments inside strings
         for expression, nth, format in self.rules:
             for m in expression.finditer(text):
+                if format == self.styles['comment'] and m.start(nth) in string_positions:
+                    continue
                 self.setFormat(m.start(nth), m.end(nth) - m.start(nth), format)
 
         self.setCurrentBlockState(0)
