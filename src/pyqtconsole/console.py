@@ -32,7 +32,7 @@ class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
 
-    def __init__(self, parent=None, formats=None):
+    def __init__(self, parent=None, formats=None, inprompt=None, outprompt=None):
         super(BaseConsole, self).__init__(parent)
 
         self.edit = edit = InputArea()
@@ -57,10 +57,12 @@ class BaseConsole(QFrame):
         self._more = False
         self._current_line = 0
 
-        self._ps1 = 'IN [%s]: '
+        self._ps1 = inprompt or 'IN [%s]: '
+        self._ps1 = self._ps1.strip() + ' ' 
         self._ps2 = '...: '
-        self._ps_out = 'OUT[%s]: '
-        self._ps = self._ps1 % self._current_line
+        self._ps_out = outprompt or 'OUT[%s]: '
+        self._ps_out = self._ps_out.strip() + ' ' 
+        self._ps = self.inPrompt()
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -98,6 +100,22 @@ class BaseConsole(QFrame):
 
         self._show_ps()
 
+    def outPrompt(self):
+        """return the output prompt."""
+        try:
+            # may depend on current line:
+            return self._ps_out % self._current_line
+        except Exception:
+            return self._ps_out
+
+    def inPrompt(self):
+        """return the input prompt."""
+        try:
+            # may depend on current line:
+            return self._ps1 % self._current_line
+        except Exception:
+            return self._ps1
+        
     def setFont(self, font):
         """Set font (you should only use monospace!)."""
         self.edit.document().setDefaultFont(font)
@@ -127,7 +145,7 @@ class BaseConsole(QFrame):
         # If the input is complete increase the input number and show
         # the in prompt
         if not _more:
-            self._ps = self._ps1 % self._current_line
+            self._ps = self.inPrompt()
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * ' ' + self._ps2
 
@@ -136,7 +154,7 @@ class BaseConsole(QFrame):
         if result is not None:
             self._insert_output_text(
                 repr(result),
-                prompt=self._ps_out % self._current_line)
+                prompt=self.outPrompt())
             self._insert_output_text('\n')
 
         if executed and self._last_input:
@@ -566,8 +584,8 @@ class PythonConsole(BaseConsole):
 
     """Interactive python GUI console."""
 
-    def __init__(self, parent=None, locals=None, formats=None):
-        super(PythonConsole, self).__init__(parent, formats=formats)
+    def __init__(self, parent=None, locals=None, formats=None, inprompt=None, outprompt=None):
+        super(PythonConsole, self).__init__(parent, formats=formats, inprompt=inprompt, outprompt=outprompt)
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(
