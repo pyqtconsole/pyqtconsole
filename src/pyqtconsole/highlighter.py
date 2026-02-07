@@ -126,10 +126,11 @@ class PythonHighlighter(QSyntaxHighlighter):
             for pos in range(m.start(nth), m.end(nth))
         }
         
-        # Apply formatting, skipping comments inside strings
+        # Apply formatting, skipping non-string rules inside strings
         for expression, nth, format in self.rules:
             for m in expression.finditer(text):
-                if format == self.styles['comment'] and m.start(nth) in string_positions:
+                # Skip non-string formatting if it's inside a string
+                if format != self.styles['string'] and m.start(nth) in string_positions:
                     continue
                 start_pos = self._to_utf16_offset(text, m.start(nth))
                 end_pos = self._to_utf16_offset(text, m.end(nth))
