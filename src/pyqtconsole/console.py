@@ -424,11 +424,12 @@ class BaseConsole(QFrame):
 
     def input_buffer(self):
         """Retrieve current input buffer in string form."""
-        # Use cursor selection to properly handle multi-byte characters like emojis
+        # Use cursor selection to properly handle multi-byte
+        # characters like emojis
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
-        return cursor.selectedText().replace(u'\u2029', '\n')
+        return cursor.selectedText()
 
     def cursor_offset(self):
         """Get current cursor index within input buffer."""
@@ -436,7 +437,7 @@ class BaseConsole(QFrame):
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.setPosition(self._textCursor().position(), QTextCursor.KeepAnchor)
-        selected_text = cursor.selectedText().replace(u'\u2029', '\n')
+        selected_text = cursor.selectedText()
         return len(selected_text)
 
     def _get_line_until_cursor(self):
