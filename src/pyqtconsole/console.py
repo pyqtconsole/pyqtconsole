@@ -540,15 +540,15 @@ class BaseConsole(QFrame):
                 output += f'[Exit code: {result.returncode}]\n'
             
             if output:
-                self._insert_output_text(output, prompt=self._ps_out % self._current_line)
+                self._insert_output_text(output, prompt=self.outPrompt())
                 self._insert_output_text('\n')
         except subprocess.TimeoutExpired:
             self._insert_output_text('[Command timed out]\n',
-                                   prompt=self._ps_out % self._current_line)
+                                   prompt=self.outPrompt())
             self._insert_output_text('\n')
         except Exception as e:
             self._insert_output_text(f'[Error: {str(e)}]\n',
-                                   prompt=self._ps_out % self._current_line)
+                                   prompt=self.outPrompt())
             self._insert_output_text('\n')
 
     def _handle_ctrl_c(self):
