@@ -67,6 +67,17 @@ class BaseConsole(QFrame):
         self._ps_out = self._ps_out.strip() + ' ' 
         self._ps = self.inPrompt()
 
+        self.MAGIC_COMMANDS = {
+            'pwd': self._PWD,
+            'cd': self._CD,
+            'ls': self._LS,
+            'help': self._HELP,
+            'clear': self._CLEAR,
+            'who': self._WHO,
+            'whos': self._WHOS,
+            'timeit': self._TIMEIT,
+        }  # magic command name (without %) -> function(args) mapping
+
         self.stdin = Stream()
         self.stdout = Stream()
         self.stdout.write_event.connect(self._stdout_data_handler)
@@ -556,6 +567,74 @@ class BaseConsole(QFrame):
                                      prompt=self.outPrompt())
             self._insert_output_text('\n')
 
+    def _PWD(self, args = None):
+        """Return current working directory."""
+        return os.getcwd() + '\n'
+
+    def _CD(self, args = None):
+        """Change current working directory, with optional argument for target directory."""
+        if args:
+            os.chdir(os.path.expanduser(args))
+        return os.getcwd() + '\n'
+    
+    def _LS(self, args = None):
+        """Directory listing, with optional arguments (e.g. -l, -a)"""
+        result = subprocess.run(
+            f'ls {args}' if args else 'ls',
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        return result.stdout if result.stdout else result.stderr
+
+    def _CLEAR(self, args = None):
+        """Clear the console display."""
+        self.clear()
+        return ''
+    
+    def _WHO(self, args = None):
+        """List variable names"""
+        vars_list = [name for name in self.interpreter.locals.keys()
+                    if not name.startswith('_')]
+        return '  '.join(sorted(vars_list)) + '\n' if vars_list else 'No variables\n'
+
+    def _WHOS(self, args = None):
+        """Detailed variable listing"""
+        lines = ['Variable   Type         Data/Info\n']
+        lines.append('-' * 50 + '\n')
+        for name in sorted(self.interpreter.locals.keys()):
+            if not name.startswith('_'):
+                obj = self.interpreter.locals[name]
+                obj_type = type(obj).__name__
+                try:
+                    obj_repr = repr(obj)
+                    if len(obj_repr) > 40:
+                        obj_repr = obj_repr[:37] + '...'
+                except:
+                    obj_repr = '<repr failed>'
+                lines.append(f'{name:<10} {obj_type:<12} {obj_repr}\n')
+        return ''.join(lines) if len(lines) > 2 else 'No variables\n'
+
+    def _TIMEIT(self, args = None):
+        """Simple timeit implementation"""
+        if not args:
+            return 'Usage: %timeit <statement>\n'
+        import timeit
+        try:
+            number = 10000
+            per_loop = timeit.Timer(args, globals=self.interpreter.locals).timeit(number) / number
+            for threshold, scale, unit in [(1e-6, 1e9, 'ns'), (1e-3, 1e6, 'µs'), (1, 1e3, 'ms')]:
+                if per_loop < threshold:
+                    return f'{per_loop * scale:.1f} {unit} ± per loop (mean of {number} runs)\n'
+            return f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
+        except Exception as e:
+            return f'Error timing code: {str(e)}\n'
+
+    def _HELP(self, args = None):    
+        """help message for magic commands"""
+        available_cmds = ', '.join([f'%{c}' for c in sorted(self.MAGIC_COMMANDS.keys())])
+        return f'Available magic commands: {available_cmds}\n'
+
     def _run_magic_command(self, command):
         """Execute a magic command and display its output."""
         
@@ -565,78 +644,11 @@ class BaseConsole(QFrame):
         
         try:
             output = ''
-            
-            if magic == 'pwd':
-                output = os.getcwd() + '\n'
-            
-            elif magic == 'cd':
-                if args:
-                    os.chdir(os.path.expanduser(args))
-                output = os.getcwd() + '\n'
-            
-            elif magic == 'ls':
-                result = subprocess.run(
-                    f'ls {args}' if args else 'ls',
-                    shell=True,
-                    capture_output=True,
-                    text=True
-                )
-                output = result.stdout if result.stdout else result.stderr
-            
-            elif magic == 'clear':
-                self.clear()
-                output = ''
-            
-            elif magic == 'who':
-                # List variable names
-                vars_list = [name for name in self.interpreter.locals.keys()
-                           if not name.startswith('_')]
-                output = '  '.join(sorted(vars_list)) + '\n' if vars_list else 'No variables\n'
-            
-            elif magic == 'whos':
-                # Detailed variable listing
-                lines = ['Variable   Type         Data/Info\n']
-                lines.append('-' * 50 + '\n')
-                for name in sorted(self.interpreter.locals.keys()):
-                    if not name.startswith('_'):
-                        obj = self.interpreter.locals[name]
-                        obj_type = type(obj).__name__
-                        try:
-                            obj_repr = repr(obj)
-                            if len(obj_repr) > 40:
-                                obj_repr = obj_repr[:37] + '...'
-                        except:
-                            obj_repr = '<repr failed>'
-                        lines.append(f'{name:<10} {obj_type:<12} {obj_repr}\n')
-                output = ''.join(lines) if len(lines) > 2 else 'No variables\n'
-            
-            elif magic == 'timeit':
-                # Simple timeit implementation
-                if args:
-                    import timeit
-                    try:
-                        # Run multiple times and get average
-                        timer = timeit.Timer(args, globals=self.interpreter.locals)
-                        number = 10000
-                        time_taken = timer.timeit(number=number)
-                        per_loop = time_taken / number
-                        
-                        if per_loop < 1e-6:
-                            output = f'{per_loop * 1e9:.1f} ns ± per loop (mean of {number} runs)\n'
-                        elif per_loop < 1e-3:
-                            output = f'{per_loop * 1e6:.1f} µs ± per loop (mean of {number} runs)\n'
-                        elif per_loop < 1:
-                            output = f'{per_loop * 1e3:.1f} ms ± per loop (mean of {number} runs)\n'
-                        else:
-                            output = f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
-                    except Exception as e:
-                        output = f'Error timing code: {str(e)}\n'
-                else:
-                    output = 'Usage: %timeit <statement>\n'
-            
+            if magic in self.MAGIC_COMMANDS:
+                output = self.MAGIC_COMMANDS[magic](args)            
             else:
                 output = f'Unknown magic command: %{magic}\n'
-                output += f'Available: %pwd, %cd, %ls, %clear, %who, %whos, %timeit\n'
+                output += self._HELP() 
             
             if output:
                 self._insert_output_text(output, prompt=self.outPrompt())
