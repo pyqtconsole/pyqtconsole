@@ -84,6 +84,7 @@ must be shaped as follows:
         'numbers':    hl.format('brown'),
         'inprompt':   hl.format('darkBlue', 'bold'),
         'outprompt':  hl.format('darkRed', 'bold'),
+        'magic':      hl.format('darkCyan', 'bold'),
     })
 
 All keys are optional and default to the value shown above if left unspecified.
