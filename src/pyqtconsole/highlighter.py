@@ -33,6 +33,8 @@ STYLES = {
     'numbers': format('brown'),
     'inprompt': format('darkBlue', 'bold'),
     'outprompt': format('darkRed', 'bold'),
+    'fstring': format('darkCyan', 'bold'),
+    'escape': format('darkorange', 'bold'),
 }
 
 
@@ -106,13 +108,41 @@ class PythonHighlighter(QSyntaxHighlighter):
         self.rules = [(re.compile(pat), index, fmt)
                       for (pat, index, fmt) in rules]
 
+        self.fstring_pattern = re.compile(
+            r"[fF][rR]?(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
+
+        self.string_pattern = re.compile(r"(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
+        self.escape_pattern = re.compile(
+            r'\\(?:[\\\'\"\'abfnrtv0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|'
+            r'U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})'
+        )
+
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
         """
-        # Do other syntax formatting
+        s = self.styles['string']
+        # Find all positions inside strings
+        string_positions = {
+            pos
+            for expression, nth, fmt in self.rules
+            if fmt == s
+            for m in expression.finditer(text)
+            for pos in range(m.start(nth), m.end(nth))
+        }
+
+        # Apply formatting, skipping non-string rules inside strings
         for expression, nth, format in self.rules:
             for m in expression.finditer(text):
+                # Skip non-string formatting if it's inside a string
+                if format != s and m.start(nth) in string_positions:
+                    continue
                 self.setFormat(m.start(nth), m.end(nth) - m.start(nth), format)
+
+        # Highlight f-string interpolations
+        self.highlight_fstring_interpolations(text)
+
+        # Highlight escape sequences in strings
+        self.highlight_escape_sequences(text)
 
         self.setCurrentBlockState(0)
 
@@ -167,3 +197,52 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         # Return True if still inside a multi-line string, False otherwise
         return self.currentBlockState() == in_state
+
+    def highlight_fstring_interpolations(self, text):
+        """Highlight f-string interpolations (the {} parts).
+        """
+        for m in self.fstring_pattern.finditer(text):
+            string_content = m.group(2)
+            ln = len(string_content)
+            content_start = m.start(2)
+
+            i = 0
+            while i < ln:
+                if string_content[i] == '{':
+                    # Skip escaped braces {{
+                    if i + 1 < ln and string_content[i + 1] == '{':
+                        i += 2
+                        continue
+
+                    # Find matching closing brace
+                    brace_count = 1
+                    j = i + 1
+                    while j < ln and brace_count > 0:
+                        if string_content[j:j+2] == '}}':
+                            j += 2  # Skip escaped }}
+                        elif string_content[j] == '{':
+                            brace_count += 1
+                            j += 1
+                        elif string_content[j] == '}':
+                            brace_count -= 1
+                            j += 1
+                        else:
+                            j += 1
+
+                    if brace_count == 0:
+                        self.setFormat(content_start + i, j - i,
+                                       self.styles['fstring'])
+                        i = j
+                    else:
+                        i += 1
+                else:
+                    i += 1
+
+    def highlight_escape_sequences(self, text):
+        """Highlight escape sequences in strings.
+        """
+        for m in self.string_pattern.finditer(text):
+            content_start = m.start(2)
+            for esc in self.escape_pattern.finditer(m.group(2)):
+                self.setFormat(content_start + esc.start(),
+                               len(esc.group()), self.styles['escape'])
