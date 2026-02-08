@@ -76,6 +76,7 @@ class BaseConsole(QFrame):
             'who': self._WHO,
             'whos': self._WHOS,
             'timeit': self._TIMEIT,
+            'run': self._RUN,
         }  # magic command name (without %) -> function(args) mapping
 
         self.stdin = Stream()
@@ -629,6 +630,20 @@ class BaseConsole(QFrame):
             return f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
         except Exception as e:
             return f'Error timing code: {str(e)}\n'
+
+    def _RUN(self, args):
+        """Execute a Python script"""
+        if not args:
+            return 'Usage: %run <script.py>\n'
+        import runpy
+        try:
+            script_path = os.path.expanduser(args.strip())
+            runpy.run_path(script_path, init_globals=self.interpreter.locals, run_name='__main__')
+            return ''
+        except FileNotFoundError:
+            return f'File not found: {args}\n'
+        except Exception as e:
+            return f'Error running script: {str(e)}\n'
 
     def _HELP(self, args = None):    
         """help message for magic commands"""
