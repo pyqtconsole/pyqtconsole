@@ -38,7 +38,7 @@ jobs:
       - run: pip install dist/*.whl
         shell: bash
 
-      - run: pip install pytest
+      - run: pip install pytest pyside6
       - run: pytest
 
       - uses: actions/upload-artifact@v4
