@@ -567,17 +567,17 @@ class BaseConsole(QFrame):
                                      prompt=self.outPrompt())
             self._insert_output_text('\n')
 
-    def _PWD(self, args):
+    def _PWD(self, args = None):
         """Return current working directory."""
         return os.getcwd() + '\n'
 
-    def _CD(self, args):
+    def _CD(self, args = None):
         """Change current working directory, with optional argument for target directory."""
         if args:
             os.chdir(os.path.expanduser(args))
         return os.getcwd() + '\n'
     
-    def _LS(self, args):
+    def _LS(self, args = None):
         """Directory listing, with optional arguments (e.g. -l, -a)"""
         result = subprocess.run(
             f'ls {args}' if args else 'ls',
@@ -587,18 +587,18 @@ class BaseConsole(QFrame):
         )
         return result.stdout if result.stdout else result.stderr
 
-    def _CLEAR(self, args):
+    def _CLEAR(self, args = None):
         """Clear the console display."""
         self.clear()
         return ''
     
-    def _WHO(self, args):
+    def _WHO(self, args = None):
         """List variable names"""
         vars_list = [name for name in self.interpreter.locals.keys()
                     if not name.startswith('_')]
         return '  '.join(sorted(vars_list)) + '\n' if vars_list else 'No variables\n'
 
-    def _WHOS(self, args):
+    def _WHOS(self, args = None):
         """Detailed variable listing"""
         lines = ['Variable   Type         Data/Info\n']
         lines.append('-' * 50 + '\n')
@@ -615,29 +615,20 @@ class BaseConsole(QFrame):
                 lines.append(f'{name:<10} {obj_type:<12} {obj_repr}\n')
         return ''.join(lines) if len(lines) > 2 else 'No variables\n'
 
-    def _TIMEIT(self, args):    
+    def _TIMEIT(self, args = None):
         """Simple timeit implementation"""
-        if args:
-            import timeit
-            try:
-                # Run multiple times and get average
-                timer = timeit.Timer(args, globals=self.interpreter.locals)
-                number = 10000
-                time_taken = timer.timeit(number=number)
-                per_loop = time_taken / number
-                
-                if per_loop < 1e-6:
-                    return f'{per_loop * 1e9:.1f} ns ± per loop (mean of {number} runs)\n'
-                elif per_loop < 1e-3:
-                    return f'{per_loop * 1e6:.1f} µs ± per loop (mean of {number} runs)\n'
-                elif per_loop < 1:
-                    return f'{per_loop * 1e3:.1f} ms ± per loop (mean of {number} runs)\n'
-                else:
-                    return f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
-            except Exception as e:
-                return f'Error timing code: {str(e)}\n'
-        else:
+        if not args:
             return 'Usage: %timeit <statement>\n'
+        import timeit
+        try:
+            number = 10000
+            per_loop = timeit.Timer(args, globals=self.interpreter.locals).timeit(number) / number
+            for threshold, scale, unit in [(1e-6, 1e9, 'ns'), (1e-3, 1e6, 'µs'), (1, 1e3, 'ms')]:
+                if per_loop < threshold:
+                    return f'{per_loop * scale:.1f} {unit} ± per loop (mean of {number} runs)\n'
+            return f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
+        except Exception as e:
+            return f'Error timing code: {str(e)}\n'
 
     def _HELP(self, args = None):    
         """help message for magic commands"""
