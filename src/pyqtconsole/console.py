@@ -3,6 +3,8 @@ import threading
 import ctypes
 from abc import abstractmethod
 import subprocess
+import os
+import time
 
 from qtpy.QtCore import Qt, QThread, Slot, QEvent
 from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
@@ -499,10 +501,13 @@ class BaseConsole(QFrame):
     def process_input(self, source):
         """Handle a new source snippet confirmed by the user."""
         self._last_input = source
-        
-        # Check if this is a system command (starts with !)
-        if source.strip().startswith('!'):
-            self._run_system_command(source.strip()[1:])
+
+        SPECIAL_COMMANDS = {'!': self._run_system_command, 
+                            '%': self._run_magic_command}
+        s = source.strip()
+
+        if len(s)>0 and s[0] in SPECIAL_COMMANDS:
+            SPECIAL_COMMANDS[s[0]](s[1:])
             self._more = False
             if self._last_input:
                 self._current_line += 1
@@ -544,13 +549,102 @@ class BaseConsole(QFrame):
                 self._insert_output_text('\n')
         except subprocess.TimeoutExpired:
             self._insert_output_text('[Command timed out]\n',
-                                   prompt=self.outPrompt())
+                                     prompt=self.outPrompt())
             self._insert_output_text('\n')
         except Exception as e:
             self._insert_output_text(f'[Error: {str(e)}]\n',
-                                   prompt=self.outPrompt())
+                                     prompt=self.outPrompt())
             self._insert_output_text('\n')
 
+    def _run_magic_command(self, command):
+        """Execute a magic command and display its output."""
+        
+        parts = command.split(None, 1)
+        magic = parts[0] if parts else ''
+        args = parts[1] if len(parts) > 1 else ''
+        
+        try:
+            output = ''
+            
+            if magic == 'pwd':
+                output = os.getcwd() + '\n'
+            
+            elif magic == 'cd':
+                if args:
+                    os.chdir(os.path.expanduser(args))
+                output = os.getcwd() + '\n'
+            
+            elif magic == 'ls':
+                result = subprocess.run(
+                    f'ls {args}' if args else 'ls',
+                    shell=True,
+                    capture_output=True,
+                    text=True
+                )
+                output = result.stdout if result.stdout else result.stderr
+            
+            elif magic == 'clear':
+                self.clear()
+                output = ''
+            
+            elif magic == 'who':
+                # List variable names
+                vars_list = [name for name in self.interpreter.locals.keys()
+                           if not name.startswith('_')]
+                output = '  '.join(sorted(vars_list)) + '\n' if vars_list else 'No variables\n'
+            
+            elif magic == 'whos':
+                # Detailed variable listing
+                lines = ['Variable   Type         Data/Info\n']
+                lines.append('-' * 50 + '\n')
+                for name in sorted(self.interpreter.locals.keys()):
+                    if not name.startswith('_'):
+                        obj = self.interpreter.locals[name]
+                        obj_type = type(obj).__name__
+                        try:
+                            obj_repr = repr(obj)
+                            if len(obj_repr) > 40:
+                                obj_repr = obj_repr[:37] + '...'
+                        except:
+                            obj_repr = '<repr failed>'
+                        lines.append(f'{name:<10} {obj_type:<12} {obj_repr}\n')
+                output = ''.join(lines) if len(lines) > 2 else 'No variables\n'
+            
+            elif magic == 'timeit':
+                # Simple timeit implementation
+                if args:
+                    import timeit
+                    try:
+                        # Run multiple times and get average
+                        timer = timeit.Timer(args, globals=self.interpreter.locals)
+                        number = 10000
+                        time_taken = timer.timeit(number=number)
+                        per_loop = time_taken / number
+                        
+                        if per_loop < 1e-6:
+                            output = f'{per_loop * 1e9:.1f} ns ± per loop (mean of {number} runs)\n'
+                        elif per_loop < 1e-3:
+                            output = f'{per_loop * 1e6:.1f} µs ± per loop (mean of {number} runs)\n'
+                        elif per_loop < 1:
+                            output = f'{per_loop * 1e3:.1f} ms ± per loop (mean of {number} runs)\n'
+                        else:
+                            output = f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
+                    except Exception as e:
+                        output = f'Error timing code: {str(e)}\n'
+                else:
+                    output = 'Usage: %timeit <statement>\n'
+            
+            else:
+                output = f'Unknown magic command: %{magic}\n'
+                output += f'Available: %pwd, %cd, %ls, %clear, %who, %whos, %timeit\n'
+            
+            if output:
+                self._insert_output_text(output, prompt=self.outPrompt())
+                self._insert_output_text('\n')
+
+        except Exception as e:
+            self._insert_output_text(f'Error executing magic command: {str(e)}\n')
+    
     def _handle_ctrl_c(self):
         """Inject keyboard interrupt if code is being executed in a thread,
         else cancel the current prompt."""
