@@ -108,29 +108,39 @@ class PythonHighlighter(QSyntaxHighlighter):
         self.rules = [(re.compile(pat), index, fmt)
                       for (pat, index, fmt) in rules]
 
+        self.fstring_pattern = re.compile(
+            r"[fF][rR]?(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
+
+        self.string_pattern = re.compile(r"(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
+        self.escape_pattern = re.compile(
+            r'\\(?:[\\\'\"\'abfnrtv0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|'
+            r'U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})'
+        )
+
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
         """
+        s = self.styles['string']
         # Find all positions inside strings
         string_positions = {
             pos
             for expression, nth, fmt in self.rules
-            if fmt == self.styles['string']
+            if fmt == s
             for m in expression.finditer(text)
             for pos in range(m.start(nth), m.end(nth))
         }
-        
+
         # Apply formatting, skipping non-string rules inside strings
         for expression, nth, format in self.rules:
             for m in expression.finditer(text):
                 # Skip non-string formatting if it's inside a string
-                if format != self.styles['string'] and m.start(nth) in string_positions:
+                if format != s and m.start(nth) in string_positions:
                     continue
                 self.setFormat(m.start(nth), m.end(nth) - m.start(nth), format)
 
         # Highlight f-string interpolations
         self.highlight_fstring_interpolations(text)
-        
+
         # Highlight escape sequences in strings
         self.highlight_escape_sequences(text)
 
@@ -191,24 +201,23 @@ class PythonHighlighter(QSyntaxHighlighter):
     def highlight_fstring_interpolations(self, text):
         """Highlight f-string interpolations (the {} parts).
         """
-        fstring_pattern = re.compile(r"[fF][rR]?(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
-        
-        for m in fstring_pattern.finditer(text):
+        for m in self.fstring_pattern.finditer(text):
             string_content = m.group(2)
+            ln = len(string_content)
             content_start = m.start(2)
-            
+
             i = 0
-            while i < len(string_content):
+            while i < ln:
                 if string_content[i] == '{':
                     # Skip escaped braces {{
-                    if i + 1 < len(string_content) and string_content[i + 1] == '{':
+                    if i + 1 < ln and string_content[i + 1] == '{':
                         i += 2
                         continue
-                    
+
                     # Find matching closing brace
                     brace_count = 1
                     j = i + 1
-                    while j < len(string_content) and brace_count > 0:
+                    while j < ln and brace_count > 0:
                         if string_content[j:j+2] == '}}':
                             j += 2  # Skip escaped }}
                         elif string_content[j] == '{':
@@ -219,9 +228,10 @@ class PythonHighlighter(QSyntaxHighlighter):
                             j += 1
                         else:
                             j += 1
-                    
+
                     if brace_count == 0:
-                        self.setFormat(content_start + i, j - i, self.styles['fstring'])
+                        self.setFormat(content_start + i, j - i,
+                                       self.styles['fstring'])
                         i = j
                     else:
                         i += 1
@@ -231,13 +241,8 @@ class PythonHighlighter(QSyntaxHighlighter):
     def highlight_escape_sequences(self, text):
         """Highlight escape sequences in strings.
         """
-        string_pattern = re.compile(r"(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
-        escape_pattern = re.compile(
-            r'\\(?:[\\\'\"\'abfnrtv0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|'
-            r'U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})'
-        )
-        
-        for m in string_pattern.finditer(text):
+        for m in self.string_pattern.finditer(text):
             content_start = m.start(2)
-            for esc in escape_pattern.finditer(m.group(2)):
-                self.setFormat(content_start + esc.start(), len(esc.group()), self.styles['escape'])
+            for esc in self.escape_pattern.finditer(m.group(2)):
+                self.setFormat(content_start + esc.start(),
+                               len(esc.group()), self.styles['escape'])
