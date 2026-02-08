@@ -583,6 +583,10 @@ class BaseConsole(QFrame):
                 )
                 output = result.stdout if result.stdout else result.stderr
             
+            elif magic == 'clear':
+                self.clear()
+                output = ''
+            
             elif magic == 'who':
                 # List variable names
                 vars_list = [name for name in self.interpreter.locals.keys()
@@ -632,7 +636,7 @@ class BaseConsole(QFrame):
             
             else:
                 output = f'Unknown magic command: %{magic}\n'
-                output += 'Available: %pwd, %cd, %ls, %who, %whos, %timeit\n'
+                output += f'Available: %pwd, %cd, %ls, %clear, %who, %whos, %timeit\n'
             
             if output:
                 self._insert_output_text(output, prompt=self.outPrompt())
