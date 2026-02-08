@@ -482,7 +482,7 @@ class BaseConsole(QFrame):
     def process_input(self, source):
         """Handle a new source snippet confirmed by the user."""
         self._last_input = source
-        
+
         # Check if this is a system command (starts with !)
         if source.strip().startswith('!'):
             self._run_system_command(source.strip()[1:])
@@ -503,7 +503,7 @@ class BaseConsole(QFrame):
             else:
                 self.command_history.add(source)
                 self._update_prompt_pos()
-    
+
     def _run_system_command(self, command):
         """Execute a system command and display its output."""
         try:
@@ -521,17 +521,18 @@ class BaseConsole(QFrame):
                 output += result.stderr
             if result.returncode != 0:
                 output += f'[Exit code: {result.returncode}]\n'
-            
+
             if output:
-                self._insert_output_text(output, prompt=self._ps_out % self._current_line)
+                self._insert_output_text(
+                    output, prompt=self._ps_out % self._current_line)
                 self._insert_output_text('\n')
         except subprocess.TimeoutExpired:
             self._insert_output_text('[Command timed out]\n',
-                                   prompt=self._ps_out % self._current_line)
+                                     prompt=self._ps_out % self._current_line)
             self._insert_output_text('\n')
         except Exception as e:
             self._insert_output_text(f'[Error: {str(e)}]\n',
-                                   prompt=self._ps_out % self._current_line)
+                                     prompt=self._ps_out % self._current_line)
             self._insert_output_text('\n')
 
     def _handle_ctrl_c(self):
