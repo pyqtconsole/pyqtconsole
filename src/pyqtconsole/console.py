@@ -32,7 +32,23 @@ class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
 
-    def __init__(self, parent=None, formats=None, inprompt=None, outprompt=None):
+    def __init__(self, parent=None, formats=None,
+                 inprompt=None, outprompt=None):
+        """Interactive python GUI console
+
+        Args:
+            parent (QWidget, optional): Parent widget. Defaults to None.
+            locals (dict, optional): Local namespace. Defaults to None.
+            formats (dict, optional): Syntax highlighter color mapping
+                dictionary. Defaults to None.
+            inprompt (str, optional): Input prompt.
+                If None, then 'IN [n]: ' is used, where `n` is the
+                current input line number. Defaults to None.
+            outprompt (str, optional): Output prompt.
+                If None, then 'OUT[n]: ' is used, where `n` is the
+                current input line number. Defaults to None.
+        """
+
         super(BaseConsole, self).__init__(parent)
 
         self.edit = edit = InputArea()
@@ -58,10 +74,10 @@ class BaseConsole(QFrame):
         self._current_line = 0
 
         self._ps1 = inprompt or 'IN [%s]: '
-        self._ps1 = self._ps1.strip() + ' ' 
+        self._ps1 = self._ps1.strip() + ' '
         self._ps2 = '...: '
         self._ps_out = outprompt or 'OUT[%s]: '
-        self._ps_out = self._ps_out.strip() + ' ' 
+        self._ps_out = self._ps_out.strip() + ' '
         self._ps = self.inPrompt()
 
         self.stdin = Stream()
@@ -115,7 +131,7 @@ class BaseConsole(QFrame):
             return self._ps1 % self._current_line
         except Exception:
             return self._ps1
-        
+
     def setFont(self, font):
         """Set font (you should only use monospace!)."""
         self.edit.document().setDefaultFont(font)
@@ -584,8 +600,10 @@ class PythonConsole(BaseConsole):
 
     """Interactive python GUI console."""
 
-    def __init__(self, parent=None, locals=None, formats=None, inprompt=None, outprompt=None):
-        super(PythonConsole, self).__init__(parent, formats=formats, inprompt=inprompt, outprompt=outprompt)
+    def __init__(self, parent=None, locals=None, formats=None,
+                 inprompt=None, outprompt=None):
+        super(PythonConsole, self).__init__(
+            parent, formats=formats, inprompt=inprompt, outprompt=outprompt)
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(
