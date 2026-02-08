@@ -506,7 +506,7 @@ class BaseConsole(QFrame):
                             '%': self._run_magic_command}
         s = source.strip()
 
-        if s[0] in SPECIAL_COMMANDS:
+        if len(s)>0 and s[0] in SPECIAL_COMMANDS:
             SPECIAL_COMMANDS[s[0]](s[1:])
             self._more = False
             if self._last_input:
