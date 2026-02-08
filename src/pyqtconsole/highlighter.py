@@ -33,6 +33,8 @@ STYLES = {
     'numbers': format('brown'),
     'inprompt': format('darkBlue', 'bold'),
     'outprompt': format('darkRed', 'bold'),
+    'fstring': format('darkCyan', 'bold'),
+    'escape': format('darkorange', 'bold'),
 }
 
 
@@ -136,6 +138,12 @@ class PythonHighlighter(QSyntaxHighlighter):
                 end_pos = self._to_utf16_offset(text, m.end(nth))
                 self.setFormat(start_pos, end_pos - start_pos, format)
 
+        # Highlight f-string interpolations
+        self.highlight_fstring_interpolations(text)
+        
+        # Highlight escape sequences in strings
+        self.highlight_escape_sequences(text)
+
         self.setCurrentBlockState(0)
 
         # Do multi-line strings
@@ -191,3 +199,57 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         # Return True if still inside a multi-line string, False otherwise
         return self.currentBlockState() == in_state
+
+    def highlight_fstring_interpolations(self, text):
+        """Highlight f-string interpolations (the {} parts).
+        """
+        fstring_pattern = re.compile(r"[fF][rR]?(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
+        
+        for m in fstring_pattern.finditer(text):
+            string_content = m.group(2)
+            content_start = m.start(2)
+            
+            i = 0
+            while i < len(string_content):
+                if string_content[i] == '{':
+                    # Skip escaped braces {{
+                    if i + 1 < len(string_content) and string_content[i + 1] == '{':
+                        i += 2
+                        continue
+                    
+                    # Find matching closing brace
+                    brace_count = 1
+                    j = i + 1
+                    while j < len(string_content) and brace_count > 0:
+                        if string_content[j:j+2] == '}}':
+                            j += 2  # Skip escaped }}
+                        elif string_content[j] == '{':
+                            brace_count += 1
+                            j += 1
+                        elif string_content[j] == '}':
+                            brace_count -= 1
+                            j += 1
+                        else:
+                            j += 1
+                    
+                    if brace_count == 0:
+                        self.setFormat(content_start + i, j - i, self.styles['fstring'])
+                        i = j
+                    else:
+                        i += 1
+                else:
+                    i += 1
+
+    def highlight_escape_sequences(self, text):
+        """Highlight escape sequences in strings.
+        """
+        string_pattern = re.compile(r"(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
+        escape_pattern = re.compile(
+            r'\\(?:[\\\'\"\'abfnrtv0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|'
+            r'U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})'
+        )
+        
+        for m in string_pattern.finditer(text):
+            content_start = m.start(2)
+            for esc in escape_pattern.finditer(m.group(2)):
+                self.setFormat(content_start + esc.start(), len(esc.group()), self.styles['escape'])
