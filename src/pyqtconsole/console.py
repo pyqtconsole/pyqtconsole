@@ -470,7 +470,12 @@ class BaseConsole(QFrame):
             self.auto_complete.mode = mode
 
     def process_input(self, source):
-        """Handle a new source snippet confirmed by the user."""
+        """Handle a new source snippet confirmed by the user.
+
+        If the source starts with '!', it is treated as a system
+        command and executed using subprocess. Otherwise, it is
+        passed to the interpreter for execution.
+        """
         self._last_input = source
 
         # Check if this is a system command (starts with !)
