@@ -4,7 +4,6 @@ import ctypes
 from abc import abstractmethod
 import subprocess
 import os
-import time
 
 from qtpy.QtCore import Qt, QThread, Slot, QEvent
 from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
@@ -35,7 +34,23 @@ class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
 
-    def __init__(self, parent=None, formats=None, inprompt=None, outprompt=None):
+    def __init__(self, parent=None, formats=None,
+                 inprompt=None, outprompt=None,
+                 shell_cmd_prefix=''):
+        """Base class for implementing a GUI console.
+
+        Args:
+            parent (QWidget, optional): Parent widget. Defaults to None.
+            formats (dict, optional): Dictionary of text formats.
+                Defaults to None.
+            shell_cmd_prefix (str, optional): Prefix for shell commands.
+                Defaults to ''.
+                If set, commands starting with this prefix will be treated
+                as system commands and executed using subprocess. For example,
+                if set to '!', entering `!ls -l`` will execute the command
+                `ls -l`` in the system shell and display its output in the
+                console.
+        """
         super(BaseConsole, self).__init__(parent)
 
         self.edit = edit = InputArea()
@@ -49,6 +64,10 @@ class BaseConsole(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
+        if not isinstance(shell_cmd_prefix, str):
+            raise TypeError('shell_cmd_prefix needs to be an instance of a str')
+        self.shell_cmd_prefix = shell_cmd_prefix
+
         self._prompt_doc = ['']
         self._prompt_pos = 0
         self._output_inserted = False
@@ -61,10 +80,10 @@ class BaseConsole(QFrame):
         self._current_line = 0
 
         self._ps1 = inprompt or 'IN [%s]: '
-        self._ps1 = self._ps1.strip() + ' ' 
+        self._ps1 = self._ps1.strip() + ' '
         self._ps2 = '...: '
         self._ps_out = outprompt or 'OUT[%s]: '
-        self._ps_out = self._ps_out.strip() + ' ' 
+        self._ps_out = self._ps_out.strip() + ' '
         self._ps = self.inPrompt()
 
         self.MAGIC_COMMANDS = {
@@ -130,7 +149,7 @@ class BaseConsole(QFrame):
             return self._ps1 % self._current_line
         except Exception:
             return self._ps1
-        
+
     def setFont(self, font):
         """Set font (you should only use monospace!)."""
         self.edit.document().setDefaultFont(font)
@@ -457,7 +476,8 @@ class BaseConsole(QFrame):
 
     def input_buffer(self):
         """Retrieve current input buffer in string form."""
-        # Use cursor selection to properly handle multi-byte characters like emojis
+        # Use cursor selection to properly handle
+        #  multi-byte characters like emojis
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
@@ -511,14 +531,20 @@ class BaseConsole(QFrame):
             self.auto_complete.mode = mode
 
     def process_input(self, source):
-        """Handle a new source snippet confirmed by the user."""
+        """Handle a new source snippet confirmed by the user.
+
+        If `shell_cmd_prefix` is set and the source starts with this prefix,
+        it is treated as a system command and executed using subprocess.
+        Otherwise, it is passed to the interpreter for execution.
+        """
         self._last_input = source
 
-        SPECIAL_COMMANDS = {'!': self._run_system_command, 
-                            '%': self._run_magic_command}
+        SPECIAL_COMMANDS = {'%': self._run_magic_command}
+        if self.shell_cmd_prefix:
+            SPECIAL_COMMANDS[self.shell_cmd_prefix] = self._run_system_command
         s = source.strip()
 
-        if len(s)>0 and s[0] in SPECIAL_COMMANDS:
+        if len(s) > 0 and s[0] in SPECIAL_COMMANDS:
             SPECIAL_COMMANDS[s[0]](s[1:])
             self._more = False
             if self._last_input:
@@ -537,7 +563,7 @@ class BaseConsole(QFrame):
             else:
                 self.command_history.add(source)
                 self._update_prompt_pos()
-    
+
     def _run_system_command(self, command):
         """Execute a system command and display its output."""
         try:
@@ -555,7 +581,7 @@ class BaseConsole(QFrame):
                 output += result.stderr
             if result.returncode != 0:
                 output += f'[Exit code: {result.returncode}]\n'
-            
+
             if output:
                 self._insert_output_text(output, prompt=self.outPrompt())
                 self._insert_output_text('\n')
@@ -568,17 +594,18 @@ class BaseConsole(QFrame):
                                      prompt=self.outPrompt())
             self._insert_output_text('\n')
 
-    def _PWD(self, args = None):
+    def _PWD(self, args=None):
         """Return current working directory."""
         return os.getcwd() + '\n'
 
-    def _CD(self, args = None):
-        """Change current working directory, with optional argument for target directory."""
+    def _CD(self, args=None):
+        """Change current working directory, with optional
+        argument for target directory."""
         if args:
             os.chdir(os.path.expanduser(args))
         return os.getcwd() + '\n'
-    
-    def _LS(self, args = None):
+
+    def _LS(self, args=None):
         """Directory listing, with optional arguments (e.g. -l, -a)"""
         result = subprocess.run(
             f'ls {args}' if args else 'ls',
@@ -588,18 +615,19 @@ class BaseConsole(QFrame):
         )
         return result.stdout if result.stdout else result.stderr
 
-    def _CLEAR(self, args = None):
+    def _CLEAR(self, args=None):
         """Clear the console display."""
         self.clear()
         return ''
-    
-    def _WHO(self, args = None):
+
+    def _WHO(self, args=None):
         """List variable names"""
         vars_list = [name for name in self.interpreter.locals.keys()
-                    if not name.startswith('_')]
-        return '  '.join(sorted(vars_list)) + '\n' if vars_list else 'No variables\n'
+                     if not name.startswith('_')]
+        return '  '.join(sorted(vars_list)) + '\n' \
+            if vars_list else 'No variables\n'
 
-    def _WHOS(self, args = None):
+    def _WHOS(self, args=None):
         """Detailed variable listing"""
         lines = ['Variable   Type         Data/Info\n']
         lines.append('-' * 50 + '\n')
@@ -611,22 +639,26 @@ class BaseConsole(QFrame):
                     obj_repr = repr(obj)
                     if len(obj_repr) > 40:
                         obj_repr = obj_repr[:37] + '...'
-                except:
+                except Exception:
                     obj_repr = '<repr failed>'
                 lines.append(f'{name:<10} {obj_type:<12} {obj_repr}\n')
         return ''.join(lines) if len(lines) > 2 else 'No variables\n'
 
-    def _TIMEIT(self, args = None):
+    def _TIMEIT(self, args=None):
         """Simple timeit implementation"""
         if not args:
             return 'Usage: %timeit <statement>\n'
         import timeit
         try:
             number = 10000
-            per_loop = timeit.Timer(args, globals=self.interpreter.locals).timeit(number) / number
-            for threshold, scale, unit in [(1e-6, 1e9, 'ns'), (1e-3, 1e6, 'µs'), (1, 1e3, 'ms')]:
+            per_loop = timeit.Timer(
+                args, globals=self.interpreter.locals).timeit(number) / number
+            for threshold, scale, unit in [(1e-6, 1e9, 'ns'),
+                                           (1e-3, 1e6, 'µs'),
+                                           (1, 1e3, 'ms')]:
                 if per_loop < threshold:
-                    return f'{per_loop * scale:.1f} {unit} ± per loop (mean of {number} runs)\n'
+                    return f'{per_loop * scale:.1f} {unit} ± per loop ' \
+                           f'(mean of {number} runs)\n'
             return f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
         except Exception as e:
             return f'Error timing code: {str(e)}\n'
@@ -638,40 +670,44 @@ class BaseConsole(QFrame):
         import runpy
         try:
             script_path = os.path.expanduser(args.strip())
-            runpy.run_path(script_path, init_globals=self.interpreter.locals, run_name='__main__')
+            runpy.run_path(
+                script_path,
+                init_globals=self.interpreter.locals,
+                run_name='__main__')
             return ''
         except FileNotFoundError:
             return f'File not found: {args}\n'
         except Exception as e:
             return f'Error running script: {str(e)}\n'
 
-    def _HELP(self, args = None):    
+    def _HELP(self, args=None):
         """help message for magic commands"""
-        available_cmds = ', '.join([f'%{c}' for c in sorted(self.MAGIC_COMMANDS.keys())])
+        available_cmds = ', '.join(
+            [f'%{c}' for c in sorted(self.MAGIC_COMMANDS.keys())])
         return f'Available magic commands: {available_cmds}\n'
 
     def _run_magic_command(self, command):
         """Execute a magic command and display its output."""
-        
+
         parts = command.split(None, 1)
         magic = parts[0] if parts else ''
         args = parts[1] if len(parts) > 1 else ''
-        
+
         try:
             output = ''
             if magic in self.MAGIC_COMMANDS:
-                output = self.MAGIC_COMMANDS[magic](args)            
+                output = self.MAGIC_COMMANDS[magic](args)
             else:
                 output = f'Unknown magic command: %{magic}\n'
-                output += self._HELP() 
-            
+                output += self._HELP()
+
             if output:
                 self._insert_output_text(output, prompt=self.outPrompt())
                 self._insert_output_text('\n')
 
         except Exception as e:
             self._insert_output_text(f'Error executing magic command: {str(e)}\n')
-    
+
     def _handle_ctrl_c(self):
         """Inject keyboard interrupt if code is being executed in a thread,
         else cancel the current prompt."""
@@ -768,8 +804,12 @@ class PythonConsole(BaseConsole):
 
     """Interactive python GUI console."""
 
-    def __init__(self, parent=None, locals=None, formats=None, inprompt=None, outprompt=None):
-        super(PythonConsole, self).__init__(parent, formats=formats, inprompt=inprompt, outprompt=outprompt)
+    def __init__(self, parent=None, locals=None, formats=None,
+                 inprompt=None, outprompt=None, shell_cmd_prefix=''):
+        super(PythonConsole, self).__init__(parent, formats=formats,
+                                            inprompt=inprompt,
+                                            outprompt=outprompt,
+                                            shell_cmd_prefix=shell_cmd_prefix)
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(

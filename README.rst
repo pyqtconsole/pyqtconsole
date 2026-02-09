@@ -91,6 +91,11 @@ must be shaped as follows:
 
 All keys are optional and default to the value shown above if left unspecified.
 
+Other features
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Optionally, commands entered in the console that start with a special character (e.g., '!') will be executed as shell commands. The output of the command will be printed in the console. This feature is disabled by default, but is enabled by setting the `shell_cmd_prefix` parameter when creating the console. For example, on a Linux or macOS system, setting `shell_cmd_prefix='!'` and entering `!ls -l` will list the files in the current directory.
+
 Credits
 ~~~~~~~
 
