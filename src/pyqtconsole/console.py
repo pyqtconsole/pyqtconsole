@@ -38,7 +38,6 @@ class BaseConsole(QFrame):
 
         Args:
             parent (QWidget, optional): Parent widget. Defaults to None.
-            locals (dict, optional): Local namespace. Defaults to None.
             formats (dict, optional): Syntax highlighter color mapping
                 dictionary. Defaults to None.
             inprompt (str, optional): Input prompt.
