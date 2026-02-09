@@ -33,7 +33,21 @@ class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
 
-    def __init__(self, parent=None, formats=None):
+    def __init__(self, parent=None, formats=None, shell_cmd_prefix=''):
+        """_summary_
+
+        Args:
+            parent (QWidget, optional): Parent widget. Defaults to None.
+            formats (dict, optional): Dictionary of text formats.
+                Defaults to None.
+            shell_cmd_prefix (str, optional): Prefix for shell commands.
+                Defaults to ''.
+                If set, commands starting with this prefix will be treated
+                as system commands and executed using subprocess. For example,
+                if set to '!', entering `!ls -l`` will execute the command
+                `ls -l`` in the system shell and display its output in the
+                console.
+        """
         super(BaseConsole, self).__init__(parent)
 
         self.edit = edit = InputArea()
@@ -46,6 +60,10 @@ class BaseConsole(QFrame):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
+
+        if not isinstance(shell_cmd_prefix, str):
+            raise TypeError('shell_cmd_prefix needs to be an instance of a str')
+        self.shell_cmd_prefix = shell_cmd_prefix
 
         self._prompt_doc = ['']
         self._prompt_pos = 0
@@ -472,15 +490,16 @@ class BaseConsole(QFrame):
     def process_input(self, source):
         """Handle a new source snippet confirmed by the user.
 
-        If the source starts with '!', it is treated as a system
-        command and executed using subprocess. Otherwise, it is
-        passed to the interpreter for execution.
+        If `shell_cmd_prefix` is set and the source starts with this prefix,
+        it is treated as a system command and executed using subprocess.
+        Otherwise, it is passed to the interpreter for execution.
         """
         self._last_input = source
 
-        # Check if this is a system command (starts with !)
-        if source.strip().startswith('!'):
-            self._run_system_command(source.strip()[1:])
+        # Check if this is a system command
+        if self.shell_cmd_prefix and \
+                source.strip().startswith(self.shell_cmd_prefix):
+            self._run_system_command(source.strip()[len(self.shell_cmd_prefix):])
             self._more = False
             if self._last_input:
                 self._current_line += 1
@@ -616,8 +635,10 @@ class PythonConsole(BaseConsole):
 
     """Interactive python GUI console."""
 
-    def __init__(self, parent=None, locals=None, formats=None):
-        super(PythonConsole, self).__init__(parent, formats=formats)
+    def __init__(self, parent=None, locals=None, formats=None,
+                 shell_cmd_prefix=''):
+        super(PythonConsole, self).__init__(parent, formats=formats,
+                                            shell_cmd_prefix=shell_cmd_prefix)
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(
