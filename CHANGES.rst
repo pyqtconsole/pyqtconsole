@@ -7,6 +7,7 @@ Unreleased
 - migrated from ``setup.py`` + ``setup.cfg`` to ``pyproject.toml``
 - dropped official support for Python 3.8 and added 3.13 and 3.14 (no code changes)
 - fixed issue with displaying syntax errors for Python 3.13
+- fixed issue with multibyte characters (emojis) breaking the input (`#87 <https://github.com/pyqtconsole/pyqtconsole/issues/87>`__)
 
 v1.2.3
 ------
