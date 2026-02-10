@@ -106,13 +106,24 @@ class PythonHighlighter(QSyntaxHighlighter):
         self.rules = [(re.compile(pat), index, fmt)
                       for (pat, index, fmt) in rules]
 
+    def _to_utf16_offset(self, text, position):
+        """Convert Python string position to UTF-16 offset for Qt.
+
+        Qt uses UTF-16 encoding internally, where some characters (like emoji)
+        take 2 code units.
+        This converts Python string indices to UTF-16 positions.
+        """
+        return len(text[:position].encode('utf-16-le')) // 2
+
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
         """
         # Do other syntax formatting
         for expression, nth, format in self.rules:
             for m in expression.finditer(text):
-                self.setFormat(m.start(nth), m.end(nth) - m.start(nth), format)
+                start_pos = self._to_utf16_offset(text, m.start(nth))
+                end_pos = self._to_utf16_offset(text, m.end(nth))
+                self.setFormat(start_pos, end_pos - start_pos, format)
 
         self.setCurrentBlockState(0)
 
@@ -156,8 +167,10 @@ class PythonHighlighter(QSyntaxHighlighter):
             else:
                 self.setCurrentBlockState(in_state)
                 length = len(text) - start + add
-            # Apply formatting
-            self.setFormat(start, length, style)
+            # Apply formatting - convert to UTF-16 positions
+            start_utf16 = self._to_utf16_offset(text, start)
+            end_utf16 = self._to_utf16_offset(text, start + length)
+            self.setFormat(start_utf16, end_utf16 - start_utf16, style)
             # Look for the next match
             m = delimiter.search(text, start + length)
             if m:
