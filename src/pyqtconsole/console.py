@@ -549,6 +549,16 @@ class BaseConsole(QFrame):
     def ctrl_d_exits_console(self, b):
         self._ctrl_d_exits = b
 
+    def clear(self):
+        """Clear the console display."""
+        self._prompt_doc = ['']
+        self._prompt_pos = 0
+        self._output_inserted = False
+        self._more = False
+        self._current_line = -1
+        self._ps = self._ps1 % self._current_line
+        self.edit.clear()
+
     # Abstract
 
     @abstractmethod

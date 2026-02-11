@@ -62,8 +62,11 @@ Embedding
   consideration (at least to some extent) for longer running processes. The
   best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
 
+Features
+~~~~~~~~
+
 Customizing syntax highlighting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 
 The coloring of the syntax highlighting can be customized by passing a
 ``formats`` dictionary to the ``PythonConsole`` constructer. This dictionary
@@ -87,6 +90,17 @@ must be shaped as follows:
     })
 
 All keys are optional and default to the value shown above if left unspecified.
+
+Clear console
+-------------
+
+A local method, named `clear()`, is available to clear the input screen and reset the line numbering.
+Enable it by pushing the method into the available namespace in the console:
+
+.. code-block:: python
+
+   console.interpreter.locals["clear"] = console.clear
+
 
 Credits
 ~~~~~~~
