@@ -62,8 +62,11 @@ Embedding
   consideration (at least to some extent) for longer running processes. The
   best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
 
+Features
+~~~~~~~~
+
 Customizing syntax highlighting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 
 The coloring of the syntax highlighting can be customized by passing a
 ``formats`` dictionary to the ``PythonConsole`` constructer. This dictionary
@@ -88,10 +91,24 @@ must be shaped as follows:
 
 All keys are optional and default to the value shown above if left unspecified.
 
-Other features
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Shell commands
+--------------
 
-Optionally, commands entered in the console that start with a special character (e.g., '!') will be executed as shell commands. The output of the command will be printed in the console. This feature is disabled by default, but is enabled by setting the `shell_cmd_prefix` parameter when creating the console. For example, on a Linux or macOS system, setting `shell_cmd_prefix='!'` and entering `!ls -l` will list the files in the current directory.
+Optionally, commands entered in the console that start with a special character (e.g. '!') will be executed as shell commands.
+The output of the command will be printed in the console.
+This feature is disabled by default, but can be enabled by setting the ``shell_cmd_prefix`` parameter when creating the console.
+For example, on a Linux or macOS system, setting `shell_cmd_prefix='!'` and entering `!ls -l` will list the files in the current directory.
+
+.. code-block:: python
+
+   console = PythonConsole(shell_cmd_prefix=True)
+
+.. code-block:: python
+
+   IN [0]: !ls -l
+   OUT[0]: total 16546
+           -rw-r--r-- 1 user user      18741 Fen  6  2026  file1.txt
+           -rw-r--r-- 1 user user      18741 Feb  6  2026  file2.txt
 
 Credits
 ~~~~~~~
