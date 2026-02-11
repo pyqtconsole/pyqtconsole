@@ -33,22 +33,25 @@ class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
 
-    def __init__(self, parent=None, formats=None, shell_cmd_prefix=''):
-        """_summary_
-
-        Args:
-            parent (QWidget, optional): Parent widget. Defaults to None.
-            formats (dict, optional): Dictionary of text formats.
-                Defaults to None.
-            shell_cmd_prefix (str, optional): Prefix for shell commands.
-                Defaults to ''.
-                If set, commands starting with this prefix will be treated
-                as system commands and executed using subprocess. For example,
-                if set to '!', entering `!ls -l`` will execute the command
-                `ls -l`` in the system shell and display its output in the
-                console.
+    def __init__(self, parent=None, formats=None, shell_cmd_prefix=False):
         """
-        super(BaseConsole, self).__init__(parent)
+
+        :param parent: Parent widget (Defaults to None)
+        :type parent: QWidget, None
+        :param formats: Dictionary of text formats (Defaults to None)
+        :type formats: dict, None
+        :param shell_cmd_prefix: Prefix for shell commands (Defaults to False)
+                If set, commands starting with this prefix will be treated
+                as system commands and executed using subprocess.
+                When False, no shell commands are accepted.
+                When True, the default character ``!`` is used.
+                When any string is given, that character is used instead.
+                For example, if set to True, entering ``!ls -l`` will execute the
+                command ``ls -l`` in the system shell and display its output in
+                the console.
+        :type shell_cmd_prefix: bool, str
+        """
+        super().__init__(parent)
 
         self.edit = edit = InputArea()
         self.pbar = pbar = PromptArea(
@@ -61,9 +64,12 @@ class BaseConsole(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
-        if not isinstance(shell_cmd_prefix, str):
-            raise TypeError('shell_cmd_prefix needs to be an instance of a str')
-        self.shell_cmd_prefix = shell_cmd_prefix
+        if shell_cmd_prefix is True:
+            self.shell_cmd_prefix = '!'
+        elif isinstance(shell_cmd_prefix, str):
+            self.shell_cmd_prefix = shell_cmd_prefix
+        else:
+            self.shell_cmd_prefix = None
 
         self._prompt_doc = ['']
         self._prompt_pos = 0
@@ -121,7 +127,7 @@ class BaseConsole(QFrame):
         """Set font (you should only use monospace!)."""
         self.edit.document().setDefaultFont(font)
         self.edit.setFont(font)
-        super(BaseConsole, self).setFont(font)
+        super().setFont(font)
 
     def eventFilter(self, edit, event):
         """Intercepts events from the input control."""
@@ -647,8 +653,11 @@ class PythonConsole(BaseConsole):
 
     def __init__(self, parent=None, locals=None, formats=None,
                  shell_cmd_prefix=''):
-        super(PythonConsole, self).__init__(parent, formats=formats,
-                                            shell_cmd_prefix=shell_cmd_prefix)
+        super().__init__(
+            parent,
+            formats=formats,
+            shell_cmd_prefix=shell_cmd_prefix,
+        )
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(
@@ -720,7 +729,7 @@ class Thread(QThread):
     """Thread that runs an event loop and exposes thread ID as ``.ident``."""
 
     def __init__(self, parent=None):
-        super(Thread, self).__init__(parent)
+        super().__init__(parent)
         self.ready = threading.Event()
         self.start()
         self.ready.wait()
