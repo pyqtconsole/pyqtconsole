@@ -62,8 +62,11 @@ Embedding
   consideration (at least to some extent) for longer running processes. The
   best method if you want to use pyQtgraph, Matplotlib, PyMca or similar.
 
+Features
+~~~~~~~~
+
 Customizing syntax highlighting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------
 
 The coloring of the syntax highlighting can be customized by passing a
 ``formats`` dictionary to the ``PythonConsole`` constructer. This dictionary
@@ -88,6 +91,17 @@ must be shaped as follows:
 
 All keys are optional and default to the value shown above if left unspecified.
 
+Clear console
+-------------
+
+A local method, named `clear()`, is available to clear the input screen and reset the line numbering.
+Enable it by pushing the method into the available namespace in the console:
+
+.. code-block:: python
+
+   console.interpreter.locals["clear"] = console.clear
+
+
 Credits
 ~~~~~~~
 
@@ -95,9 +109,9 @@ This module depends on QtPy which provides a compatibility layer for
 Qt4 and Qt5. The console is tested under both Qt4 and Qt5.
 
 
-.. _threaded.py: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/threaded.py
-.. _inuithread.py: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/inuithread.py
-.. _`_gevent.py`: https://github.com/marcus-oscarsson/pyqtconsole/blob/master/examples/_gevent.py
+.. _threaded.py: https://github.com/pyqtconsole/pyqtconsole/blob/master/examples/threaded.py
+.. _inuithread.py: https://github.com/pyqtconsole/pyqtconsole/blob/master/examples/inuithread.py
+.. _`_gevent.py`: https://github.com/pyqtconsole/pyqtconsole/blob/master/examples/_gevent.py
 .. _QtPy: https://github.com/spyder-ide/qtpy
 
 
@@ -112,7 +126,7 @@ Qt4 and Qt5. The console is tested under both Qt4 and Qt5.
    :alt:                Python versions
 
 .. |License| image::    https://img.shields.io/pypi/l/pyqtconsole.svg
-   :target:             https://github.com/marcus-oscarsson/pyqtconsole/blob/master/LICENSE
+   :target:             https://github.com/pyqtconsole/pyqtconsole/blob/master/LICENSE
    :alt:                License: MIT
 
 .. |Tests| image::      https://github.com/pyqtconsole/pyqtconsole/workflows/Tests/badge.svg
