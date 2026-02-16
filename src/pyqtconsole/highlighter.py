@@ -245,7 +245,8 @@ class PythonHighlighter(QSyntaxHighlighter):
                             j += 1
 
                     if brace_count == 0:
-                        start_utf16 = self._to_utf16_offset(text, content_start + i)
+                        start_utf16 = self._to_utf16_offset(text,
+                                                            content_start + i)
                         end_utf16 = self._to_utf16_offset(text, content_start + j)
                         self.setFormat(start_utf16, end_utf16 - start_utf16,
                                        self.styles['fstring'])
@@ -261,7 +262,8 @@ class PythonHighlighter(QSyntaxHighlighter):
         for m in self.string_pattern.finditer(text):
             content_start = m.start(2)
             for esc in self.escape_pattern.finditer(m.group(2)):
-                start_utf16 = self._to_utf16_offset(text, content_start + esc.start())
+                start_utf16 = self._to_utf16_offset(text, content_start +
+                                                    esc.start())
                 end_utf16 = self._to_utf16_offset(text, content_start + esc.end())
                 self.setFormat(start_utf16, end_utf16 - start_utf16,
                                self.styles['escape'])
