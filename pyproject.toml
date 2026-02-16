@@ -9,7 +9,7 @@ authors = [
     {name = "Marcus Oskarsson", email = "marcus.oscarsson@esrf.fr"}
 ]
 description = "Light-weight python interpreter, easy to embed into Qt applications"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<4.0"
 keywords = ["interactive", "interpreter", "console", "shell", "autocompletion", "jedi", "qt"]
 license = {text = "MIT"}
 classifiers = [
@@ -29,7 +29,7 @@ dependencies = [
 dev = ["flake8"]
 
 [project.urls]
-Homepage = "https://github.com/marcus-oscarsson/pyqtconsole"
+Homepage = "https://github.com/pyqtconsole/pyqtconsole"
 
 [tool.setuptools]
 license-files = ["LICENSE"]

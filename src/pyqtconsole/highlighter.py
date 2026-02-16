@@ -117,11 +117,20 @@ class PythonHighlighter(QSyntaxHighlighter):
             r'U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})'
         )
 
+    def _to_utf16_offset(self, text, position):
+        """Convert Python string position to UTF-16 offset for Qt.
+
+        Qt uses UTF-16 encoding internally, where some characters (like emoji)
+        take 2 code units.
+        This converts Python string indices to UTF-16 positions.
+        """
+        return len(text[:position].encode('utf-16-le')) // 2
+
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
         """
         s = self.styles['string']
-        # Find all positions inside strings
+        # Find all positions inside strings (using Python string indices)
         string_positions = {
             pos
             for expression, nth, fmt in self.rules
@@ -134,9 +143,13 @@ class PythonHighlighter(QSyntaxHighlighter):
         for expression, nth, format in self.rules:
             for m in expression.finditer(text):
                 # Skip non-string formatting if it's inside a string
+                # Check using Python string index, not UTF-16 offset
                 if format != s and m.start(nth) in string_positions:
+                    # Skip non-string formatting if it's inside a string
                     continue
-                self.setFormat(m.start(nth), m.end(nth) - m.start(nth), format)
+                start_pos = self._to_utf16_offset(text, m.start(nth))
+                end_pos = self._to_utf16_offset(text, m.end(nth))
+                self.setFormat(start_pos, end_pos - start_pos, format)
 
         # Highlight f-string interpolations
         self.highlight_fstring_interpolations(text)
@@ -186,8 +199,10 @@ class PythonHighlighter(QSyntaxHighlighter):
             else:
                 self.setCurrentBlockState(in_state)
                 length = len(text) - start + add
-            # Apply formatting
-            self.setFormat(start, length, style)
+            # Apply formatting - convert to UTF-16 positions
+            start_utf16 = self._to_utf16_offset(text, start)
+            end_utf16 = self._to_utf16_offset(text, start + length)
+            self.setFormat(start_utf16, end_utf16 - start_utf16, style)
             # Look for the next match
             m = delimiter.search(text, start + length)
             if m:
@@ -230,7 +245,9 @@ class PythonHighlighter(QSyntaxHighlighter):
                             j += 1
 
                     if brace_count == 0:
-                        self.setFormat(content_start + i, j - i,
+                        start_utf16 = self._to_utf16_offset(text, content_start + i)
+                        end_utf16 = self._to_utf16_offset(text, content_start + j)
+                        self.setFormat(start_utf16, end_utf16 - start_utf16,
                                        self.styles['fstring'])
                         i = j
                     else:
@@ -244,5 +261,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         for m in self.string_pattern.finditer(text):
             content_start = m.start(2)
             for esc in self.escape_pattern.finditer(m.group(2)):
-                self.setFormat(content_start + esc.start(),
-                               len(esc.group()), self.styles['escape'])
+                start_utf16 = self._to_utf16_offset(text, content_start + esc.start())
+                end_utf16 = self._to_utf16_offset(text, content_start + esc.end())
+                self.setFormat(start_utf16, end_utf16 - start_utf16,
+                               self.styles['escape'])

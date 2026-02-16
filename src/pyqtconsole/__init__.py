@@ -4,4 +4,4 @@ __description__ = \
     'Lightweight python console, easy to embed into Qt applications'
 __author__ = 'Marcus Oskarsson'
 __author_email__ = 'marcus.oscarsson@esrf.fr'
-__url__ = 'https://github.com/marcus-oscarsson/pyqtconsole'
+__url__ = 'https://github.com/pyqtconsole/pyqtconsole'
