@@ -112,6 +112,19 @@ For example, on a Linux or macOS system, setting `shell_cmd_prefix='!'` and ente
            -rw-r--r-- 1 user user      18741 Fen  6  2026  file1.txt
            -rw-r--r-- 1 user user      18741 Feb  6  2026  file2.txt
 
+Prompt String
+-------------
+
+By default ``IN [n]:`` and ``OUT [n]:`` are displayed before each input and output line.
+You can customize this through constructor arguments:
+
+.. code-block:: python
+
+   # Including the line numbers:
+   console = PythonConsole(inprompt="%d >", outprompt="%d <")
+   # Or just static:
+   console = PythonConsole(inprompt=">>>", outprompt="<<<")
+
 Credits
 ~~~~~~~
 
