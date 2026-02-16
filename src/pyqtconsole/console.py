@@ -679,7 +679,7 @@ class PythonConsole(BaseConsole):
     """Interactive python GUI console."""
 
     def __init__(self, parent=None, locals=None, formats=None,
-                 shell_cmd_prefix='', inprompt=None, outprompt=None):
+                 shell_cmd_prefix=False, inprompt=None, outprompt=None):
         super().__init__(
             parent,
             formats=formats,
