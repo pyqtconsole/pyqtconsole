@@ -14,7 +14,7 @@ def greet():
 if __name__ == '__main__':
     app = QApplication([])
 
-    console = PythonConsole()
+    console = PythonConsole(shell_cmd_prefix=True)
     console.push_local_ns('greet', greet)
     console.interpreter.locals["clear"] = console.clear
     console.show()

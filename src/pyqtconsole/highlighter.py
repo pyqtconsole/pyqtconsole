@@ -116,8 +116,8 @@ class PythonHighlighter(QSyntaxHighlighter):
         """Convert Python string position to UTF-16 offset for Qt.
 
         Qt uses UTF-16 encoding internally, where some characters (like emoji)
-        take 2 code units. This converts Python string indices to UTF-16
-        positions.
+        take 2 code units.
+        This converts Python string indices to UTF-16 positions.
         """
         return len(text[:position].encode('utf-16-le')) // 2
 
