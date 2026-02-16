@@ -2,6 +2,7 @@
 import threading
 import ctypes
 from abc import abstractmethod
+import subprocess
 
 from qtpy.QtCore import Qt, QThread, Slot, QEvent
 from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
@@ -32,8 +33,34 @@ class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
 
-    def __init__(self, parent=None, formats=None):
-        super(BaseConsole, self).__init__(parent)
+    def __init__(self, parent=None, formats=None, shell_cmd_prefix=False,
+                 inprompt=None, outprompt=None):
+        """
+
+        :param parent: Parent widget (Defaults to None)
+        :type parent: QWidget, None
+        :param formats: Dictionary of text formats (Defaults to None)
+        :type formats: dict, None
+        :param shell_cmd_prefix: Prefix for shell commands (Defaults to False)
+                If set, commands starting with this prefix will be treated
+                as system commands and executed using subprocess.
+                When False, no shell commands are accepted.
+                When True, the default character ``!`` is used.
+                When any string is given, that character is used instead.
+                For example, if set to True, entering ``!ls -l`` will execute the
+                command ``ls -l`` in the system shell and display its output in
+                the console.
+        :type shell_cmd_prefix: bool, str
+        :param inprompt: Input prompt (Defaults to None)
+                If None, then 'IN [%d]: ' is used, where `%d` is formatted after
+                the current input line number.
+        :type inprompt: str, None
+        :param outprompt: Output prompt (Defaults to None)
+                If None, then 'OUT[%d]: ' is used, where `%d` is formatted after
+                the current input line number.
+        :type outprompt: str, None
+        """
+        super().__init__(parent)
 
         self.edit = edit = InputArea()
         self.pbar = pbar = PromptArea(
@@ -46,6 +73,13 @@ class BaseConsole(QFrame):
         layout.setContentsMargins(0, 0, 0, 0)
         self.setLayout(layout)
 
+        if shell_cmd_prefix is True:
+            self.shell_cmd_prefix = '!'
+        elif isinstance(shell_cmd_prefix, str):
+            self.shell_cmd_prefix = shell_cmd_prefix
+        else:
+            self.shell_cmd_prefix = None
+
         self._prompt_doc = ['']
         self._prompt_pos = 0
         self._output_inserted = False
@@ -57,10 +91,12 @@ class BaseConsole(QFrame):
         self._more = False
         self._current_line = 0
 
-        self._ps1 = 'IN [%s]: '
+        self._ps1 = inprompt or 'IN [%d]:'
+        self._ps1 = self._ps1.strip() + ' '
         self._ps2 = '...: '
-        self._ps_out = 'OUT[%s]: '
-        self._ps = self._ps1 % self._current_line
+        self._ps_out = outprompt or 'OUT[%d]:'
+        self._ps_out = self._ps_out.strip() + ' '
+        self._ps = self.in_prompt()
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -98,11 +134,28 @@ class BaseConsole(QFrame):
 
         self._show_ps()
 
+    def out_prompt(self):
+        """return the (formatted) output prompt."""
+        try:
+            # may depend on current line:
+            return self._ps_out % self._current_line
+        except TypeError:
+            return self._ps_out
+            # In case the provided format does not include a placeholder, just
+            # take the template string
+
+    def in_prompt(self):
+        """return the (formatted) input prompt."""
+        try:
+            return self._ps1 % self._current_line
+        except TypeError:
+            return self._ps1
+
     def setFont(self, font):
         """Set font (you should only use monospace!)."""
         self.edit.document().setDefaultFont(font)
         self.edit.setFont(font)
-        super(BaseConsole, self).setFont(font)
+        super().setFont(font)
 
     def eventFilter(self, edit, event):
         """Intercepts events from the input control."""
@@ -127,7 +180,7 @@ class BaseConsole(QFrame):
         # If the input is complete increase the input number and show
         # the in prompt
         if not _more:
-            self._ps = self._ps1 % self._current_line
+            self._ps = self.in_prompt()
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * ' ' + self._ps2
 
@@ -136,7 +189,7 @@ class BaseConsole(QFrame):
         if result is not None:
             self._insert_output_text(
                 repr(result),
-                prompt=self._ps_out % self._current_line)
+                prompt=self.out_prompt())
             self._insert_output_text('\n')
 
         if executed and self._last_input:
@@ -479,16 +532,66 @@ class BaseConsole(QFrame):
             self.auto_complete.mode = mode
 
     def process_input(self, source):
-        """Handle a new source snippet confirmed by the user."""
+        """Handle a new source snippet confirmed by the user.
+
+        If `shell_cmd_prefix` is set and the source starts with this prefix,
+        it is treated as a system command and executed using subprocess.
+        Otherwise, it is passed to the interpreter for execution.
+        """
         self._last_input = source
-        self._more = self._run_source(source)
-        self._update_ps(self._more)
-        if self._more:
-            self._show_ps()
+
+        # Check if this is a system command
+        if self.shell_cmd_prefix and \
+                source.strip().startswith(self.shell_cmd_prefix):
+            self._run_system_command(source.strip()[len(self.shell_cmd_prefix):])
+            self._more = False
+            if self._last_input:
+                self._current_line += 1
             self._show_cursor()
-        else:
+            self._update_ps(self._more)
             self.command_history.add(source)
             self._update_prompt_pos()
+            self._show_ps()
+        else:
+            self._more = self._run_source(source)
+            self._update_ps(self._more)
+            if self._more:
+                self._show_ps()
+                self._show_cursor()
+            else:
+                self.command_history.add(source)
+                self._update_prompt_pos()
+
+    def _run_system_command(self, command):
+        """Execute a system command and display its output."""
+        try:
+            result = subprocess.run(
+                command,
+                shell=True,
+                capture_output=True,
+                text=True
+            )
+            # Display output with OUT prompt
+            output = ''
+            if result.stdout:
+                output += result.stdout
+            if result.stderr:
+                output += result.stderr
+            if result.returncode != 0:
+                output += f'[Exit code: {result.returncode}]\n'
+
+            if output:
+                self._insert_output_text(
+                    output, prompt=self.out_prompt())
+                self._insert_output_text('\n')
+        except subprocess.TimeoutExpired:
+            self._insert_output_text('[Command timed out]\n',
+                                     prompt=self.out_prompt())
+            self._insert_output_text('\n')
+        except Exception as e:
+            self._insert_output_text(f'[Error: {str(e)}]\n',
+                                     prompt=self.out_prompt())
+            self._insert_output_text('\n')
 
     def _handle_ctrl_c(self):
         """Inject keyboard interrupt if code is being executed in a thread,
@@ -586,8 +689,15 @@ class PythonConsole(BaseConsole):
 
     """Interactive python GUI console."""
 
-    def __init__(self, parent=None, locals=None, formats=None):
-        super(PythonConsole, self).__init__(parent, formats=formats)
+    def __init__(self, parent=None, locals=None, formats=None,
+                 shell_cmd_prefix=False, inprompt=None, outprompt=None):
+        super().__init__(
+            parent,
+            formats=formats,
+            shell_cmd_prefix=shell_cmd_prefix,
+            inprompt=inprompt,
+            outprompt=outprompt
+        )
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(
@@ -659,7 +769,7 @@ class Thread(QThread):
     """Thread that runs an event loop and exposes thread ID as ``.ident``."""
 
     def __init__(self, parent=None):
-        super(Thread, self).__init__(parent)
+        super().__init__(parent)
         self.ready = threading.Event()
         self.start()
         self.ready.wait()
