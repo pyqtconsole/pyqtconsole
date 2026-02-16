@@ -33,7 +33,7 @@ class BaseConsole(QFrame):
 
     """Base class for implementing a GUI console."""
 
-    def __init__(self, parent=None, formats=None, shell_cmd_prefix=False, 
+    def __init__(self, parent=None, formats=None, shell_cmd_prefix=False,
                  inprompt=None, outprompt=None):
         """
 
@@ -53,11 +53,11 @@ class BaseConsole(QFrame):
         :type shell_cmd_prefix: bool, str
         :param inprompt: Input prompt (Defaults to None)
                 If None, then 'IN [n]: ' is used, where `n` is the
-                current input line number. 
+                current input line number.
         :type inprompt: str, None
         :param outprompt: Output prompt (Defaults to None)
                 If None, then 'OUT[n]: ' is used, where `n` is the
-                current input line number. 
+                current input line number.
         :type outprompt: str, None
         """
         super().__init__(parent)
@@ -684,7 +684,7 @@ class PythonConsole(BaseConsole):
             parent,
             formats=formats,
             shell_cmd_prefix=shell_cmd_prefix,
-            inprompt=None, 
+            inprompt=None,
             outprompt=None
         )
         self.highlighter = PythonHighlighter(
