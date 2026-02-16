@@ -52,12 +52,12 @@ class BaseConsole(QFrame):
                 the console.
         :type shell_cmd_prefix: bool, str
         :param inprompt: Input prompt (Defaults to None)
-                If None, then 'IN [n]: ' is used, where `n` is the
-                current input line number.
+                If None, then 'IN [%d]: ' is used, where `%d` is formatted after
+                the current input line number.
         :type inprompt: str, None
         :param outprompt: Output prompt (Defaults to None)
-                If None, then 'OUT[n]: ' is used, where `n` is the
-                current input line number.
+                If None, then 'OUT[%d]: ' is used, where `%d` is formatted after
+                the current input line number.
         :type outprompt: str, None
         """
         super().__init__(parent)
@@ -91,12 +91,12 @@ class BaseConsole(QFrame):
         self._more = False
         self._current_line = 0
 
-        self._ps1 = inprompt or 'IN [%s]: '
+        self._ps1 = inprompt or 'IN [%d]:'
         self._ps1 = self._ps1.strip() + ' '
         self._ps2 = '...: '
-        self._ps_out = outprompt or 'OUT[%s]: '
+        self._ps_out = outprompt or 'OUT[%d]:'
         self._ps_out = self._ps_out.strip() + ' '
-        self._ps = self.inPrompt()
+        self._ps = self.in_prompt()
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -134,20 +134,21 @@ class BaseConsole(QFrame):
 
         self._show_ps()
 
-    def outPrompt(self):
-        """return the output prompt."""
+    def out_prompt(self):
+        """return the (formatted) output prompt."""
         try:
             # may depend on current line:
             return self._ps_out % self._current_line
-        except Exception:
+        except TypeError:
             return self._ps_out
+            # In case the provided format does not include a placeholder, just
+            # take the template string
 
-    def inPrompt(self):
-        """return the input prompt."""
+    def in_prompt(self):
+        """return the (formatted) input prompt."""
         try:
-            # may depend on current line:
             return self._ps1 % self._current_line
-        except Exception:
+        except TypeError:
             return self._ps1
 
     def setFont(self, font):
@@ -179,7 +180,7 @@ class BaseConsole(QFrame):
         # If the input is complete increase the input number and show
         # the in prompt
         if not _more:
-            self._ps = self.inPrompt()
+            self._ps = self.in_prompt()
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * ' ' + self._ps2
 
@@ -188,7 +189,7 @@ class BaseConsole(QFrame):
         if result is not None:
             self._insert_output_text(
                 repr(result),
-                prompt=self.outPrompt())
+                prompt=self.out_prompt())
             self._insert_output_text('\n')
 
         if executed and self._last_input:
@@ -581,15 +582,15 @@ class BaseConsole(QFrame):
 
             if output:
                 self._insert_output_text(
-                    output, prompt=self.outPrompt())
+                    output, prompt=self.out_prompt())
                 self._insert_output_text('\n')
         except subprocess.TimeoutExpired:
             self._insert_output_text('[Command timed out]\n',
-                                     prompt=self.outPrompt())
+                                     prompt=self.out_prompt())
             self._insert_output_text('\n')
         except Exception as e:
             self._insert_output_text(f'[Error: {str(e)}]\n',
-                                     prompt=self.outPrompt())
+                                     prompt=self.out_prompt())
             self._insert_output_text('\n')
 
     def _handle_ctrl_c(self):
