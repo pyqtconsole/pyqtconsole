@@ -679,13 +679,13 @@ class PythonConsole(BaseConsole):
     """Interactive python GUI console."""
 
     def __init__(self, parent=None, locals=None, formats=None,
-                 shell_cmd_prefix=''):
+                 shell_cmd_prefix='', inprompt=None, outprompt=None):
         super().__init__(
             parent,
             formats=formats,
             shell_cmd_prefix=shell_cmd_prefix,
-            inprompt=None,
-            outprompt=None
+            inprompt=inprompt,
+            outprompt=outprompt
         )
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
