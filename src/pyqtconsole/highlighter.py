@@ -7,8 +7,7 @@ import re
 def format(color, style=''):
     """Return a QTextCharFormat with the given attributes.
     """
-    _color = QColor()
-    _color.setNamedColor(color)
+    _color = QColor(color)
 
     _format = QTextCharFormat()
     _format.setForeground(_color)
