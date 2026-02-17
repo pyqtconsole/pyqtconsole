@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools >= 77.0.3"]
+# ^ minimum required for the modern `project.license`
 build-backend = "setuptools.build_meta"
 
 [project]
