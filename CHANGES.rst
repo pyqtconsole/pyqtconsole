@@ -10,6 +10,7 @@ Unreleased
 - fixed issue with multibyte characters (emojis) breaking the input (`#87 <https://github.com/pyqtconsole/pyqtconsole/issues/87>`__)
 - added optional escape character to execute system commands (e.g ``!ls -l``) (`#93 <https://github.com/pyqtconsole/pyqtconsole/issues/93>`__)
 - added option to change the prompt placeholder strings (`#68 <https://github.com/pyqtconsole/pyqtconsole/issues/68>`__)
+- fixed issues in string highlighting (`#69 <https://github.com/pyqtconsole/pyqtconsole/issues/69>`__)
 
 v1.2.3
 ------
