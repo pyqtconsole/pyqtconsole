@@ -1,8 +1,9 @@
 Changelog
 ~~~~~~~~~
 
-Unreleased
-----------
+v1.3.0
+------
+Date: 17.02.2026
 
 - migrated from ``setup.py`` + ``setup.cfg`` to ``pyproject.toml``
 - dropped official support for Python 3.8 and added 3.13 and 3.14 (no code changes)
