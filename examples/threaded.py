@@ -16,6 +16,7 @@ if __name__ == '__main__':
 
     console = PythonConsole(shell_cmd_prefix=True)
     console.push_local_ns('greet', greet)
+    console.interpreter.locals["clear"] = console.clear
     console.show()
     console.eval_in_thread()
     sys.exit(app.exec_())
