@@ -33,12 +33,16 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - run: pip install build twine pytest
+      - run: pip install build twine pytest pyside6
       - run: python -m build .
       - run: twine check dist/*
 
       - run: pip install dist/*.whl
         shell: bash
+
+      - name: Install Qt system dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y libegl1
 
       - run: pytest
 

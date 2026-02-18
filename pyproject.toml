@@ -1,5 +1,6 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools >= 77.0.3"]
+# ^ minimum required for the modern `project.license`
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,7 +12,8 @@ authors = [
 description = "Light-weight python interpreter, easy to embed into Qt applications"
 requires-python = ">=3.9,<4.0"
 keywords = ["interactive", "interpreter", "console", "shell", "autocompletion", "jedi", "qt"]
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 classifiers = [
     "Environment :: X11 Applications :: Qt",
     "Intended Audience :: Developers",
@@ -32,7 +34,6 @@ dev = ["flake8"]
 Homepage = "https://github.com/pyqtconsole/pyqtconsole"
 
 [tool.setuptools]
-license-files = ["LICENSE"]
 packages = ["pyqtconsole"]
 package-dir = {"" = "src"}
 include-package-data = true

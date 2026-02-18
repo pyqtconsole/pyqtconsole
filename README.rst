@@ -94,6 +94,16 @@ must be shaped as follows:
 
 All keys are optional and default to the value shown above if left unspecified.
 
+Clear console
+-------------
+
+A local method, named `clear()`, is available to clear the input screen and reset the line numbering.
+Enable it by pushing the method into the available namespace in the console:
+
+.. code-block:: python
+
+   console.interpreter.locals["clear"] = console.clear
+
 Shell commands
 --------------
 
