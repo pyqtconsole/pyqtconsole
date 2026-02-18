@@ -44,7 +44,7 @@ class MagicCmds():
     def _LS(self, args=None):
         """Directory listing, with optional arguments (e.g. -l, -a)"""
         result = subprocess.run(
-            f'ls {args}' if args else 'ls',
+            f'{LS_CMD} {args}' if args else LS_CMD,
             shell=True,
             capture_output=True,
             text=True
