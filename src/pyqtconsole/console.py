@@ -97,7 +97,7 @@ class BaseConsole(QFrame):
         self._ps2 = '...: '
         self._ps_out = outprompt or 'OUT[%d]:'
         self._ps_out = self._ps_out.strip() + ' '
-        self._ps = self.inPrompt()
+        self._ps = self.in_prompt()
 
         self.MAGIC_COMMANDS = {
             'pwd': self._PWD,
@@ -147,20 +147,20 @@ class BaseConsole(QFrame):
 
         self._show_ps()
 
-    def outPrompt(self):
-        """return the output prompt."""
+    def out_prompt(self):
+        """return the (formatted) output prompt."""
         try:
-            # may depend on current line:
             return self._ps_out % self._current_line
-        except Exception:
+        except TypeError:
             return self._ps_out
+            # In case the provided format does not include a placeholder, just
+            # take the template string
 
-    def inPrompt(self):
-        """return the input prompt."""
+    def in_prompt(self):
+        """return the (formatted) input prompt."""
         try:
-            # may depend on current line:
             return self._ps1 % self._current_line
-        except Exception:
+        except TypeError:
             return self._ps1
 
     def setFont(self, font):
@@ -192,7 +192,7 @@ class BaseConsole(QFrame):
         # If the input is complete increase the input number and show
         # the in prompt
         if not _more:
-            self._ps = self.inPrompt()
+            self._ps = self.in_prompt()
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * ' ' + self._ps2
 
@@ -201,7 +201,7 @@ class BaseConsole(QFrame):
         if result is not None:
             self._insert_output_text(
                 repr(result),
-                prompt=self.outPrompt())
+                prompt=self.out_prompt())
             self._insert_output_text('\n')
 
         if executed and self._last_input:
@@ -489,8 +489,8 @@ class BaseConsole(QFrame):
 
     def input_buffer(self):
         """Retrieve current input buffer in string form."""
-        # Use cursor selection to properly handle
-        #  multi-byte characters like emojis
+        # Use cursor selection to properly handle multi-byte
+        # characters like emojis
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
@@ -596,15 +596,16 @@ class BaseConsole(QFrame):
                 output += f'[Exit code: {result.returncode}]\n'
 
             if output:
-                self._insert_output_text(output, prompt=self.outPrompt())
+                self._insert_output_text(
+                    output, prompt=self.out_prompt())
                 self._insert_output_text('\n')
         except subprocess.TimeoutExpired:
             self._insert_output_text('[Command timed out]\n',
-                                     prompt=self.outPrompt())
+                                     prompt=self.out_prompt())
             self._insert_output_text('\n')
         except Exception as e:
             self._insert_output_text(f'[Error: {str(e)}]\n',
-                                     prompt=self.outPrompt())
+                                     prompt=self.out_prompt())
             self._insert_output_text('\n')
 
     def _PWD(self, args=None):
@@ -715,7 +716,7 @@ class BaseConsole(QFrame):
                 output += self._HELP()
 
             if output:
-                self._insert_output_text(output, prompt=self.outPrompt())
+                self._insert_output_text(output, prompt=self.out_prompt())
                 self._insert_output_text('\n')
 
         except Exception as e:

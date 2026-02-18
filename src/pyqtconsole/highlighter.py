@@ -145,7 +145,6 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Apply formatting, skipping non-string rules inside strings
         for expression, nth, format in self.rules:
             for m in expression.finditer(text):
-
                 # Skip non-string formatting if it's inside a string
                 # Check using Python string index, not UTF-16 offset
                 if format != s and m.start(nth) in string_positions:
