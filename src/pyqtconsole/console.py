@@ -3,7 +3,6 @@ import threading
 import ctypes
 from abc import abstractmethod
 import subprocess
-import os
 
 from qtpy.QtCore import Qt, QThread, Slot, QEvent
 from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
