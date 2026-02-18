@@ -150,6 +150,7 @@ class BaseConsole(QFrame):
     def out_prompt(self):
         """return the (formatted) output prompt."""
         try:
+            # may depend on current line:
             return self._ps_out % self._current_line
         except TypeError:
             return self._ps_out
