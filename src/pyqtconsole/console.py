@@ -482,7 +482,7 @@ class BaseConsole(QFrame):
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
-        return cursor.selectedText()
+        return cursor.selectedText().replace(u'\u2029', '\n')
 
     def cursor_offset(self):
         """Get current cursor index within input buffer."""
@@ -490,7 +490,7 @@ class BaseConsole(QFrame):
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.setPosition(self._textCursor().position(), QTextCursor.KeepAnchor)
-        selected_text = cursor.selectedText()
+        selected_text = cursor.selectedText().replace(u'\u2029', '\n')
         return len(selected_text)
 
     def _get_line_until_cursor(self):
