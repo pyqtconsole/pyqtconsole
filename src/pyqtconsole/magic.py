@@ -86,16 +86,16 @@ class MagicCmds():
             return 'Usage: %timeit <statement>\n'
         import timeit
         try:
-            number = 10000
+            num = 10000  # number of executions to average over
             per_loop = timeit.Timer(
-                args, globals=self.parent.interpreter.locals).timeit(number) / number
+                args, globals=self.parent.interpreter.locals).timeit(num) / num
             for threshold, scale, unit in [(1e-6, 1e9, 'ns'),
                                            (1e-3, 1e6, 'µs'),
                                            (1, 1e3, 'ms')]:
                 if per_loop < threshold:
                     return f'{per_loop * scale:.1f} {unit} ± per loop ' \
-                           f'(mean of {number} runs)\n'
-            return f'{per_loop:.3f} s ± per loop (mean of {number} runs)\n'
+                           f'(mean of {num} runs)\n'
+            return f'{per_loop:.3f} s ± per loop (mean of {num} runs)\n'
         except Exception as e:
             return f'Error timing code: {str(e)}\n'
 
