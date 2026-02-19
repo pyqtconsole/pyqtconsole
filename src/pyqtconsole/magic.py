@@ -128,3 +128,15 @@ class MagicCmds():
             return self.MAGIC_COMMANDS[cmd](args)
         else:
             return f'Unknown magic command: %{cmd}\n' + self._HELP()
+
+    def add_magic_command(self, name, func):
+        """Add a custom magic command.
+
+        :param name: Name of the magic command (without %)
+        :type name: str
+        :param func: Function to execute for this magic command. It should
+            take a single string argument (the args) and return a string
+            output.
+        :type func: callable
+        """
+        self.MAGIC_COMMANDS[name] = func

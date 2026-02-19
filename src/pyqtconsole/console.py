@@ -100,6 +100,7 @@ class BaseConsole(QFrame):
         self._ps = self.in_prompt()
 
         self.magic = MagicCmds(self)
+        self.add_magic_command = self.magic.add_magic_command
 
         self.stdin = Stream()
         self.stdout = Stream()
