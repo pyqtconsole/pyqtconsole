@@ -475,6 +475,18 @@ class BaseConsole(QFrame):
         self._prompt_pos = cursor.position()
         self._output_inserted = self._more
 
+    @staticmethod
+    def _selected_text(cursor):
+        """Get sanitized selectedText() from a cursor.
+
+        :param cursor:
+        :type cursor: QTextCursor
+        :rtype: str
+        """
+        # On a multi-line command, Qt will include this 'paragraph separator'
+        # character instead of a newline (#109):
+        return cursor.selectedText().replace(u'\u2029', '\n')
+
     def input_buffer(self):
         """Retrieve current input buffer in string form."""
         # Use cursor selection to properly handle multi-byte
@@ -482,7 +494,7 @@ class BaseConsole(QFrame):
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.movePosition(QTextCursor.End, QTextCursor.KeepAnchor)
-        return cursor.selectedText().replace(u'\u2029', '\n')
+        return self._selected_text(cursor)
 
     def cursor_offset(self):
         """Get current cursor index within input buffer."""
@@ -490,7 +502,7 @@ class BaseConsole(QFrame):
         cursor = QTextCursor(self.edit.document())
         cursor.setPosition(self._prompt_pos)
         cursor.setPosition(self._textCursor().position(), QTextCursor.KeepAnchor)
-        selected_text = cursor.selectedText().replace(u'\u2029', '\n')
+        selected_text = self._selected_text(cursor)
         return len(selected_text)
 
     def _get_line_until_cursor(self):
@@ -630,7 +642,7 @@ class BaseConsole(QFrame):
         if not cursor.hasSelection():
             return
 
-        num_lines = cursor.selectedText().replace(u'\u2029', '\n').count('\n')
+        num_lines = self._selected_text(cursor).count('\n')
         cursor.removeSelectedText()
 
         if num_lines > 0:
