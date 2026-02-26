@@ -1,6 +1,11 @@
 Changelog
 ~~~~~~~~~
 
+Unreleased
+----------
+
+- resolved multi-line command issue (`#109 <https://github.com/pyqtconsole/pyqtconsole/issues/109>`__)
+
 v1.3.0
 ------
 Date: 17.02.2026
