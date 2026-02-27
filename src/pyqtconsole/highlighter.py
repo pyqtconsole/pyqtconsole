@@ -129,32 +129,56 @@ class PythonHighlighter(QSyntaxHighlighter):
         """Apply syntax highlighting to the given block of text.
         """
         s = self.styles['string']
-        # Find all positions inside strings (using Python string indices)
-        string_positions = {
-            pos
-            for expression, nth, fmt in self.rules
-            if fmt == s
-            for m in expression.finditer(text)
-            for pos in range(m.start(nth), m.end(nth))
-        }
+        c = self.styles['comment']
 
-        # Apply formatting, skipping non-string rules inside strings
+        # Find all positions inside strings (using Python string indices)
+        string_positions = set()
+        for expression, nth, fmt in self.rules:
+            if fmt == s:
+                for m in expression.finditer(text):
+                    string_positions.update(range(m.start(nth), m.end(nth)))
+
+        # Find where the real comment starts (first # not inside a string)
+        comment_start = None
+        for i, char in enumerate(text):
+            if char == '#' and i not in string_positions:
+                comment_start = i
+                break
+
+        # Build set of positions inside the comment
+        comment_positions = set()
+        if comment_start is not None:
+            comment_positions = set(range(comment_start, len(text)))
+
+        # Apply formatting, skipping non-string/non-comment
+        # rules inside strings/comments
         for expression, nth, format in self.rules:
+            # Skip the comment rule - we'll handle it manually below
+            if format == c:
+                continue
             for m in expression.finditer(text):
+                start = m.start(nth)
                 # Skip non-string formatting if it's inside a string
-                # Check using Python string index, not UTF-16 offset
-                if format != s and m.start(nth) in string_positions:
-                    # Skip non-string formatting if it's inside a string
+                if format != s and start in string_positions:
                     continue
-                start_pos = self._to_utf16_offset(text, m.start(nth))
+                # Skip formatting if it's inside a comment
+                if start in comment_positions:
+                    continue
+                start_pos = self._to_utf16_offset(text, start)
                 end_pos = self._to_utf16_offset(text, m.end(nth))
                 self.setFormat(start_pos, end_pos - start_pos, format)
 
-        # Highlight f-string interpolations
-        self.highlight_fstring_interpolations(text)
+        # Manually apply comment formatting from comment_start to end of line
+        if comment_start is not None:
+            start_utf16 = self._to_utf16_offset(text, comment_start)
+            end_utf16 = self._to_utf16_offset(text, len(text))
+            self.setFormat(start_utf16, end_utf16 - start_utf16, c)
 
-        # Highlight escape sequences in strings
-        self.highlight_escape_sequences(text)
+        # Highlight f-string interpolations (only outside comments)
+        self.highlight_fstring_interpolations(text, comment_positions)
+
+        # Highlight escape sequences in strings (only outside comments)
+        self.highlight_escape_sequences(text, comment_positions)
 
         self.setCurrentBlockState(0)
 
@@ -212,10 +236,15 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Return True if still inside a multi-line string, False otherwise
         return self.currentBlockState() == in_state
 
-    def highlight_fstring_interpolations(self, text):
+    def highlight_fstring_interpolations(self, text, comment_positions=None):
         """Highlight f-string interpolations (the {} parts).
         """
+        if comment_positions is None:
+            comment_positions = set()
         for m in self.fstring_pattern.finditer(text):
+            # Skip if this f-string starts inside a comment
+            if m.start() in comment_positions:
+                continue
             string_content = m.group(2)
             ln = len(string_content)
             content_start = m.start(2)
@@ -255,10 +284,15 @@ class PythonHighlighter(QSyntaxHighlighter):
                 else:
                     i += 1
 
-    def highlight_escape_sequences(self, text):
+    def highlight_escape_sequences(self, text, comment_positions=None):
         """Highlight escape sequences in strings.
         """
+        if comment_positions is None:
+            comment_positions = set()
         for m in self.string_pattern.finditer(text):
+            # Skip if this string starts inside a comment
+            if m.start() in comment_positions:
+                continue
             content_start = m.start(2)
             for esc in self.escape_pattern.finditer(m.group(2)):
                 start_utf16 = self._to_utf16_offset(text, content_start +

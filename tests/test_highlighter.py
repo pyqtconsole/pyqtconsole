@@ -8,7 +8,12 @@ import pytest
 def highlighter():
     """Create a PythonHighlighter instance for testing."""
     doc = QTextDocument()
-    return PythonHighlighter(doc)
+    h = PythonHighlighter(doc)
+    # Mock Qt state methods to avoid runtime errors in tests
+    h.setCurrentBlockState = MagicMock()
+    h.previousBlockState = MagicMock(return_value=-1)
+    h.currentBlockState = MagicMock(return_value=0)
+    return h
 
 
 def test_fstring_interpolation_simple(highlighter):
@@ -312,3 +317,145 @@ def test_escape_backslash_at_end(highlighter):
     # Should highlight \\ at position 5, length 2
     highlighter.setFormat.assert_called_once_with(
         5, 2, highlighter.styles['escape'])
+
+
+# Edge case tests for comment handling
+
+
+def test_comment_with_hash_in_string(highlighter):
+    """Test that # inside a string doesn't prevent comment highlighting."""
+    highlighter.setFormat = MagicMock()
+
+    text = "x='123 #123 abc'  #122"
+
+    # highlightBlock processes the whole line
+    highlighter.highlightBlock(text)
+
+    # Verify that comment formatting was applied
+    # The actual comment starts at position 17 (after the string)
+    calls = [call for call in highlighter.setFormat.call_args_list
+             if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+    assert len(calls) > 0, "Comment should be highlighted"
+
+
+def test_comment_numbers_not_highlighted(highlighter):
+    """Test that numbers in comments are not highlighted separately."""
+    highlighter.setFormat = MagicMock()
+
+    text = "#123 comment with numbers 456"
+    highlighter.highlightBlock(text)
+
+    # Should only have comment formatting, not number formatting
+    number_calls = [call for call in highlighter.setFormat.call_args_list
+                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['numbers']]
+    assert len(number_calls) == 0, "Numbers in comments should not be highlighted"
+
+    comment_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+    assert len(comment_calls) > 0, "Comment should be highlighted"
+
+
+def test_comment_with_fstring_not_highlighted(highlighter):
+    """Test that f-strings in comments are not highlighted."""
+    highlighter.setFormat = MagicMock()
+
+    text = "# f'123 \\n {123}'"
+    highlighter.highlightBlock(text)
+
+    # Should not have fstring or escape formatting
+    fstring_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['fstring']]
+    assert len(
+        fstring_calls) == 0, "F-string interpolations in comments should not be highlighted"
+
+    escape_calls = [call for call in highlighter.setFormat.call_args_list
+                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['escape']]
+    assert len(
+        escape_calls) == 0, "Escape sequences in comments should not be highlighted"
+
+    comment_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+    assert len(comment_calls) > 0, "Comment should be highlighted"
+
+
+def test_fstring_with_comment_positions(highlighter):
+    """Test that f-string interpolations respect comment positions."""
+    highlighter.setFormat = MagicMock()
+
+    # Create comment positions for the second half of the text
+    text = 'f"{x}" # f"{y}"'
+    comment_positions = set(range(7, len(text)))
+
+    highlighter.highlight_fstring_interpolations(text, comment_positions)
+
+    # Should only highlight {x}, not {y} which is in the comment
+    assert highlighter.setFormat.call_count == 1
+    calls = highlighter.setFormat.call_args_list
+    assert calls[0] == call(2, 3, highlighter.styles['fstring'])
+
+
+def test_escape_with_comment_positions(highlighter):
+    """Test that escape sequences respect comment positions."""
+    highlighter.setFormat = MagicMock()
+
+    # Create comment positions for the second half of the text
+    text = '"\\n" # "\\t"'
+    comment_positions = set(range(5, len(text)))
+
+    highlighter.highlight_escape_sequences(text, comment_positions)
+
+    # Should only highlight \n, not \t which is in the comment
+    assert highlighter.setFormat.call_count == 1
+    calls = highlighter.setFormat.call_args_list
+    assert calls[0] == call(1, 2, highlighter.styles['escape'])
+
+
+def test_comment_after_code(highlighter):
+    """Test comment highlighting after regular code."""
+    highlighter.setFormat = MagicMock()
+
+    text = "x = 123  # this is a comment"
+    highlighter.highlightBlock(text)
+
+    # Should have both number and comment highlighting
+    number_calls = [call for call in highlighter.setFormat.call_args_list
+                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['numbers']]
+    assert len(number_calls) > 0, "Number should be highlighted"
+
+    comment_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+    assert len(comment_calls) > 0, "Comment should be highlighted"
+
+
+def test_string_containing_hash_not_comment(highlighter):
+    """Test that # inside a string is not treated as a comment."""
+    highlighter.setFormat = MagicMock()
+
+    text = '"This is a # hashtag"'
+    highlighter.highlightBlock(text)
+
+    # Should have string highlighting but no comment highlighting
+    string_calls = [call for call in highlighter.setFormat.call_args_list
+                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string']]
+    assert len(string_calls) > 0, "String should be highlighted"
+
+    comment_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+    assert len(comment_calls) == 0, "# inside string should not be treated as comment"
+
+
+def test_comment_with_keywords(highlighter):
+    """Test that keywords in comments are not highlighted separately."""
+    highlighter.setFormat = MagicMock()
+
+    text = "# def class if else while"
+    highlighter.highlightBlock(text)
+
+    # Should not have keyword formatting
+    keyword_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['keyword']]
+    assert len(keyword_calls) == 0, "Keywords in comments should not be highlighted"
+
+    comment_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+    assert len(comment_calls) > 0, "Comment should be highlighted"
