@@ -1,4 +1,4 @@
-from pyqtconsole.highlighter import PythonHighlighter
+from pyqtconsole.highlighter import PythonHighlighter, PromptHighlighter
 from qtpy.QtGui import QTextDocument
 from unittest.mock import MagicMock, call
 import pytest
@@ -14,6 +14,187 @@ def highlighter():
     h.previousBlockState = MagicMock(return_value=-1)
     h.currentBlockState = MagicMock(return_value=0)
     return h
+
+
+@pytest.fixture
+def prompt_highlighter():
+    """Create a PromptHighlighter instance for testing."""
+    return PromptHighlighter()
+
+
+# Tests for PromptHighlighter
+
+
+def test_prompt_highlight_in_prompt(prompt_highlighter):
+    """Test highlighting of IN prompt."""
+    text = "IN[1]: x = 5"
+    results = list(prompt_highlighter.highlight(text))
+
+    # Should highlight "IN[1]"
+    assert len(results) > 0, "IN prompt should be highlighted"
+    # First match should be the IN prompt
+    start, length, format_style = results[0]
+    assert start == 0, "IN prompt should start at position 0"
+    assert text[start:start+length] == "IN[1]", "Should match IN[1]"
+    assert format_style == prompt_highlighter.styles['inprompt']
+
+
+def test_prompt_highlight_out_prompt(prompt_highlighter):
+    """Test highlighting of OUT prompt."""
+    text = "OUT[1]: 42"
+    results = list(prompt_highlighter.highlight(text))
+
+    # Should highlight "OUT[1]"
+    assert len(results) > 0, "OUT prompt should be highlighted"
+    # First match should be the OUT prompt
+    start, length, format_style = results[0]
+    assert start == 0, "OUT prompt should start at position 0"
+    assert text[start:start+length] == "OUT[1]", "Should match OUT[1]"
+    assert format_style == prompt_highlighter.styles['outprompt']
+
+
+def test_prompt_highlight_numbers(prompt_highlighter):
+    """Test highlighting of numbers."""
+    text = "x = 42"
+    results = list(prompt_highlighter.highlight(text))
+
+    # Should highlight "42"
+    assert len(results) > 0, "Number should be highlighted"
+    start, length, format_style = results[0]
+    assert text[start:start+length] == "42", "Should match number 42"
+    assert format_style == prompt_highlighter.styles['numbers']
+
+
+def test_prompt_highlight_multiple_numbers(prompt_highlighter):
+    """Test highlighting of multiple numbers."""
+    text = "x = 10 + 20 - 5"
+    results = list(prompt_highlighter.highlight(text))
+
+    # Should highlight all three numbers
+    assert len(results) == 3, "Should highlight three numbers"
+    numbers = [text[r[0]:r[0]+r[1]] for r in results]
+    assert numbers == ['10', '20', '5'], "Should match all numbers"
+
+
+def test_prompt_highlight_in_with_numbers(prompt_highlighter):
+    """Test highlighting IN prompt with numbers in code."""
+    text = "IN[5]: result = 100"
+    results = list(prompt_highlighter.highlight(text))
+
+    # Should highlight: IN prompt, number in brackets, and number in code
+    assert len(results) == 3, "Should highlight IN prompt and numbers"
+
+    # First should be IN prompt
+    start, length, format_style = results[0]
+    assert text[start:start+length] == "IN[5]", "Should match IN[5]"
+    assert format_style == prompt_highlighter.styles['inprompt']
+
+    # Second should be the number inside the brackets
+    start, length, format_style = results[1]
+    assert text[start:start+length] == "5", "Should match 5"
+    assert format_style == prompt_highlighter.styles['numbers']
+
+    # Third should be the number in the code
+    start, length, format_style = results[2]
+    assert text[start:start+length] == "100", "Should match 100"
+    assert format_style == prompt_highlighter.styles['numbers']
+
+
+def test_prompt_highlight_out_with_numbers(prompt_highlighter):
+    """Test highlighting OUT prompt with numbers in output."""
+    text = "OUT[3]: 999"
+    results = list(prompt_highlighter.highlight(text))
+
+    # Should highlight: OUT prompt, number in brackets, and number in output
+    assert len(results) == 3, "Should highlight OUT prompt and numbers"
+
+    # First should be OUT prompt
+    start, length, format_style = results[0]
+    assert text[start:start+length] == "OUT[3]", "Should match OUT[3]"
+    assert format_style == prompt_highlighter.styles['outprompt']
+
+    # Second should be the number inside the brackets
+    start, length, format_style = results[1]
+    assert text[start:start+length] == "3", "Should match 3"
+    assert format_style == prompt_highlighter.styles['numbers']
+
+    # Third should be the number in the output
+    start, length, format_style = results[2]
+    assert text[start:start+length] == "999", "Should match 999"
+    assert format_style == prompt_highlighter.styles['numbers']
+
+
+def test_prompt_highlight_no_matches(prompt_highlighter):
+    """Test text with no matches."""
+    text = "just some text"
+    results = list(prompt_highlighter.highlight(text))
+
+    # Should have no highlights
+    assert len(results) == 0, "Should not highlight anything"
+
+
+def test_prompt_highlight_numbers_in_expressions(prompt_highlighter):
+    """Test highlighting of numbers in expressions (signs are not included)."""
+    text = "x = +5 - -3"
+    results = list(prompt_highlighter.highlight(text))
+
+    # The regex \b[+-]?[0-9]+\b matches just the digits, not the +/- operators
+    assert len(results) == 2, "Should highlight both numbers"
+    numbers = [text[r[0]:r[0]+r[1]] for r in results]
+    assert '5' in numbers, "Should match 5"
+    assert '3' in numbers, "Should match 3"
+
+
+def test_prompt_highlight_custom_formats(prompt_highlighter):
+    """Test PromptHighlighter with custom formats."""
+    from pyqtconsole.highlighter import format
+    custom_formats = {
+        'inprompt': format('red', 'bold'),
+    }
+    ph = PromptHighlighter(formats=custom_formats)
+
+    text = "IN[1]: test"
+    results = list(ph.highlight(text))
+
+    # Should use custom format
+    assert len(results) > 0, "Should highlight IN prompt"
+    start, length, format_style = results[0]
+    assert format_style == custom_formats['inprompt']
+
+
+def test_prompt_highlight_in_variations(prompt_highlighter):
+    """Test various IN prompt formats."""
+    test_cases = [
+        "IN[1]",
+        "IN[999]",
+        "IN[01]",
+    ]
+
+    for text in test_cases:
+        results = list(prompt_highlighter.highlight(text))
+        assert len(results) > 0, f"Should highlight {text}"
+        start, length, format_style = results[0]
+        assert text[start:start+length] == text, f"Should match entire {text}"
+        assert format_style == prompt_highlighter.styles['inprompt']
+
+
+def test_prompt_highlight_out_variations(prompt_highlighter):
+    """Test various OUT prompt formats."""
+    test_cases = [
+        "OUT[1]",
+        "OUT[999]",
+        "OUT[01]",
+    ]
+
+    for text in test_cases:
+        results = list(prompt_highlighter.highlight(text))
+        assert len(results) > 0, f"Should highlight {text}"
+        start, length, format_style = results[0]
+        assert text[start:start+length] == text, f"Should match entire {text}"
+        assert format_style == prompt_highlighter.styles['outprompt']
+
+
+# Tests for PythonHighlighter
 
 
 def test_fstring_interpolation_simple(highlighter):
@@ -64,6 +245,54 @@ def test_fstring_interpolation_escaped_braces(highlighter):
     # Should only highlight {real}, not {{escaped}}
     highlighter.setFormat.assert_called_once_with(
         14, 6, highlighter.styles['fstring'])
+
+
+def test_fstring_escaped_braces_variations(highlighter):
+    """Test various escaped brace patterns in f-strings."""
+    highlighter.setFormat = MagicMock()
+
+    # Only opening braces escaped
+    text = 'f"{{literal}}"'
+    highlighter.highlight_fstring_interpolations(text)
+    # Should not highlight anything
+    highlighter.setFormat.assert_not_called()
+
+    # Multiple escaped brace pairs
+    highlighter.setFormat = MagicMock()
+    text = 'f"{{a}} {{b}}"'
+    highlighter.highlight_fstring_interpolations(text)
+    # Should not highlight anything
+    highlighter.setFormat.assert_not_called()
+
+    # Escaped braces with interpolation
+    highlighter.setFormat = MagicMock()
+    text = 'f"{{escaped}} {var} {{more}}"'
+    highlighter.highlight_fstring_interpolations(text)
+    # Should only highlight {var}
+    highlighter.setFormat.assert_called_once_with(
+        14, 5, highlighter.styles['fstring'])
+
+    # Just closing escaped braces
+    highlighter.setFormat = MagicMock()
+    text = 'f"text}}"'
+    highlighter.highlight_fstring_interpolations(text)
+    # Should not highlight anything (no opening brace)
+    highlighter.setFormat.assert_not_called()
+
+
+def test_fstring_mixed_escaped_and_real_braces(highlighter):
+    """Test f-strings with mix of escaped and real braces."""
+    highlighter.setFormat = MagicMock()
+
+    # {{{var}}} -> one { literal, var interpolation, one } literal
+    text = 'f"{{{var}}}"'
+    highlighter.highlight_fstring_interpolations(text)
+
+    # Should highlight {var}}} (from position 4 with length 7)
+    # Note: The algorithm processes {{ as escaped, then highlights {var}}}
+    assert highlighter.setFormat.call_count == 1
+    calls = highlighter.setFormat.call_args_list
+    assert calls[0] == call(4, 7, highlighter.styles['fstring'])
 
 
 def test_fstring_interpolation_nested_braces(highlighter):
