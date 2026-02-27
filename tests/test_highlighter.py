@@ -344,14 +344,15 @@ def test_comment_numbers_not_highlighted(highlighter):
 
     text = "#123 comment with numbers 456"
     highlighter.highlightBlock(text)
+    numbers = highlighter.styles['numbers']
+    comment = highlighter.styles['comment']
 
     # Should only have comment formatting, not number formatting
     number_calls = [call for call in highlighter.setFormat.call_args_list
-                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['numbers']]
+                    if len(call[0]) >= 3 and call[0][2] == numbers]
     assert len(number_calls) == 0, "Numbers in comments should not be highlighted"
-
     comment_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+                     if len(call[0]) >= 3 and call[0][2] == comment]
     assert len(comment_calls) > 0, "Comment should be highlighted"
 
 
@@ -363,18 +364,23 @@ def test_comment_with_fstring_not_highlighted(highlighter):
     highlighter.highlightBlock(text)
 
     # Should not have fstring or escape formatting
+    fstring = highlighter.styles['fstring']
     fstring_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['fstring']]
+                     if len(call[0]) >= 3 and call[0][2] == fstring]
     assert len(
-        fstring_calls) == 0, "F-string interpolations in comments should not be highlighted"
+        fstring_calls) == 0, "F-string interpolations in comments ' \
+        'should not be highlighted"
 
+    escape = highlighter.styles['escape']
     escape_calls = [call for call in highlighter.setFormat.call_args_list
-                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['escape']]
+                    if len(call[0]) >= 3 and call[0][2] == escape]
     assert len(
-        escape_calls) == 0, "Escape sequences in comments should not be highlighted"
+        escape_calls) == 0, "Escape sequences in comments ' \
+            'should not be highlighted"
 
+    comment = highlighter.styles['comment']
     comment_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+                     if len(call[0]) >= 3 and call[0][2] == comment]
     assert len(comment_calls) > 0, "Comment should be highlighted"
 
 
@@ -416,14 +422,16 @@ def test_comment_after_code(highlighter):
 
     text = "x = 123  # this is a comment"
     highlighter.highlightBlock(text)
+    numbers = highlighter.styles['numbers']
+    comment = highlighter.styles['comment']
 
     # Should have both number and comment highlighting
     number_calls = [call for call in highlighter.setFormat.call_args_list
-                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['numbers']]
+                    if len(call[0]) >= 3 and call[0][2] == numbers]
     assert len(number_calls) > 0, "Number should be highlighted"
 
     comment_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+                     if len(call[0]) >= 3 and call[0][2] == comment]
     assert len(comment_calls) > 0, "Comment should be highlighted"
 
 
@@ -433,15 +441,18 @@ def test_string_containing_hash_not_comment(highlighter):
 
     text = '"This is a # hashtag"'
     highlighter.highlightBlock(text)
+    strs = highlighter.styles['string']
+    comment = highlighter.styles['comment']
 
     # Should have string highlighting but no comment highlighting
     string_calls = [call for call in highlighter.setFormat.call_args_list
-                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string']]
+                    if len(call[0]) >= 3 and call[0][2] == strs]
     assert len(string_calls) > 0, "String should be highlighted"
 
     comment_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
-    assert len(comment_calls) == 0, "# inside string should not be treated as comment"
+                     if len(call[0]) >= 3 and call[0][2] == comment]
+    assert len(comment_calls) == 0, "# inside string should not ' \
+        'be treated as comment"
 
 
 def test_comment_with_keywords(highlighter):
@@ -450,14 +461,17 @@ def test_comment_with_keywords(highlighter):
 
     text = "# def class if else while"
     highlighter.highlightBlock(text)
+    keys = highlighter.styles['keyword']
+    comment = highlighter.styles['comment']
 
     # Should not have keyword formatting
     keyword_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['keyword']]
-    assert len(keyword_calls) == 0, "Keywords in comments should not be highlighted"
+                     if len(call[0]) >= 3 and call[0][2] == keys]
+    assert len(keyword_calls) == 0, "Keywords in comments should not ' \
+        'be highlighted"
 
     comment_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
+                     if len(call[0]) >= 3 and call[0][2] == comment]
     assert len(comment_calls) > 0, "Comment should be highlighted"
 
 
@@ -472,8 +486,9 @@ def test_multiline_triple_double_quotes_single_line(highlighter):
     highlighter.highlightBlock(text)
 
     # Should have string2 formatting for the entire string
+    string2 = highlighter.styles['string2']
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] == string2]
     assert len(string2_calls) > 0, "Triple-quoted string should be highlighted"
 
     # Block state should be 0 (not in multi-line)
@@ -488,9 +503,11 @@ def test_multiline_triple_single_quotes_single_line(highlighter):
     highlighter.highlightBlock(text)
 
     # Should have string2 formatting for the entire string
+    string2 = highlighter.styles['string2']
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
-    assert len(string2_calls) > 0, "Triple-single-quoted string should be highlighted"
+                     if len(call[0]) >= 3 and call[0][2] == string2]
+    assert len(string2_calls) > 0, "Triple-single-quoted string ' \
+        'should be highlighted"
 
     # Block state should be 0 (not in multi-line)
     highlighter.setCurrentBlockState.assert_called_with(0)
@@ -504,8 +521,9 @@ def test_multiline_string_start(highlighter):
     highlighter.highlightBlock(text)
 
     # Should have string2 formatting
+    string2 = highlighter.styles['string2']
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] == string2]
     assert len(string2_calls) > 0, "Multi-line string start should be highlighted"
 
     # Block state should be 2 (inside triple-double-quotes)
@@ -516,15 +534,17 @@ def test_multiline_string_continuation(highlighter):
     """Test continuation of a multi-line string."""
     highlighter.setFormat = MagicMock()
 
-    # Set previous block state to indicate we're inside a triple-double-quoted string
+    # Set previous block state to indicate we're inside a
+    # triple-double-quoted string
     highlighter.previousBlockState = MagicMock(return_value=2)
 
     text = 'This is the middle of a multi-line string'
     highlighter.highlightBlock(text)
 
     # Should have string2 formatting for the entire line
+    string2 = highlighter.styles['string2']
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] == string2]
     assert len(
         string2_calls) > 0, "Multi-line string continuation should be highlighted"
 
@@ -536,15 +556,17 @@ def test_multiline_string_end(highlighter):
     """Test end of a multi-line string."""
     highlighter.setFormat = MagicMock()
 
-    # Set previous block state to indicate we're inside a triple-double-quoted string
+    # Set previous block state to indicate we're inside
+    # a triple-double-quoted string
     highlighter.previousBlockState = MagicMock(return_value=2)
 
     text = 'End of multi-line string"""'
     highlighter.highlightBlock(text)
 
     # Should have string2 formatting
+    string2 = highlighter.styles['string2']
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] == string2]
     assert len(string2_calls) > 0, "Multi-line string end should be highlighted"
 
     # Block state should be 0 (exited multi-line string)
@@ -559,8 +581,9 @@ def test_multiline_with_code_before(highlighter):
     highlighter.highlightBlock(text)
 
     # Should have string2 formatting
+    string2 = highlighter.styles['string2']
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] == string2]
     assert len(string2_calls) > 0, "Multi-line string should be highlighted"
 
 
@@ -572,16 +595,19 @@ def test_multiline_string_with_content(highlighter):
     highlighter.highlightBlock(text)
 
     # Should not highlight numbers or keywords inside the triple-quoted string
+    numbers = highlighter.styles['numbers']
     number_calls = [call for call in highlighter.setFormat.call_args_list
-                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['numbers']]
-    # Numbers inside the string should not be highlighted separately
-    # (they would be within the string2 formatting)
-
-    keyword_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['keyword']]
-    # Keywords inside should not be highlighted
+                    if len(call[0]) >= 3 and call[0][2] == numbers]
     assert len(
-        keyword_calls) == 0, "Keywords inside multi-line string should not be highlighted"
+        number_calls) == 0, "Numbers inside multi-line string ' \
+            'should not be highlighted"
+
+    keyword = highlighter.styles['keyword']
+    keyword_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == keyword]
+    assert len(
+        keyword_calls) == 0, "Keywords inside multi-line string ' \
+            'should not be highlighted"
 
 
 def test_multiline_triple_single_start(highlighter):
@@ -593,7 +619,8 @@ def test_multiline_triple_single_start(highlighter):
 
     # Should have string2 formatting
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] ==
+                     highlighter.styles['string2']]
     assert len(string2_calls) > 0, "Multi-line string start should be highlighted"
 
     # Block state should be 1 (inside triple-single-quotes)
@@ -604,7 +631,8 @@ def test_multiline_triple_single_continuation(highlighter):
     """Test continuation of triple-single-quoted multi-line string."""
     highlighter.setFormat = MagicMock()
 
-    # Set previous block state to indicate we're inside a triple-single-quoted string
+    # Set previous block state to indicate we're
+    # inside a triple-single-quoted string
     highlighter.previousBlockState = MagicMock(return_value=1)
 
     text = 'Middle of string'
@@ -612,7 +640,8 @@ def test_multiline_triple_single_continuation(highlighter):
 
     # Should have string2 formatting
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] ==
+                     highlighter.styles['string2']]
     assert len(
         string2_calls) > 0, "Multi-line string continuation should be highlighted"
 
@@ -624,7 +653,8 @@ def test_multiline_triple_single_end(highlighter):
     """Test end of triple-single-quoted multi-line string."""
     highlighter.setFormat = MagicMock()
 
-    # Set previous block state to indicate we're inside a triple-single-quoted string
+    # Set previous block state to indicate we're
+    # inside a triple-single-quoted string
     highlighter.previousBlockState = MagicMock(return_value=1)
 
     text = "End of string'''"
@@ -632,7 +662,8 @@ def test_multiline_triple_single_end(highlighter):
 
     # Should have string2 formatting
     string2_calls = [call for call in highlighter.setFormat.call_args_list
-                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+                     if len(call[0]) >= 3 and call[0][2] ==
+                     highlighter.styles['string2']]
     assert len(string2_calls) > 0, "Multi-line string end should be highlighted"
 
     # Block state should be 0 (exited multi-line string)
