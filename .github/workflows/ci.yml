@@ -33,7 +33,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - run: pip install build twine pytest pyside6
+      - run: pip install build twine pytest pyside6 coverage
       - run: python -m build .
       - run: twine check dist/*
 
@@ -44,7 +44,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libegl1
 
-      - run: pytest
+      - run: coverage run --source=src/pyqtconsole -m pytest tests/ -v
 
       - uses: actions/upload-artifact@v6
         with:
