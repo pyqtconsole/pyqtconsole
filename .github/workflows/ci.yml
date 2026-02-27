@@ -44,7 +44,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libegl1
 
-      - run: coverage run --source=src/pyqtconsole -m pytest tests/ -v
+      - run: coverage run --source=pyqtconsole -m pytest tests/ -v
 
       - uses: actions/upload-artifact@v6
         with:
