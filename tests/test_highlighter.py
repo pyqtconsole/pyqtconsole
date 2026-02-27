@@ -459,3 +459,181 @@ def test_comment_with_keywords(highlighter):
     comment_calls = [call for call in highlighter.setFormat.call_args_list
                      if len(call[0]) >= 3 and call[0][2] == highlighter.styles['comment']]
     assert len(comment_calls) > 0, "Comment should be highlighted"
+
+
+# Tests for multi-line string highlighting
+
+
+def test_multiline_triple_double_quotes_single_line(highlighter):
+    """Test triple-double-quoted string on a single line."""
+    highlighter.setFormat = MagicMock()
+
+    text = '"""This is a docstring"""'
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting for the entire string
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(string2_calls) > 0, "Triple-quoted string should be highlighted"
+
+    # Block state should be 0 (not in multi-line)
+    highlighter.setCurrentBlockState.assert_called_with(0)
+
+
+def test_multiline_triple_single_quotes_single_line(highlighter):
+    """Test triple-single-quoted string on a single line."""
+    highlighter.setFormat = MagicMock()
+
+    text = "'''This is a docstring'''"
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting for the entire string
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(string2_calls) > 0, "Triple-single-quoted string should be highlighted"
+
+    # Block state should be 0 (not in multi-line)
+    highlighter.setCurrentBlockState.assert_called_with(0)
+
+
+def test_multiline_string_start(highlighter):
+    """Test start of a multi-line string."""
+    highlighter.setFormat = MagicMock()
+
+    text = '"""Start of multi-line string'
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(string2_calls) > 0, "Multi-line string start should be highlighted"
+
+    # Block state should be 2 (inside triple-double-quotes)
+    highlighter.setCurrentBlockState.assert_called_with(2)
+
+
+def test_multiline_string_continuation(highlighter):
+    """Test continuation of a multi-line string."""
+    highlighter.setFormat = MagicMock()
+
+    # Set previous block state to indicate we're inside a triple-double-quoted string
+    highlighter.previousBlockState = MagicMock(return_value=2)
+
+    text = 'This is the middle of a multi-line string'
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting for the entire line
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(
+        string2_calls) > 0, "Multi-line string continuation should be highlighted"
+
+    # Block state should still be 2 (still inside multi-line string)
+    highlighter.setCurrentBlockState.assert_called_with(2)
+
+
+def test_multiline_string_end(highlighter):
+    """Test end of a multi-line string."""
+    highlighter.setFormat = MagicMock()
+
+    # Set previous block state to indicate we're inside a triple-double-quoted string
+    highlighter.previousBlockState = MagicMock(return_value=2)
+
+    text = 'End of multi-line string"""'
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(string2_calls) > 0, "Multi-line string end should be highlighted"
+
+    # Block state should be 0 (exited multi-line string)
+    highlighter.setCurrentBlockState.assert_called_with(0)
+
+
+def test_multiline_with_code_before(highlighter):
+    """Test multi-line string with code before it."""
+    highlighter.setFormat = MagicMock()
+
+    text = 'x = """docstring"""'
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(string2_calls) > 0, "Multi-line string should be highlighted"
+
+
+def test_multiline_string_with_content(highlighter):
+    """Test multi-line string with various content inside."""
+    highlighter.setFormat = MagicMock()
+
+    text = '"""This has numbers 123 and keywords def class"""'
+    highlighter.highlightBlock(text)
+
+    # Should not highlight numbers or keywords inside the triple-quoted string
+    number_calls = [call for call in highlighter.setFormat.call_args_list
+                    if len(call[0]) >= 3 and call[0][2] == highlighter.styles['numbers']]
+    # Numbers inside the string should not be highlighted separately
+    # (they would be within the string2 formatting)
+
+    keyword_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['keyword']]
+    # Keywords inside should not be highlighted
+    assert len(
+        keyword_calls) == 0, "Keywords inside multi-line string should not be highlighted"
+
+
+def test_multiline_triple_single_start(highlighter):
+    """Test start of a multi-line string with triple-single-quotes."""
+    highlighter.setFormat = MagicMock()
+
+    text = "'''Start of multi-line string"
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(string2_calls) > 0, "Multi-line string start should be highlighted"
+
+    # Block state should be 1 (inside triple-single-quotes)
+    highlighter.setCurrentBlockState.assert_called_with(1)
+
+
+def test_multiline_triple_single_continuation(highlighter):
+    """Test continuation of triple-single-quoted multi-line string."""
+    highlighter.setFormat = MagicMock()
+
+    # Set previous block state to indicate we're inside a triple-single-quoted string
+    highlighter.previousBlockState = MagicMock(return_value=1)
+
+    text = 'Middle of string'
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(
+        string2_calls) > 0, "Multi-line string continuation should be highlighted"
+
+    # Block state should still be 1
+    highlighter.setCurrentBlockState.assert_called_with(1)
+
+
+def test_multiline_triple_single_end(highlighter):
+    """Test end of triple-single-quoted multi-line string."""
+    highlighter.setFormat = MagicMock()
+
+    # Set previous block state to indicate we're inside a triple-single-quoted string
+    highlighter.previousBlockState = MagicMock(return_value=1)
+
+    text = "End of string'''"
+    highlighter.highlightBlock(text)
+
+    # Should have string2 formatting
+    string2_calls = [call for call in highlighter.setFormat.call_args_list
+                     if len(call[0]) >= 3 and call[0][2] == highlighter.styles['string2']]
+    assert len(string2_calls) > 0, "Multi-line string end should be highlighted"
+
+    # Block state should be 0 (exited multi-line string)
+    highlighter.setCurrentBlockState.assert_called_with(0)
