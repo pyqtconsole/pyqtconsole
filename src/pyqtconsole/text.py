@@ -1,4 +1,8 @@
-def long_substr(data):
+from collections.abc import Iterable
+from typing import Any
+
+
+def long_substr(data: list[str]) -> str:
     substr = ""
     if len(data) > 1 and len(data[0]) > 0:
         for i in range(len(data[0])):
@@ -11,7 +15,7 @@ def long_substr(data):
     return substr
 
 
-def is_substr(find, data):
+def is_substr(find: str, data: list[str]) -> bool:
     if len(data) < 1 and len(find) < 1:
         return False
     return all(find in d for d in data)
@@ -32,19 +36,19 @@ default_opts = {
 }
 
 
-def get_option(key, options):
+def get_option(key: str, options: dict[str, Any]) -> Any:
     return options.get(key, default_opts.get(key))
 
 
 def columnize(
-    array,
-    displaywidth=80,
-    colsep="  ",
-    arrange_vertical=True,
-    ljust=True,
-    lineprefix="",
-    opts=None,
-):
+        array: Iterable[Any],
+        displaywidth: int = 80,
+        colsep: str = "  ",
+        arrange_vertical: bool = True,
+        ljust: bool = True,
+        lineprefix: str = "",
+        opts: dict[str, Any] | None = None,
+    ) -> str:
     """Return a list of strings as a compact set of columns arranged
     horizontally or vertically.
 
@@ -63,12 +67,10 @@ def columnize(
     the left-most column to the right-most. If "arrange_vertical" is
     set false, consecutive items will go across, left to right, top to
     bottom."""
-    if opts is None:
-        opts = {}
     if not isinstance(array, (list, tuple)):
         raise TypeError("array needs to be an instance of a list or a tuple")
 
-    if len(opts.keys()) > 0:
+    if opts is not None and len(opts.keys()) > 0:
         o = {key: get_option(key, opts) for key in default_opts}
         if o["arrange_array"]:
             o.update(
@@ -114,8 +116,8 @@ def columnize(
     o["displaywidth"] = max(4, o["displaywidth"] - len(o["lineprefix"]))
     if o["arrange_vertical"]:
 
-        def array_index(nrows, row, col):
-            return nrows * col + row
+        def array_index(size_: int, row: int, col: int) -> int:
+            return size_ * col + row
 
         # Try every row count from 1 upwards
         for nrows in range(1, size):
@@ -159,8 +161,8 @@ def columnize(
         return s
     else:
 
-        def array_index(ncols, row, col):
-            return ncols * (row - 1) + col
+        def array_index(size_: int, row: int, col: int) -> int:
+            return size_ * (row - 1) + col
 
         # Try every column count from size downwards
         colwidths = []
