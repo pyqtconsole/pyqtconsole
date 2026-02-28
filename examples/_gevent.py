@@ -1,14 +1,16 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
 
-from gevent import monkey; monkey.patch_all()   # noqa
+from gevent import monkey
 
-import gevent
-import sys
+monkey.patch_all()  # noqa
 
-from qtpy.QtCore import QTimer
-from qtpy.QtWidgets import QApplication
-from pyqtconsole.console import PythonConsole
+import sys  # noqa: E402
+
+import gevent  # noqa: E402
+from qtpy.QtCore import QTimer  # noqa: E402
+from qtpy.QtWidgets import QApplication  # noqa: E402
+
+from pyqtconsole.console import PythonConsole  # noqa: E402
 
 
 def greet():
@@ -16,7 +18,6 @@ def greet():
 
 
 class GEventProcessing:
-
     """Interoperability class between Qt/gevent that allows processing gevent
     tasks during Qt idle periods."""
 
@@ -41,11 +42,11 @@ class GEventProcessing:
         gevent.sleep(self._idle_period)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication([])
 
     console = PythonConsole()
-    console.push_local_ns('greet', greet)
+    console.push_local_ns("greet", greet)
     console.show()
 
     console.eval_executor(gevent.spawn)

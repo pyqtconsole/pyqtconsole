@@ -1,22 +1,21 @@
-# -*- coding: utf-8 -*-
 from threading import Condition
+
 from qtpy.QtCore import QObject, Signal
 
 
 class Stream(QObject):
-
     write_event = Signal(str)
     flush_event = Signal(str)
     close_event = Signal()
 
     def __init__(self):
-        super(Stream, self).__init__()
+        super().__init__()
         self._line_cond = Condition()
-        self._buffer = ''
+        self._buffer = ""
 
     def _reset_buffer(self):
         data = self._buffer
-        self._buffer = ''
+        self._buffer = ""
         return data
 
     def _flush(self):
@@ -27,17 +26,17 @@ class Stream(QObject):
         return data
 
     def readline(self, timeout=None):
-        data = ''
+        data = ""
 
         try:
             with self._line_cond:
-                first_linesep = self._buffer.find('\n')
+                first_linesep = self._buffer.find("\n")
 
                 # Is there already some lines in the buffer, write might have
                 # been called before we read !
                 while first_linesep == -1:
                     notfied = self._line_cond.wait(timeout)
-                    first_linesep = self._buffer.find('\n')
+                    first_linesep = self._buffer.find("\n")
 
                     # We had a timeout, break !
                     if not notfied:
@@ -47,12 +46,12 @@ class Stream(QObject):
                 # waiting for line_cond. There might have been a timeout, and
                 # there is still no data available
                 if first_linesep > -1:
-                    data = self._buffer[0:first_linesep+1]
+                    data = self._buffer[0 : first_linesep + 1]
 
                     if len(self._buffer) > len(data):
-                        self._buffer = self._buffer[first_linesep+1:]
+                        self._buffer = self._buffer[first_linesep + 1 :]
                     else:
-                        self._buffer = ''
+                        self._buffer = ""
 
         # Tricky RuntimeError !, wait releases the lock and waits for notify
         # and then acquire the lock again !. There might be an exception, i.e
@@ -68,7 +67,7 @@ class Stream(QObject):
         with self._line_cond:
             self._buffer += data
 
-            if '\n' in self._buffer:
+            if "\n" in self._buffer:
                 self._line_cond.notify()
 
             self.write_event.emit(data)

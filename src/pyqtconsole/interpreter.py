@@ -1,16 +1,13 @@
-# -*- coding: utf-8 -*-
-import sys
+import ast
 import contextlib
+import sys
+from code import InteractiveInterpreter
 from functools import partial
 
-import ast
-from code import InteractiveInterpreter
-
-from qtpy.QtCore import QObject, Slot, Signal
+from qtpy.QtCore import QObject, Signal, Slot
 
 
 class PythonInterpreter(QObject, InteractiveInterpreter):
-
     exec_signal = Signal(object)
     done_signal = Signal(bool, object)
     exit_signal = Signal(object)
@@ -18,7 +15,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
     def __init__(self, stdin, stdout, locals=None):
         QObject.__init__(self)
         InteractiveInterpreter.__init__(self, locals)
-        self.locals['exit'] = Exit()
+        self.locals["exit"] = Exit()
         self.stdin = stdin
         self.stdout = stdout
         self._executing = False
@@ -42,7 +39,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         try:
             with redirected_io(self.stdout):
                 for code, mode in codes:
-                    if mode == 'eval':
+                    if mode == "eval":
                         result = eval(code, self.locals)
                     else:
                         exec(code, self.locals)
@@ -59,16 +56,16 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
 
     def showtraceback(self):
         type_, value, tb = sys.exc_info()
-        self.stdout.write('\n')
+        self.stdout.write("\n")
 
-        if type_ == KeyboardInterrupt:
-            self.stdout.write('KeyboardInterrupt\n')
+        if type_ is KeyboardInterrupt:
+            self.stdout.write("KeyboardInterrupt\n")
         else:
             with disabled_excepthook():
                 InteractiveInterpreter.showtraceback(self)
 
     def showsyntaxerror(self, filename=None, **kwargs):
-        self.stdout.write('\n')
+        self.stdout.write("\n")
 
         with disabled_excepthook():
             # It seems Python 3.13 requires **kwargs, older versions don't
@@ -78,12 +75,12 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
 
 def compile_multi(compiler, source, filename, symbol):
     """If mode is 'multi', split code into individual toplevel expressions or
-    statements. Returns a list of tuples ``(code, mode)``. """
-    if symbol != 'multi':
+    statements. Returns a list of tuples ``(code, mode)``."""
+    if symbol != "multi":
         return [(compiler(source, filename, symbol), symbol)]
     # First, check if the source compiles at all. This raises an exception if
     # there is a SyntaxError, or returns None if the code is incomplete:
-    if compiler(source, filename, 'exec') is None:
+    if compiler(source, filename, "exec") is None:
         return None
     # Now split into individual 'single' units:
     module = ast.parse(source)
@@ -92,31 +89,25 @@ def compile_multi(compiler, source, filename, symbol):
     # checked by `compiler(..., 'single')`:
     if module.body:
         block_lineno = module.body[-1].lineno
-        block_source = source[find_nth('\n' + source, '\n', block_lineno):]
-        if compiler(block_source, filename, 'single') is None:
+        block_source = source[find_nth("\n" + source, "\n", block_lineno) :]
+        if compiler(block_source, filename, "single") is None:
             return None
-    return [
-        compile_single_node(node, filename)
-        for node in module.body
-    ]
+    return [compile_single_node(node, filename) for node in module.body]
 
 
 def compile_single_node(node, filename):
     """Compile a 'single' ast.node (expression or statement)."""
-    mode = 'eval' if isinstance(node, ast.Expr) else 'exec'
-    if mode == 'eval':
+    mode = "eval" if isinstance(node, ast.Expr) else "exec"
+    if mode == "eval":
         root = ast.Expression(node.value)
     else:
-        if sys.version_info >= (3, 8):
-            root = ast.Module([node], type_ignores=[])
-        else:
-            root = ast.Module([node])
+        root = ast.Module([node], type_ignores=[])
     return (compile(root, filename, mode), mode)
 
 
 def find_nth(string, char, n):
     """Find the n'th occurence of a character within a string."""
-    return [i for i, c in enumerate(string) if c == char][n-1]
+    return [i for i, c in enumerate(string) if c == char][n - 1]
 
 
 @contextlib.contextmanager
@@ -152,7 +143,6 @@ def redirected_io(stdout):
 # We use a custom exit function to avoid issues with environments such as
 # spyder, where `builtins.exit` is not available, see #26:
 class Exit:
-
     def __repr__(self):
         return "Type exit() to exit this console."
 

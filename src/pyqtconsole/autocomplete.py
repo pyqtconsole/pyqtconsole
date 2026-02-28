@@ -1,18 +1,17 @@
-# -*- coding: utf-8 -*-
-from qtpy.QtCore import Qt, QObject, QEvent
+from qtpy.QtCore import QEvent, QObject, Qt
 from qtpy.QtWidgets import QCompleter
 
 from .text import columnize, long_substr
 
 
-class COMPLETE_MODE(object):
+class COMPLETE_MODE:
     DROPDOWN = 1
     INLINE = 2
 
 
 class AutoComplete(QObject):
     def __init__(self, parent):
-        super(AutoComplete, self).__init__(parent)
+        super().__init__(parent)
         self.mode = COMPLETE_MODE.INLINE
         self.completer = None
         self._last_key = None
@@ -75,15 +74,15 @@ class AutoComplete(QObject):
         word_being_completed = _buffer.strip()
 
         # Check if buffer ends with a separator - if so, we're starting fresh
-        if _buffer.endswith(' ') or _buffer.endswith('.'):
+        if _buffer.endswith(" ") or _buffer.endswith("."):
             word_being_completed = ""
         # Check for . operator (attribute access)
-        elif '.' in _buffer and not _buffer.startswith('.'):
-            idx = _buffer.rfind('.') + 1
+        elif "." in _buffer and not _buffer.startswith("."):
+            idx = _buffer.rfind(".") + 1
             word_being_completed = _buffer[idx:].strip()
         # Check for space separator (e.g., "from os import abc")
-        elif ' ' in _buffer:
-            idx = _buffer.rfind(' ') + 1
+        elif " " in _buffer:
+            idx = _buffer.rfind(" ") + 1
             word_being_completed = _buffer[idx:].strip()
 
         return word_being_completed
@@ -142,9 +141,10 @@ class AutoComplete(QObject):
             cr.setWidth(popup_width)
             self.completer.complete(cr)
         elif self.mode == COMPLETE_MODE.INLINE:
-            cl = columnize(words, colsep='  |  ')
+            cl = columnize(words, colsep="  |  ")
             self.parent()._insert_output_text(
-                '\n\n' + cl + '\n', lf=True, keep_buffer=True)
+                "\n\n" + cl + "\n", lf=True, keep_buffer=True
+            )
 
     def hide_completion_suggestions(self):
         if self.completing():
@@ -153,8 +153,7 @@ class AutoComplete(QObject):
 
     def completing(self):
         if self.mode == COMPLETE_MODE.DROPDOWN:
-            return (self.completer.popup() and
-                    self.completer.popup().isVisible())
+            return self.completer.popup() and self.completer.popup().isVisible()
         else:
             return False
 
@@ -184,8 +183,8 @@ class AutoComplete(QObject):
 
             # If original buffer ends with space and we have no partial word,
             # the prefix should include that space for proper reconstruction
-            if len(word_being_completed) == 0 and _buffer.endswith(' '):
-                prefix += ' '
+            if len(word_being_completed) == 0 and _buffer.endswith(" "):
+                prefix += " "
 
             self.parent().clear_input_buffer()
             self.parent().insert_input_text(prefix + completion)
@@ -194,7 +193,7 @@ class AutoComplete(QObject):
             words = self.parent().get_completions(prefix + completion)
 
             if len(words) == 1:
-                self.parent().insert_input_text(' ')
+                self.parent().insert_input_text(" ")
 
     def complete(self):
         if self.completing() and self.mode == COMPLETE_MODE.DROPDOWN:
