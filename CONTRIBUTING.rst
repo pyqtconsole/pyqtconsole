@@ -36,6 +36,14 @@ Run formatting and check on the entire project with:
 For ``ruff check``, consider either `fix` option to let it fix issues it sees.
 
 
+MyPy is used to verify type hints.
+It is run during CI and can be run locally using:
+
+.. code-block:: bash
+
+   mypy .
+
+
 Releases
 ~~~~~~~~
 
