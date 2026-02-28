@@ -15,7 +15,7 @@ from .prompt import PromptArea
 from .stream import Stream
 
 try:
-    import jedi
+    import jedi  # type: ignore
     from jedi import settings
 
     settings.case_insensitive_completion = False
@@ -26,7 +26,7 @@ except ImportError:
 try:  # PyQt >= 5.11
     QueuedConnection = Qt.ConnectionType.QueuedConnection
 except AttributeError:  # PyQt < 5.11
-    QueuedConnection = Qt.QueuedConnection
+    QueuedConnection = Qt.QueuedConnection  # type: ignore
 
 
 class BaseConsole(QFrame):
