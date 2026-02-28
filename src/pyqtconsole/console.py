@@ -10,7 +10,7 @@ from qtpy.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
-from .highlighter import PythonHighlighter, PromptHighlighter
+from .highlighter import PythonHighlighter, PromptHighlighter, NoHighlightData
 from .commandhistory import CommandHistory
 from .autocomplete import AutoComplete, COMPLETE_MODE
 from .prompt import PromptArea
@@ -34,7 +34,7 @@ class BaseConsole(QFrame):
     """Base class for implementing a GUI console."""
 
     def __init__(self, parent=None, formats=None, shell_cmd_prefix=False,
-                 inprompt=None, outprompt=None):
+                 inprompt=None, outprompt=None, welcome_message=None):
         """
 
         :param parent: Parent widget (Defaults to None)
@@ -59,6 +59,10 @@ class BaseConsole(QFrame):
                 If None, then 'OUT[%d]: ' is used, where `%d` is formatted after
                 the current input line number.
         :type outprompt: str, None
+        :param welcome_message: Welcome message to display at startup
+                (Defaults to None). If provided, this message will be
+                displayed before the first prompt. Not syntax highlighted.
+        :type welcome_message: str, None
         """
         super().__init__(parent)
 
@@ -131,6 +135,9 @@ class BaseConsole(QFrame):
 
         self.command_history = CommandHistory(self)
         self.auto_complete = jedi and AutoComplete(self)
+
+        # Store welcome message to be displayed by subclass if needed
+        self._welcome_message = welcome_message
 
         self._show_ps()
 
@@ -475,6 +482,55 @@ class BaseConsole(QFrame):
         self._prompt_pos = cursor.position()
         self._output_inserted = self._more
 
+    def _show_welcome_message(self):
+        """Display the welcome message with plain text formatting.
+
+        Marks each line/block of the welcome message to prevent syntax
+        highlighting by using NoHighlightData user data.
+        """
+        if not self._welcome_message:
+            return
+
+        # Clear the current prompt that was shown during init
+        self.edit.clear()
+        self._prompt_doc = ['']
+        self._prompt_pos = 0
+        self._output_inserted = False
+
+        cursor = self._textCursor()
+        cursor.movePosition(QTextCursor.End)
+
+        # Insert the welcome message line by line, marking each block
+        # to prevent syntax highlighting
+        lines = self._welcome_message.split('\n')
+        for i, line in enumerate(lines):
+            if i > 0:
+                cursor.insertText('\n')
+            cursor.insertText(line)
+            # Mark this block to not be highlighted
+            block = cursor.block()
+            block.setUserData(NoHighlightData())
+
+        # Add final newline if message doesn't end with one
+        if not self._welcome_message.endswith('\n'):
+            cursor.insertText('\n')
+            block = cursor.block()
+            block.setUserData(NoHighlightData())
+
+        self._prompt_pos = cursor.position()
+
+        # Update prompt area for the welcome message lines
+        # Insert empty strings for each line of the welcome message
+        newline_count = self._welcome_message.count('\n')
+        if not self._welcome_message.endswith('\n'):
+            newline_count += 1
+        self._insert_prompt_text('\n' * newline_count)
+
+        self._output_inserted = True
+
+        # Now show the first prompt
+        self._show_ps()
+
     @staticmethod
     def _selected_text(cursor):
         """Get sanitized selectedText() from a cursor.
@@ -702,14 +758,21 @@ class PythonConsole(BaseConsole):
     """Interactive python GUI console."""
 
     def __init__(self, parent=None, locals=None, formats=None,
-                 shell_cmd_prefix=False, inprompt=None, outprompt=None):
+                 shell_cmd_prefix=False, inprompt=None, outprompt=None,
+                 welcome_message=None):
         super().__init__(
             parent,
             formats=formats,
             shell_cmd_prefix=shell_cmd_prefix,
             inprompt=inprompt,
-            outprompt=outprompt
+            outprompt=outprompt,
+            welcome_message=welcome_message
         )
+
+        # Display welcome message before creating highlighter
+        # to prevent syntax highlighting of the message
+        self._show_welcome_message()
+
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats)
         self.interpreter = PythonInterpreter(
