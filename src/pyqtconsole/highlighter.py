@@ -71,16 +71,14 @@ class PythonHighlighter(QSyntaxHighlighter):
     def __init__(self, document, formats=None, shell_cmd_prefix=None):
         """Initialize the syntax highlighter.
 
-        Args:
-            :param document: The QTextDocument to apply syntax
-                highlighting to.
-            :type document: QTextDocument
-            :param formats: Optional dict mapping style names to
-                QTextCharFormat objects.
-            :type formats: dict, None
-            :param shell_cmd_prefix: Optional string prefix to identify
-                shell command lines.
-            :type shell_cmd_prefix: str, None
+        :param document: The doc to apply syntax highlighting to
+        :type document: QTextDocument
+        :param formats: Optional dict mapping style names to QTextCharFormat
+                        objects
+        :type formats: dict, None
+        :param shell_cmd_prefix: Optional string prefix to identify shell
+                                 command lines
+        :type shell_cmd_prefix: str, None
         """
         QSyntaxHighlighter.__init__(self, document)
 
