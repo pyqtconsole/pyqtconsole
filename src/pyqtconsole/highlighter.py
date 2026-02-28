@@ -34,6 +34,7 @@ STYLES = {
     'outprompt': format('darkRed', 'bold'),
     'fstring': format('darkCyan', 'bold'),
     'escape': format('darkorange', 'bold'),
+    'magic': format('darkCyan', 'bold'),
 }
 
 
@@ -82,6 +83,9 @@ class PythonHighlighter(QSyntaxHighlighter):
         rules += [
             # 'self'
             # (r'\bself\b', 0, STYLES['self']),
+
+            # Magic commands (must come before comments)
+            (r'%\w+', 0, styles['magic']),
 
             # Double-quoted string, possibly containing escape sequences
             (r'"[^"\\]*(\\.[^"\\]*)*"', 0, styles['string']),

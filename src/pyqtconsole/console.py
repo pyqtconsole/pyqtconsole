@@ -14,6 +14,7 @@ from .highlighter import PythonHighlighter, PromptHighlighter
 from .commandhistory import CommandHistory
 from .autocomplete import AutoComplete, COMPLETE_MODE
 from .prompt import PromptArea
+from .magic import MagicCmds
 
 try:
     import jedi
@@ -97,6 +98,9 @@ class BaseConsole(QFrame):
         self._ps_out = outprompt or 'OUT[%d]:'
         self._ps_out = self._ps_out.strip() + ' '
         self._ps = self.in_prompt()
+
+        self.magic = MagicCmds(self)
+        self.add_magic_command = self.magic.add_magic_command
 
         self.stdin = Stream()
         self.stdout = Stream()
@@ -552,10 +556,13 @@ class BaseConsole(QFrame):
         """
         self._last_input = source
 
-        # Check if this is a system command
-        if self.shell_cmd_prefix and \
-                source.strip().startswith(self.shell_cmd_prefix):
-            self._run_system_command(source.strip()[len(self.shell_cmd_prefix):])
+        SPECIAL_COMMANDS = {'%': self._run_magic_command}
+        if self.shell_cmd_prefix:
+            SPECIAL_COMMANDS[self.shell_cmd_prefix] = self._run_system_command
+        s = source.strip()
+
+        if len(s) > 0 and s[0] in SPECIAL_COMMANDS:
+            SPECIAL_COMMANDS[s[0]](s[1:])
             self._more = False
             if self._last_input:
                 self._current_line += 1
@@ -604,6 +611,22 @@ class BaseConsole(QFrame):
             self._insert_output_text(f'[Error: {str(e)}]\n',
                                      prompt=self.out_prompt())
             self._insert_output_text('\n')
+
+    def _run_magic_command(self, command):
+        """Execute a magic command and display its output."""
+
+        parts = command.split(None, 1)
+        magic = parts[0] if parts else ''
+        args = parts[1] if len(parts) > 1 else ''
+
+        try:
+            output = self.magic.run(magic, args)
+            if output:
+                self._insert_output_text(output, prompt=self.out_prompt())
+                self._insert_output_text('\n')
+
+        except Exception as e:
+            self._insert_output_text(f'Error executing magic command: {str(e)}\n')
 
     def _handle_ctrl_c(self):
         """Inject keyboard interrupt if code is being executed in a thread,
