@@ -37,7 +37,6 @@ class AutoComplete(QObject):
             intercepted = self.hide_completion_suggestions()
 
         self._last_key = key
-        self.update_completion(key)
         return intercepted
 
     def handle_tab_key(self, event):
@@ -67,13 +66,12 @@ class AutoComplete(QObject):
             event.accept()
             return True
 
-    def init_completion_list(self, words):
-        # Create a new completer (old one will be garbage collected)
-        self.completer = QCompleter(words, self)
+    def _get_word_being_completed(self, _buffer):
+        """Extract the word currently being completed from the buffer.
 
-        # Extract just the word being completed to use as prefix
-        # Must use same logic as insert_completion
-        _buffer = self.parent().input_buffer()
+        Returns the partial word after the last separator (space or dot).
+        Returns empty string if buffer ends with a separator.
+        """
         word_being_completed = _buffer.strip()
 
         # Check if buffer ends with a separator - if so, we're starting fresh
@@ -88,6 +86,16 @@ class AutoComplete(QObject):
             idx = _buffer.rfind(' ') + 1
             word_being_completed = _buffer[idx:].strip()
 
+        return word_being_completed
+
+    def init_completion_list(self, words):
+        # Create a new completer (old one will be garbage collected)
+        self.completer = QCompleter(words, self)
+
+        # Extract just the word being completed to use as prefix
+        _buffer = self.parent().input_buffer()
+        word_being_completed = self._get_word_being_completed(_buffer)
+
         self.completer.setCompletionPrefix(word_being_completed)
         self.completer.setWidget(self.parent().edit)
         self.completer.setCaseSensitivity(Qt.CaseSensitive)
@@ -95,7 +103,6 @@ class AutoComplete(QObject):
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
             self.completer.setCompletionMode(QCompleter.PopupCompletion)
-            # Use a lambda to ensure we always get the selected text
             self.completer.activated[str].connect(self.insert_completion)
         else:
             self.completer.setCompletionMode(QCompleter.InlineCompletion)
@@ -157,27 +164,7 @@ class AutoComplete(QObject):
             self.completer.popup().hide()
 
         _buffer = self.parent().input_buffer()
-
-        # Extract the word currently being completed by finding the last
-        # separator (either '.' for attribute access or space for imports/etc)
-        # For example: "from os import a" -> "a"
-        #              "from os import " -> "" (empty, ready for completion)
-        #              "os.pat" -> "pat"
-
-        # Start by assuming we're completing the entire (stripped) buffer
-        word_being_completed = _buffer.strip()
-
-        # Check if buffer ends with a separator - if so, we're starting fresh
-        if _buffer.endswith(' ') or _buffer.endswith('.'):
-            word_being_completed = ""
-        # Check for . operator (attribute access)
-        elif '.' in _buffer and not _buffer.startswith('.'):
-            idx = _buffer.rfind('.') + 1
-            word_being_completed = _buffer[idx:].strip()
-        # Check for space separator (e.g., "from os import abc")
-        elif ' ' in _buffer:
-            idx = _buffer.rfind(' ') + 1
-            word_being_completed = _buffer[idx:].strip()
+        word_being_completed = self._get_word_being_completed(_buffer)
 
         if self.mode == COMPLETE_MODE.DROPDOWN:
             # If we have a partial word, remove it first before inserting
@@ -209,22 +196,9 @@ class AutoComplete(QObject):
             if len(words) == 1:
                 self.parent().insert_input_text(' ')
 
-    def update_completion(self, key):
-        if self.completing():
-            _buffer = self.parent().input_buffer()
-
-            if len(_buffer.strip()) > 0:
-                self.show_completion_suggestions(_buffer)
-                self.completer.setCurrentRow(0)
-                model = self.completer.completionModel()
-                self.completer.popup().setCurrentIndex(model.index(0, 0))
-            else:
-                self.completer.popup().hide()
-
     def complete(self):
         if self.completing() and self.mode == COMPLETE_MODE.DROPDOWN:
             index = self.completer.popup().currentIndex()
             model = self.completer.completionModel()
             word = model.itemData(index)[0]
             self.insert_completion(word)
-            self.completer.popup().hide()
