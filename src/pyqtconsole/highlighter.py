@@ -99,7 +99,7 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         # Keyword, operator, and brace rules
         rules += [
-            (r"\b%s\b" % w, 0, styles["keyword"]) for w in PythonHighlighter.keywords
+            (rf"\b{w}\b", 0, styles["keyword"]) for w in PythonHighlighter.keywords
         ]
 
         # All other rules

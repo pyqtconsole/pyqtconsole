@@ -14,10 +14,7 @@ def long_substr(data):
 def is_substr(find, data):
     if len(data) < 1 and len(find) < 1:
         return False
-    for i in range(len(data)):
-        if find not in data[i]:
-            return False
-    return True
+    return all(find in d for d in data)
 
 
 default_opts = {
@@ -46,7 +43,7 @@ def columnize(
     arrange_vertical=True,
     ljust=True,
     lineprefix="",
-    opts={},
+    opts=None,
 ):
     """Return a list of strings as a compact set of columns arranged
     horizontally or vertically.
@@ -66,6 +63,8 @@ def columnize(
     the left-most column to the right-most. If "arrange_vertical" is
     set false, consecutive items will go across, left to right, top to
     bottom."""
+    if opts is None:
+        opts = {}
     if not isinstance(array, (list, tuple)):
         raise TypeError("array needs to be an instance of a list or a tuple")
 
@@ -98,17 +97,14 @@ def columnize(
     # if o['ljust'] is None:
     #     o['ljust'] = !(list.all?{|datum| datum.kind_of?(Numeric)})
 
-    if o["colfmt"]:
-        array = [(o["colfmt"] % i) for i in array]
-    else:
-        array = [str(i) for i in array]
+    array = [o["colfmt"] % i for i in array] if o["colfmt"] else [str(i) for i in array]
 
     # Some degenerate cases
     size = len(array)
     if size == 0:
         return "<empty>\n"
     elif size == 1:
-        return "%s%s%s\n" % (o["array_prefix"], str(array[0]), o["array_suffix"])
+        return o["array_prefix"] + str(array[0]) + o["array_suffix"] + "\n"
 
     if o["displaywidth"] - len(o["lineprefix"]) < 4:
         o["displaywidth"] = len(o["lineprefix"]) + 4
@@ -150,10 +146,7 @@ def columnize(
             texts = []
             for col in range(ncols):
                 i = row + nrows * col
-                if i >= size:
-                    x = ""
-                else:
-                    x = array[i]
+                x = "" if i >= size else array[i]
                 texts.append(x)
             while texts and not texts[-1]:
                 del texts[-1]
@@ -162,11 +155,7 @@ def columnize(
                     texts[col] = texts[col].ljust(colwidths[col])
                 else:
                     texts[col] = texts[col].rjust(colwidths[col])
-            s += "%s%s%s" % (
-                o["lineprefix"],
-                str(o["colsep"].join(texts)),
-                o["linesuffix"],
-            )
+            s += o["lineprefix"] + o["colsep"].join(texts) + o["linesuffix"]
         return s
     else:
 
@@ -214,10 +203,7 @@ def columnize(
         # Now we just have to format each of the
         # rows.
         s = ""
-        if len(o["array_prefix"]) != 0:
-            prefix = o["array_prefix"]
-        else:
-            prefix = o["lineprefix"]
+        prefix = o["array_prefix"] if len(o["array_prefix"]) != 0 else o["lineprefix"]
         for row in range(1, nrows + 1):
             texts = []
             for col in range(ncols):
@@ -232,7 +218,7 @@ def columnize(
                     texts[col] = texts[col].ljust(colwidths[col])
                 else:
                     texts[col] = texts[col].rjust(colwidths[col])
-            s += "%s%s%s" % (prefix, str(o["colsep"].join(texts)), o["linesuffix"])
+            s += prefix + o["colsep"].join(texts) + o["linesuffix"]
             prefix = o["lineprefix"]
         if o["arrange_array"]:
             colsep = o["colsep"].rstrip()

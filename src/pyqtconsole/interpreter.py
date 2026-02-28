@@ -58,7 +58,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         type_, value, tb = sys.exc_info()
         self.stdout.write("\n")
 
-        if type_ == KeyboardInterrupt:
+        if type_ is KeyboardInterrupt:
             self.stdout.write("KeyboardInterrupt\n")
         else:
             with disabled_excepthook():
@@ -101,10 +101,7 @@ def compile_single_node(node, filename):
     if mode == "eval":
         root = ast.Expression(node.value)
     else:
-        if sys.version_info >= (3, 8):
-            root = ast.Module([node], type_ignores=[])
-        else:
-            root = ast.Module([node])
+        root = ast.Module([node], type_ignores=[])
     return (compile(root, filename, mode), mode)
 
 

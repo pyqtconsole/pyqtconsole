@@ -4,13 +4,13 @@ from gevent import monkey
 
 monkey.patch_all()  # noqa
 
-import sys
+import sys  # noqa: E402
 
-import gevent
-from qtpy.QtCore import QTimer
-from qtpy.QtWidgets import QApplication
+import gevent  # noqa: E402
+from qtpy.QtCore import QTimer  # noqa: E402
+from qtpy.QtWidgets import QApplication  # noqa: E402
 
-from pyqtconsole.console import PythonConsole
+from pyqtconsole.console import PythonConsole  # noqa: E402
 
 
 def greet():

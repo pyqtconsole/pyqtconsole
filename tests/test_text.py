@@ -149,7 +149,8 @@ def test_columnize_count27():
 
 def test_columnize_count55():
     data = [str(i) for i in range(55)]
-    assert columnize(data, opts={"displaywidth": 39, "arrange_array": True}) == _strip("""
+    result = columnize(data, opts={"displaywidth": 39, "arrange_array": True})
+    assert result == _strip("""
 [ 0,  1,  2,  3,  4,  5,  6,  7,  8,
   9, 10, 11, 12, 13, 14, 15, 16, 17,
  18, 19, 20, 21, 22, 23, 24, 25, 26,
