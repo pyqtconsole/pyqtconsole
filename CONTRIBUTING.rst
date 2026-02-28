@@ -18,6 +18,17 @@ In order to start working on the project:
      pip install -e .[dev]
 
 
+Linting
+~~~~~~~
+
+MyPy is used to verify type hints.
+It is run during CI and can be run locally using:
+
+.. code-block:: bash
+
+   mypy .
+
+
 Releases
 ~~~~~~~~
 

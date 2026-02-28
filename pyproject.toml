@@ -28,7 +28,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["flake8"]
+dev = [
+    "flake8",
+    "mypy",
+    "pytest",
+]
 
 [project.urls]
 Homepage = "https://github.com/pyqtconsole/pyqtconsole"
