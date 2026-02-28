@@ -1,25 +1,30 @@
-from qtpy.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter,
-                        QTextBlockUserData)
-
 import keyword
 import re
+
+from qtpy.QtGui import (
+    QColor,
+    QFont,
+    QSyntaxHighlighter,
+    QTextBlockUserData,
+    QTextCharFormat,
+)
 
 
 class NoHighlightData(QTextBlockUserData):
     """User data to mark blocks that should not be syntax highlighted."""
+
     pass
 
 
-def format(color, style=''):
-    """Return a QTextCharFormat with the given attributes.
-    """
+def format(color, style=""):
+    """Return a QTextCharFormat with the given attributes."""
     _format = QTextCharFormat()
     if color is not None:
         _color = QColor(color)
         _format.setForeground(_color)
-    if 'bold' in style:
+    if "bold" in style:
         _format.setFontWeight(QFont.Bold)
-    if 'italic' in style:
+    if "italic" in style:
         _format.setFontItalic(True)
 
     return _format
@@ -27,33 +32,32 @@ def format(color, style=''):
 
 # Syntax styles that can be shared by all languages
 STYLES = {
-    'keyword': format('blue', 'bold'),
-    'operator': format('red'),
-    'brace': format('darkGray'),
-    'defclass': format('black', 'bold'),
-    'string': format('magenta'),
-    'string2': format('darkMagenta'),
-    'comment': format('darkGreen', 'italic'),
-    'self': format('black', 'italic'),
-    'numbers': format('brown'),
-    'inprompt': format('darkBlue', 'bold'),
-    'outprompt': format('darkRed', 'bold'),
-    'fstring': format('darkCyan', 'bold'),
-    'escape': format('darkorange', 'bold'),
-    'shellcmd': format(None, 'bold'),
+    "keyword": format("blue", "bold"),
+    "operator": format("red"),
+    "brace": format("darkGray"),
+    "defclass": format("black", "bold"),
+    "string": format("magenta"),
+    "string2": format("darkMagenta"),
+    "comment": format("darkGreen", "italic"),
+    "self": format("black", "italic"),
+    "numbers": format("brown"),
+    "inprompt": format("darkBlue", "bold"),
+    "outprompt": format("darkRed", "bold"),
+    "fstring": format("darkCyan", "bold"),
+    "escape": format("darkorange", "bold"),
+    "shellcmd": format(None, "bold"),
 }
 
 
-class PromptHighlighter(object):
-
+class PromptHighlighter:
     def __init__(self, formats=None):
         self.styles = styles = dict(STYLES, **(formats or {}))
         self.rules = [
             # Match the prompt incase of a console
-            (re.compile(r'IN[^\:]*'), 0, styles['inprompt']),
-            (re.compile(r'OUT[^\:]*'), 0, styles['outprompt']),
+            (re.compile(r"IN[^\:]*"), 0, styles["inprompt"]),
+            (re.compile(r"OUT[^\:]*"), 0, styles["outprompt"]),
             # Numeric literals
-            (re.compile(r'\b[+-]?[0-9]+\b'), 0, styles['numbers']),
+            (re.compile(r"\b[+-]?[0-9]+\b"), 0, styles["numbers"]),
         ]
 
     def highlight(self, text):
@@ -63,8 +67,8 @@ class PromptHighlighter(object):
 
 
 class PythonHighlighter(QSyntaxHighlighter):
-    """Syntax highlighter for the Python language.
-    """
+    """Syntax highlighter for the Python language."""
+
     # Python keywords
     keywords = keyword.kwlist
 
@@ -88,51 +92,47 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Multi-line strings (expression, flag, style)
         # FIXME: The triple-quotes in these two lines will mess up the
         # syntax highlighting from this point onward
-        self.tri_single = (re.compile("'''"), 1, styles['string2'])
-        self.tri_double = (re.compile('"""'), 2, styles['string2'])
+        self.tri_single = (re.compile("'''"), 1, styles["string2"])
+        self.tri_double = (re.compile('"""'), 2, styles["string2"])
 
         rules = []
 
         # Keyword, operator, and brace rules
-        rules += [(r'\b%s\b' % w, 0, styles['keyword'])
-                  for w in PythonHighlighter.keywords]
+        rules += [
+            (r"\b%s\b" % w, 0, styles["keyword"]) for w in PythonHighlighter.keywords
+        ]
 
         # All other rules
         rules += [
             # 'self'
             # (r'\bself\b', 0, STYLES['self']),
-
             # Double-quoted string, possibly containing escape sequences
-            (r'"[^"\\]*(\\.[^"\\]*)*"', 0, styles['string']),
+            (r'"[^"\\]*(\\.[^"\\]*)*"', 0, styles["string"]),
             # Single-quoted string, possibly containing escape sequences
-            (r"'[^'\\]*(\\.[^'\\]*)*'", 0, styles['string']),
-
+            (r"'[^'\\]*(\\.[^'\\]*)*'", 0, styles["string"]),
             # 'def' followed by an identifier
-            (r'\bdef\b\s*(\w+)', 1, styles['defclass']),
+            (r"\bdef\b\s*(\w+)", 1, styles["defclass"]),
             # 'class' followed by an identifier
-            (r'\bclass\b\s*(\w+)', 1, styles['defclass']),
-
+            (r"\bclass\b\s*(\w+)", 1, styles["defclass"]),
             # From '#' until a newline
-            (r'#[^\n]*', 0, styles['comment']),
-
+            (r"#[^\n]*", 0, styles["comment"]),
             # Numeric literals
-            (r'\b[+-]?[0-9]+[lL]?\b', 0, styles['numbers']),
-            (r'\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b', 0, styles['numbers']),
-            (r'\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b', 0,
-             styles['numbers']),
+            (r"\b[+-]?[0-9]+[lL]?\b", 0, styles["numbers"]),
+            (r"\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b", 0, styles["numbers"]),
+            (r"\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b", 0, styles["numbers"]),
         ]
 
         # Build a regex object for each pattern
-        self.rules = [(re.compile(pat), index, fmt)
-                      for (pat, index, fmt) in rules]
+        self.rules = [(re.compile(pat), index, fmt) for (pat, index, fmt) in rules]
 
         self.fstring_pattern = re.compile(
-            r"[fF][rR]?(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
+            r"[fF][rR]?(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1"
+        )
 
         self.string_pattern = re.compile(r"(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
         self.escape_pattern = re.compile(
-            r'\\(?:[\\\'\"\'abfnrtv0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|'
-            r'U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})'
+            r"\\(?:[\\\'\"\'abfnrtv0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|"
+            r"U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})"
         )
 
     def _to_utf16_offset(self, text, position):
@@ -142,27 +142,26 @@ class PythonHighlighter(QSyntaxHighlighter):
         take 2 code units.
         This converts Python string indices to UTF-16 positions.
         """
-        return len(text[:position].encode('utf-16-le')) // 2
+        return len(text[:position].encode("utf-16-le")) // 2
 
     def highlightBlock(self, text):
-        """Apply syntax highlighting to the given block of text.
-        """
+        """Apply syntax highlighting to the given block of text."""
         # Skip highlighting if block is marked as no-highlight
         if isinstance(self.currentBlockUserData(), NoHighlightData):
             return
 
         # Check if this is a shell command line
-        if self.shell_cmd_prefix and \
-                text.lstrip().startswith(self.shell_cmd_prefix):
+        if self.shell_cmd_prefix and text.lstrip().startswith(self.shell_cmd_prefix):
             # Highlight the entire line as a shell command
             start_utf16 = self._to_utf16_offset(text, 0)
             end_utf16 = self._to_utf16_offset(text, len(text))
-            self.setFormat(start_utf16, end_utf16 - start_utf16,
-                           self.styles['shellcmd'])
+            self.setFormat(
+                start_utf16, end_utf16 - start_utf16, self.styles["shellcmd"]
+            )
             self.setCurrentBlockState(0)
             return
 
-        s = self.styles['string']
+        s = self.styles["string"]
         # Find all positions inside strings (using Python string indices)
         string_positions = {
             pos
@@ -247,8 +246,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         return self.currentBlockState() == in_state
 
     def highlight_fstring_interpolations(self, text):
-        """Highlight f-string interpolations (the {} parts).
-        """
+        """Highlight f-string interpolations (the {} parts)."""
         for m in self.fstring_pattern.finditer(text):
             string_content = m.group(2)
             ln = len(string_content)
@@ -256,9 +254,9 @@ class PythonHighlighter(QSyntaxHighlighter):
 
             i = 0
             while i < ln:
-                if string_content[i] == '{':
+                if string_content[i] == "{":
                     # Skip escaped braces {{
-                    if i + 1 < ln and string_content[i + 1] == '{':
+                    if i + 1 < ln and string_content[i + 1] == "{":
                         i += 2
                         continue
 
@@ -266,23 +264,23 @@ class PythonHighlighter(QSyntaxHighlighter):
                     brace_count = 1
                     j = i + 1
                     while j < ln and brace_count > 0:
-                        if string_content[j:j+2] == '}}':
+                        if string_content[j : j + 2] == "}}":
                             j += 2  # Skip escaped }}
-                        elif string_content[j] == '{':
+                        elif string_content[j] == "{":
                             brace_count += 1
                             j += 1
-                        elif string_content[j] == '}':
+                        elif string_content[j] == "}":
                             brace_count -= 1
                             j += 1
                         else:
                             j += 1
 
                     if brace_count == 0:
-                        start_utf16 = self._to_utf16_offset(text,
-                                                            content_start + i)
+                        start_utf16 = self._to_utf16_offset(text, content_start + i)
                         end_utf16 = self._to_utf16_offset(text, content_start + j)
-                        self.setFormat(start_utf16, end_utf16 - start_utf16,
-                                       self.styles['fstring'])
+                        self.setFormat(
+                            start_utf16, end_utf16 - start_utf16, self.styles["fstring"]
+                        )
                         i = j
                     else:
                         i += 1
@@ -290,13 +288,12 @@ class PythonHighlighter(QSyntaxHighlighter):
                     i += 1
 
     def highlight_escape_sequences(self, text):
-        """Highlight escape sequences in strings.
-        """
+        """Highlight escape sequences in strings."""
         for m in self.string_pattern.finditer(text):
             content_start = m.start(2)
             for esc in self.escape_pattern.finditer(m.group(2)):
-                start_utf16 = self._to_utf16_offset(text, content_start +
-                                                    esc.start())
+                start_utf16 = self._to_utf16_offset(text, content_start + esc.start())
                 end_utf16 = self._to_utf16_offset(text, content_start + esc.end())
-                self.setFormat(start_utf16, end_utf16 - start_utf16,
-                               self.styles['escape'])
+                self.setFormat(
+                    start_utf16, end_utf16 - start_utf16, self.styles["escape"]
+                )
