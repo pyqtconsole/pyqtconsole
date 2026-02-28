@@ -8,6 +8,20 @@ be easy to embed in other Qt applications and comes with some examples that
 show how this can be done. The interpreter can run in a separate thread, in
 the UI main thread or in a gevent task.
 
+**Table of Contents:**
+
+* `Installing <#installing>`_
+* `Simple Usage <#simple-usage>`_
+* `Embedding <#embedding>`_
+* `Features <#features>`_
+* `Credits <#credits>`_
+
+**Also See:**
+
+* `Changelog <CHANGES.rst>`_
+* `Contributing <CONTRIBUTING.rst>`_
+
+
 Installing
 ~~~~~~~~~~
 
