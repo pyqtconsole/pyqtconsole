@@ -13,10 +13,10 @@ class NoHighlightData(QTextBlockUserData):
 def format(color, style=''):
     """Return a QTextCharFormat with the given attributes.
     """
-    _color = QColor(color)
-
     _format = QTextCharFormat()
-    _format.setForeground(_color)
+    if color is not None:
+        _color = QColor(color)
+        _format.setForeground(_color)
     if 'bold' in style:
         _format.setFontWeight(QFont.Bold)
     if 'italic' in style:
@@ -40,6 +40,7 @@ STYLES = {
     'outprompt': format('darkRed', 'bold'),
     'fstring': format('darkCyan', 'bold'),
     'escape': format('darkorange', 'bold'),
+    'shellcmd': format(None, 'bold'),
 }
 
 
@@ -67,10 +68,22 @@ class PythonHighlighter(QSyntaxHighlighter):
     # Python keywords
     keywords = keyword.kwlist
 
-    def __init__(self, document, formats=None):
+    def __init__(self, document, formats=None, shell_cmd_prefix=None):
+        """Initialize the syntax highlighter.
+
+        :param document: The doc to apply syntax highlighting to
+        :type document: QTextDocument
+        :param formats: Optional dict mapping style names to QTextCharFormat
+                        objects
+        :type formats: dict, None
+        :param shell_cmd_prefix: Optional string prefix to identify shell
+                                 command lines
+        :type shell_cmd_prefix: str, None
+        """
         QSyntaxHighlighter.__init__(self, document)
 
         self.styles = styles = dict(STYLES, **(formats or {}))
+        self.shell_cmd_prefix = shell_cmd_prefix
 
         # Multi-line strings (expression, flag, style)
         # FIXME: The triple-quotes in these two lines will mess up the
@@ -136,6 +149,17 @@ class PythonHighlighter(QSyntaxHighlighter):
         """
         # Skip highlighting if block is marked as no-highlight
         if isinstance(self.currentBlockUserData(), NoHighlightData):
+            return
+
+        # Check if this is a shell command line
+        if self.shell_cmd_prefix and \
+                text.lstrip().startswith(self.shell_cmd_prefix):
+            # Highlight the entire line as a shell command
+            start_utf16 = self._to_utf16_offset(text, 0)
+            end_utf16 = self._to_utf16_offset(text, len(text))
+            self.setFormat(start_utf16, end_utf16 - start_utf16,
+                           self.styles['shellcmd'])
+            self.setCurrentBlockState(0)
             return
 
         s = self.styles['string']

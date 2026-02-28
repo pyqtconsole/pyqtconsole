@@ -89,6 +89,7 @@ must be shaped as follows:
         'outprompt':  hl.format('darkRed', 'bold'),
         'fstring':    hl.format('darkCyan', 'bold'),
         'escape':     hl.format('darkorange', 'bold'),
+        'shellcmd':   hl.format(None, 'bold'),
     })
 
 All keys are optional and default to the value shown above if left unspecified.
