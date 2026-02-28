@@ -1,8 +1,9 @@
 from qtpy.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter,
-                        QTextBlockUserData)
+                        QTextBlockUserData, QTextDocument)
 
 import keyword
 import re
+from collections.abc import Generator
 
 
 class NoHighlightData(QTextBlockUserData):
@@ -10,19 +11,20 @@ class NoHighlightData(QTextBlockUserData):
     pass
 
 
-def format(color, style=''):
-    """Return a QTextCharFormat with the given attributes.
-    """
+def format(color: str | None, style: str = '') -> QTextCharFormat:
+    """Return a QTextCharFormat with the given attributes."""
     _format = QTextCharFormat()
     if color is not None:
         _color = QColor(color)
         _format.setForeground(_color)
     if 'bold' in style:
-        _format.setFontWeight(QFont.Bold)
+        _format.setFontWeight(QFont.Bold)  # type: ignore
     if 'italic' in style:
         _format.setFontItalic(True)
 
     return _format
+
+FormatDict = dict[str, QTextCharFormat]
 
 
 # Syntax styles that can be shared by all languages
@@ -46,7 +48,7 @@ STYLES = {
 
 class PromptHighlighter(object):
 
-    def __init__(self, formats=None):
+    def __init__(self, formats: FormatDict | None = None):
         self.styles = styles = dict(STYLES, **(formats or {}))
         self.rules = [
             # Match the prompt incase of a console
@@ -56,10 +58,10 @@ class PromptHighlighter(object):
             (re.compile(r'\b[+-]?[0-9]+\b'), 0, styles['numbers']),
         ]
 
-    def highlight(self, text):
-        for expression, nth, format in self.rules:
+    def highlight(self, text: str) -> Generator[tuple[int, int, QTextCharFormat]]:
+        for expression, nth, fmt in self.rules:
             for m in expression.finditer(text):
-                yield (m.start(nth), m.end(nth) - m.start(nth), format)
+                yield m.start(nth), m.end(nth) - m.start(nth), fmt
 
 
 class PythonHighlighter(QSyntaxHighlighter):
@@ -68,19 +70,21 @@ class PythonHighlighter(QSyntaxHighlighter):
     # Python keywords
     keywords = keyword.kwlist
 
-    def __init__(self, document, formats=None, shell_cmd_prefix=None):
+    def __init__(
+            self,
+            document: QTextDocument,
+            formats: FormatDict | None = None,
+            shell_cmd_prefix: str | None = None,
+    ):
         """Initialize the syntax highlighter.
 
         :param document: The doc to apply syntax highlighting to
-        :type document: QTextDocument
         :param formats: Optional dict mapping style names to QTextCharFormat
                         objects
-        :type formats: dict, None
         :param shell_cmd_prefix: Optional string prefix to identify shell
                                  command lines
-        :type shell_cmd_prefix: str, None
         """
-        QSyntaxHighlighter.__init__(self, document)
+        super().__init__(document)
 
         self.styles = styles = dict(STYLES, **(formats or {}))
         self.shell_cmd_prefix = shell_cmd_prefix
@@ -135,7 +139,7 @@ class PythonHighlighter(QSyntaxHighlighter):
             r'U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})'
         )
 
-    def _to_utf16_offset(self, text, position):
+    def _to_utf16_offset(self, text: str, position: int) -> int:
         """Convert Python string position to UTF-16 offset for Qt.
 
         Qt uses UTF-16 encoding internally, where some characters (like emoji)
@@ -144,7 +148,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         """
         return len(text[:position].encode('utf-16-le')) // 2
 
-    def highlightBlock(self, text):
+    def highlightBlock(self, text: str) -> None:
         """Apply syntax highlighting to the given block of text.
         """
         # Skip highlighting if block is marked as no-highlight
@@ -197,7 +201,13 @@ class PythonHighlighter(QSyntaxHighlighter):
         if not in_multiline:
             in_multiline = self.match_multiline(text, *self.tri_double)
 
-    def match_multiline(self, text, delimiter, in_state, style):
+    def match_multiline(
+            self,
+            text: str,
+            delimiter: re.Pattern[str],
+            in_state: int,
+            style: QTextCharFormat,
+        ) -> bool:
         """Do highlighting of multi-line strings. ``delimiter`` should be a
         ``re.Pattern`` for triple-single-quotes or triple-double-quotes, and
         ``in_state`` should be a unique integer to represent the corresponding
@@ -246,7 +256,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         # Return True if still inside a multi-line string, False otherwise
         return self.currentBlockState() == in_state
 
-    def highlight_fstring_interpolations(self, text):
+    def highlight_fstring_interpolations(self, text: str) -> None:
         """Highlight f-string interpolations (the {} parts).
         """
         for m in self.fstring_pattern.finditer(text):
@@ -289,7 +299,7 @@ class PythonHighlighter(QSyntaxHighlighter):
                 else:
                     i += 1
 
-    def highlight_escape_sequences(self, text):
+    def highlight_escape_sequences(self, text: str) -> None:
         """Highlight escape sequences in strings.
         """
         for m in self.string_pattern.finditer(text):
