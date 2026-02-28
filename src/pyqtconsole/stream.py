@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from threading import Condition
-from qtpy.QtCore import QObject, Signal
+from qtpy.QtCore import QObject, Signal  # type: ignore
 
 
 class Stream(QObject):
@@ -9,24 +9,24 @@ class Stream(QObject):
     flush_event = Signal(str)
     close_event = Signal()
 
-    def __init__(self):
+    def __init__(self) -> None:
         super(Stream, self).__init__()
         self._line_cond = Condition()
         self._buffer = ''
 
-    def _reset_buffer(self):
+    def _reset_buffer(self) -> str:
         data = self._buffer
         self._buffer = ''
         return data
 
-    def _flush(self):
+    def _flush(self) -> str:
         with self._line_cond:
             data = self._reset_buffer()
             self._line_cond.notify()
 
         return data
 
-    def readline(self, timeout=None):
+    def readline(self, timeout: float | None = None) -> str:
         data = ''
 
         try:
@@ -64,7 +64,7 @@ class Stream(QObject):
 
         return data
 
-    def write(self, data):
+    def write(self, data: str) -> None:
         with self._line_cond:
             self._buffer += data
 
@@ -73,10 +73,10 @@ class Stream(QObject):
 
             self.write_event.emit(data)
 
-    def flush(self):
+    def flush(self) -> str:
         data = self._flush()
         self.flush_event.emit(data)
         return data
 
-    def close(self):
+    def close(self) -> None:
         self.close_event.emit()
