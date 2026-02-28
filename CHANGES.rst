@@ -5,6 +5,7 @@ Unreleased
 ----------
 
 - resolved multi-line command issue (`#109 <https://github.com/pyqtconsole/pyqtconsole/issues/109>`__)
+- fixed autocomplete failing sometimes (`#116 <https://github.com/pyqtconsole/pyqtconsole/issues/116>`__)
 
 v1.3.0
 ------
