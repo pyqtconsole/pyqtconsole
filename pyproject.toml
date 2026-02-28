@@ -28,7 +28,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["flake8"]
+dev = [
+    "ruff",
+    "pytest",
+]
 
 [project.urls]
 Homepage = "https://github.com/pyqtconsole/pyqtconsole"
@@ -41,3 +44,13 @@ include-package-data = true
 [tool.setuptools.dynamic]
 version = {attr = "pyqtconsole.__version__"}
 readme = {file = ["README.rst", "CHANGES.rst"], content-type = "text/x-rst"}
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle
+    "F",  # Pyflakes
+    "UP",  # pyupgrade
+    "B",  # flake8-bugbear
+    "SIM",  # flake8-simplify
+    "I",  # isort
+]
