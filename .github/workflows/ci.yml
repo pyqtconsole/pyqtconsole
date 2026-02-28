@@ -11,14 +11,16 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: 3.13
-      - run: pip install flake8
+      - run: pip install -e .[dev] pyside6
+        # Without a Qt implementation, mypy will fail
       - run: flake8
+      - run: mypy .
 
   build_and_test:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python: ["3.10", "3.11", "3.12", "3.13", "3.14"]
         os: [ubuntu-latest]
         include:
           - os: macos-latest

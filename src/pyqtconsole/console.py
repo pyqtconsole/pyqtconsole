@@ -16,7 +16,7 @@ from .autocomplete import AutoComplete, COMPLETE_MODE
 from .prompt import PromptArea
 
 try:
-    import jedi
+    import jedi  # type: ignore
     from jedi import settings
     settings.case_insensitive_completion = False
 except ImportError:
@@ -26,7 +26,7 @@ except ImportError:
 try:                        # PyQt >= 5.11
     QueuedConnection = Qt.ConnectionType.QueuedConnection
 except AttributeError:      # PyQt < 5.11
-    QueuedConnection = Qt.QueuedConnection
+    QueuedConnection = Qt.QueuedConnection  # type: ignore
 
 
 class BaseConsole(QFrame):

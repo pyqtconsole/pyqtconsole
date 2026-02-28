@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from gevent import monkey; monkey.patch_all()   # noqa
+from gevent import monkey; monkey.patch_all()   # type: ignore # noqa
 
 import gevent
 import sys
