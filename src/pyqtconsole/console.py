@@ -472,7 +472,19 @@ class BaseConsole(QFrame):
 
         cursor = self._textCursor()
         cursor.movePosition(QTextCursor.End)
-        cursor.insertText(text)
+
+        # Insert plain text line by line
+        # Only mark non-empty lines (empty lines are for spacing/input)
+        lines = text.split('\n')
+        for i, line in enumerate(lines):
+            if i > 0:
+                cursor.insertText('\n')
+            cursor.insertText(line)
+            # Mark this block to not be highlighted (only if has content)
+            if line:
+                block = cursor.block()
+                block.setUserData(NoHighlightData())
+
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
 
