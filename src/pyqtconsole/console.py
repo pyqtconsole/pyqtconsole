@@ -34,7 +34,8 @@ class BaseConsole(QFrame):
     """Base class for implementing a GUI console."""
 
     def __init__(self, parent=None, formats=None, shell_cmd_prefix=False,
-                 inprompt=None, outprompt=None, welcome_message=None):
+                 inprompt=None, outprompt=None, welcome_message=None,
+                 pygments_style=None):
         """
 
         :param parent: Parent widget (Defaults to None)
@@ -63,12 +64,16 @@ class BaseConsole(QFrame):
                 (Defaults to None). If provided, this message will be
                 displayed before the first prompt. Not syntax highlighted.
         :type welcome_message: str, None
+        :param pygments_style: Name of Pygments style (Defaults to None)
+        :type pygments_style: str, None
         """
         super().__init__(parent)
 
         self.edit = edit = InputArea()
         self.pbar = pbar = PromptArea(
-            edit, self._get_prompt_text, PromptHighlighter(formats=formats))
+            edit, self._get_prompt_text,
+            PromptHighlighter(formats=formats,
+                              pygments_style=pygments_style))
 
         layout = QHBoxLayout()
         layout.addWidget(pbar)
@@ -759,14 +764,16 @@ class PythonConsole(BaseConsole):
 
     def __init__(self, parent=None, locals=None, formats=None,
                  shell_cmd_prefix=False, inprompt=None, outprompt=None,
-                 welcome_message=None):
+                 welcome_message=None,
+                 pygments_style=None):
         super().__init__(
             parent,
             formats=formats,
             shell_cmd_prefix=shell_cmd_prefix,
             inprompt=inprompt,
             outprompt=outprompt,
-            welcome_message=welcome_message
+            welcome_message=welcome_message,
+            pygments_style=pygments_style
         )
 
         # Display welcome message before creating highlighter
@@ -775,13 +782,26 @@ class PythonConsole(BaseConsole):
 
         self.highlighter = PythonHighlighter(
             self.edit.document(), formats=formats,
-            shell_cmd_prefix=self.shell_cmd_prefix)
+            pygments_style=pygments_style)
         self.interpreter = PythonInterpreter(
             self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
+
+    def setPygmentsStyle(self, style_name):
+        """Change the Pygments color scheme for both code and prompts.
+
+        Args:
+            style_name: Name of Pygments style (e.g., 'monokai', 'vim')
+        """
+        # Update code highlighter
+        self.highlighter.setPygmentsStyle(style_name)
+        # Update prompt highlighter
+        self.pbar.highlighter.updateStyle(style_name)
+        # Force repaint of prompt area
+        self.pbar.update()
 
     def _executing(self):
         return self.interpreter.executing()
