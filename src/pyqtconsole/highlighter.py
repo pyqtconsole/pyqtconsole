@@ -1,7 +1,6 @@
 from qtpy.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter,
                         QTextBlockUserData)
 
-import re
 from bisect import bisect_right
 from pygments import lex
 try:
@@ -120,34 +119,19 @@ class PromptHighlighter(object):
             # Default: use custom STYLES
             self.styles = dict(STYLES)
 
-        self._build_rules()
-
-    def _build_rules(self):
-        """Build regex rules using current styles."""
-        self.rules = [
-            # Match the prompt incase of a console
-            (re.compile(r'IN[^\:]*'), 0, self.styles['inprompt']),
-            (re.compile(r'OUT[^\:]*'), 0, self.styles['outprompt']),
-            # Numeric literals
-            (re.compile(r'\b[+-]?[0-9]+\b'), 0, self.styles['numbers']),
-        ]
-
     def _build_pygments_styles(self, style_name):
         """Build styles from Pygments theme.
 
-        Maps prompt elements to appropriate Pygments token types:
-        - inprompt -> Keyword (typically blue/bold)
-        - outprompt -> Comment (typically different color)
-        - numbers -> Number (standard)
+        Maps inprompt, outprompt prompt elements to
+        appropriate Pygments token types.
         """
         style = get_style_by_name(style_name)
         styles = {}
 
         # Map prompt types to Pygments tokens
         token_map = {
-            'inprompt': Token.Keyword,
+            'inprompt': Token.Comment,
             'outprompt': Token.Comment,
-            'numbers': Token.Number,
         }
 
         for key, token_type in token_map.items():
@@ -172,13 +156,21 @@ class PromptHighlighter(object):
             print(f"Error: Pygments style '{style_name}' not found.")
             return
 
-        # Rebuild rules with new styles
-        self._build_rules()
+    def highlight(self, text, is_output=False):
+        """Apply prompt formatting to entire text.
 
-    def highlight(self, text):
-        for expression, nth, format in self.rules:
-            for m in expression.finditer(text):
-                yield (m.start(nth), m.end(nth) - m.start(nth), format)
+        Args:
+            text: The prompt text to highlight
+            is_output: True for output prompts, False for input prompts
+        """
+        if not text:
+            return
+
+        # Use outprompt color for output prompts, inprompt for input prompts
+        fmt = self.styles['outprompt'] if is_output else self.styles['inprompt']
+
+        # Return formatting for entire text
+        yield (0, len(text), fmt)
 
 
 class PythonHighlighter(QSyntaxHighlighter):

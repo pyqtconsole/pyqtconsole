@@ -89,7 +89,7 @@ class BaseConsole(QFrame):
         else:
             self.shell_cmd_prefix = None
 
-        self._prompt_doc = ['']
+        self._prompt_doc = [('', False)]
         self._prompt_pos = 0
         self._output_inserted = False
         self._tab_chars = 4 * ' '
@@ -214,7 +214,7 @@ class BaseConsole(QFrame):
     def _show_ps(self):
         if self._output_inserted and not self._more:
             self._insert_output_text("\n")
-        self._insert_prompt_text(self._ps)
+        self._insert_prompt_text(self._ps, is_output=False)
 
     def _get_key_event_handlers(self):
         return {
@@ -476,7 +476,7 @@ class BaseConsole(QFrame):
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
 
-        self._insert_prompt_text(prompt + '\n' * text.count('\n'))
+        self._insert_prompt_text(prompt + '\n' * text.count('\n'), is_output=True)
         self._output_inserted = True
         if lf:
             self.process_input('')
@@ -498,7 +498,7 @@ class BaseConsole(QFrame):
 
         # Clear the current prompt that was shown during init
         self.edit.clear()
-        self._prompt_doc = ['']
+        self._prompt_doc = [('', False)]
         self._prompt_pos = 0
         self._output_inserted = False
 
@@ -529,7 +529,7 @@ class BaseConsole(QFrame):
         newline_count = self._welcome_message.count('\n')
         if not self._welcome_message.endswith('\n'):
             newline_count += 1
-        self._insert_prompt_text('\n' * newline_count)
+        self._insert_prompt_text('\n' * newline_count, is_output=False)
 
         self._output_inserted = True
 
@@ -595,10 +595,10 @@ class BaseConsole(QFrame):
             for _ in range(text.count('\n')):
                 # NOTE: need to insert in two steps, because this internally
                 # uses setAlignment, which affects only the first line:
-                self._insert_prompt_text('\n')
-                self._insert_prompt_text(self._ps)
+                self._insert_prompt_text('\n', is_output=False)
+                self._insert_prompt_text(self._ps, is_output=False)
         elif '\n' in text:
-            self._insert_prompt_text('\n' * text.count('\n'))
+            self._insert_prompt_text('\n' * text.count('\n'), is_output=False)
 
     def set_auto_complete_mode(self, mode):
         if self.auto_complete:
@@ -689,14 +689,24 @@ class BaseConsole(QFrame):
             self.insert_input_text(self._copy_buffer)
             self._copy_buffer = ''
 
-    def _insert_prompt_text(self, text):
+    def _insert_prompt_text(self, text, is_output=False):
         lines = text.split('\n')
-        self._prompt_doc[-1] += lines[0]
-        self._prompt_doc += lines[1:]
-        for line in self._prompt_doc[-len(lines):]:
-            self.pbar.adjust_width(line)
+        # Update last entry by appending text
+        last_text, last_is_output = self._prompt_doc[-1]
+        new_is_output = is_output if lines[0] else last_is_output
+        self._prompt_doc[-1] = (last_text + lines[0], new_is_output)
+        # Add new entries for additional lines
+        self._prompt_doc += [(line, is_output) for line in lines[1:]]
+        # Adjust width based on text content
+        for line_text, _ in self._prompt_doc[-len(lines):]:
+            self.pbar.adjust_width(line_text)
 
     def _get_prompt_text(self, line_number):
+        """Get prompt text and type for a given line number.
+
+        Returns:
+            tuple: (text, is_output) where is_output is True for output prompts
+        """
         return self._prompt_doc[line_number]
 
     def _remove_selected_input(self, cursor):
@@ -727,7 +737,7 @@ class BaseConsole(QFrame):
 
     def clear(self):
         """Clear the console display."""
-        self._prompt_doc = ['']
+        self._prompt_doc = [('', False)]
         self._prompt_pos = 0
         self._output_inserted = False
         self._more = False
