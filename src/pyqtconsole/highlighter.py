@@ -2,8 +2,11 @@ from qtpy.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter,
                         QTextBlockUserData)
 
 import re
+from bisect import bisect_right
 from pygments import lex
 try:
+    # we will use this if it is installed,
+    # since it has better support for IPython syntax
     from ipython_pygments_lexers import IPythonLexer as PythonLexer
 except ImportError:
     from pygments.lexers import PythonLexer
@@ -14,6 +17,25 @@ from pygments.styles import get_style_by_name
 class NoHighlightData(QTextBlockUserData):
     """User data to mark blocks that should not be syntax highlighted."""
     pass
+
+
+def _find_token_style(style, token_type):
+    """Walk up token hierarchy to find a style string.
+
+    Args:
+        style: Pygments style object
+        token_type: Token type to find style for
+
+    Returns:
+        Style string if found, None otherwise
+    """
+    current = token_type
+    while current:
+        style_string = style.styles.get(current)
+        if style_string:
+            return style_string
+        current = getattr(current, 'parent', None)
+    return None
 
 
 def format(color, style=''):
@@ -118,9 +140,6 @@ class PromptHighlighter(object):
         - outprompt -> Comment (typically different color)
         - numbers -> Number (standard)
         """
-        from pygments.styles import get_style_by_name
-        from pygments.token import Token
-
         style = get_style_by_name(style_name)
         styles = {}
 
@@ -132,25 +151,11 @@ class PromptHighlighter(object):
         }
 
         for key, token_type in token_map.items():
-            # Walk up token hierarchy to find a style
-            current = token_type
-            style_string = None
-            while current and not style_string:
-                style_string = style.styles.get(current)
-                if hasattr(current, 'parent'):
-                    current = current.parent
-                else:
-                    current = None
-
+            style_string = _find_token_style(style, token_type)
             if style_string:
                 fmt = pygments_style_to_format(style_string)
-                if fmt:
-                    styles[key] = fmt
-                else:
-                    # Fallback to default
-                    styles[key] = STYLES[key]
+                styles[key] = fmt if fmt else STYLES[key]
             else:
-                # Fallback to default
                 styles[key] = STYLES[key]
 
         return styles
@@ -344,14 +349,8 @@ class PythonHighlighter(QSyntaxHighlighter):
                 position += len(token_value)
                 continue
 
-            # Find which line(s) this token spans
-            token_end = position + len(token_value)
-            start_line = 0
-            for i, ls in enumerate(line_starts):
-                if position >= ls:
-                    start_line = i
-                else:
-                    break
+            # Find which line this token starts on using binary search
+            start_line = bisect_right(line_starts, position) - 1
 
             # Handle tokens across multiple lines
             current_line = start_line
@@ -388,18 +387,19 @@ class PythonHighlighter(QSyntaxHighlighter):
                     chars_processed += 1
                     current_line += 1
 
-            position = token_end
+            position += len(token_value)
 
         return line_formats
 
     def _get_format_for_token(self, token_type):
-        """Find the most specific format for a token type."""
-        format_to_apply = None
+        """Find the most specific format for a token type.
+
+        Walks up the token hierarchy until a format is found.
+        """
         current_type = token_type
-        while current_type and not format_to_apply:
-            format_to_apply = self.token_formats.get(current_type)
-            if hasattr(current_type, 'parent'):
-                current_type = current_type.parent
-            else:
-                current_type = None
-        return format_to_apply
+        while current_type:
+            fmt = self.token_formats.get(current_type)
+            if fmt:
+                return fmt
+            current_type = getattr(current_type, 'parent', None)
+        return None
