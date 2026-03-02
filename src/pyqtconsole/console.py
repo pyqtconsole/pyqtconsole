@@ -10,7 +10,8 @@ from qtpy.QtGui import QFontMetrics, QTextCursor, QClipboard
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
-from .highlighter import PythonHighlighter, PromptHighlighter, NoHighlightData
+from .highlighter import (PythonHighlighter, PromptHighlighter,
+                          NoHighlightData, ErrorHighlightData)
 from .commandhistory import CommandHistory
 from .autocomplete import AutoComplete, COMPLETE_MODE
 from .prompt import PromptArea
@@ -466,9 +467,15 @@ class BaseConsole(QFrame):
         self.ensureCursorVisible()
 
     def _insert_output_text(self, text,
-                            lf=False, keep_buffer=False, prompt=''):
+                            lf=False, keep_buffer=False, prompt='',
+                            is_error=False):
         if keep_buffer:
             self._copy_buffer = self.input_buffer()
+
+        # if it looks like an error message, then
+        # mark the block to be highlighted as an error
+        if 'Traceback (most recent call last):' in text:
+            is_error = True
 
         cursor = self._textCursor()
         cursor.movePosition(QTextCursor.End)
@@ -480,10 +487,13 @@ class BaseConsole(QFrame):
             if i > 0:
                 cursor.insertText('\n')
             cursor.insertText(line)
-            # Mark this block to not be highlighted (only if has content)
+            # Mark this block appropriately (only if has content)
             if line:
                 block = cursor.block()
-                block.setUserData(NoHighlightData())
+                if is_error:
+                    block.setUserData(ErrorHighlightData())
+                else:
+                    block.setUserData(NoHighlightData())
 
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
@@ -666,16 +676,20 @@ class BaseConsole(QFrame):
                 output += f'[Exit code: {result.returncode}]\n'
 
             if output:
+                # Highlight as error if command failed
                 self._insert_output_text(
-                    output, prompt=self.out_prompt())
+                    output, prompt=self.out_prompt(),
+                    is_error=(result.returncode != 0))
                 self._insert_output_text('\n')
         except subprocess.TimeoutExpired:
             self._insert_output_text('[Command timed out]\n',
-                                     prompt=self.out_prompt())
+                                     prompt=self.out_prompt(),
+                                     is_error=True)
             self._insert_output_text('\n')
         except Exception as e:
             self._insert_output_text(f'[Error: {str(e)}]\n',
-                                     prompt=self.out_prompt())
+                                     prompt=self.out_prompt(),
+                                     is_error=True)
             self._insert_output_text('\n')
 
     def _handle_ctrl_c(self):

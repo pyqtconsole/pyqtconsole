@@ -18,6 +18,11 @@ class NoHighlightData(QTextBlockUserData):
     pass
 
 
+class ErrorHighlightData(QTextBlockUserData):
+    """User data to mark blocks that contain errors."""
+    pass
+
+
 def _find_token_style(style, token_type):
     """Walk up token hierarchy to find a style string.
 
@@ -96,6 +101,7 @@ STYLES = {
     'outprompt': format('darkRed', 'bold'),
     'fstring': format('darkCyan', 'bold'),
     'escape': format('darkorange', 'bold'),
+    'error': format('red', 'bold'),
     'shellcmd': format(None, 'bold'),
 }
 
@@ -200,10 +206,13 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         self.lexer = PythonLexer()
 
+        # Always keep a reference to STYLES for fallback formatting
+        self.styles = dict(STYLES)
+
         # Build token formats from Pygments style or custom formats
         if formats:
             # Legacy: use custom formats
-            self.styles = dict(STYLES, **formats)
+            self.styles.update(formats)
             self.token_formats = self._build_custom_token_formats()
         elif pygments_style:
             # Use Pygments built-in style
@@ -211,7 +220,6 @@ class PythonHighlighter(QSyntaxHighlighter):
                 pygments_style)
         else:
             # Default: use custom STYLES
-            self.styles = dict(STYLES)
             self.token_formats = self._build_custom_token_formats()
 
         # Cache tokenized document by content hash
@@ -256,6 +264,8 @@ class PythonHighlighter(QSyntaxHighlighter):
 
             Token.Operator: styles['operator'],
             Token.Punctuation: styles['brace'],
+
+            Token.Generic.Error: styles['error']
         }
 
     def _build_pygments_token_formats(self, style_name):
@@ -301,6 +311,12 @@ class PythonHighlighter(QSyntaxHighlighter):
         """Apply syntax highlighting using Pygments."""
         # Skip highlighting if the block is marked with NoHighlightData
         if isinstance(self.currentBlock().userData(), NoHighlightData):
+            return
+        if isinstance(self.currentBlock().userData(), ErrorHighlightData):
+            # If block contains an error, apply error formatting to entire block
+            error_fmt = self._get_format_for_token(Token.Generic.Error)
+            if error_fmt:
+                self.setFormat(0, len(text), error_fmt)
             return
 
         if not text:
