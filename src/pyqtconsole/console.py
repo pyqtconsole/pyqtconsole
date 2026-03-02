@@ -474,6 +474,7 @@ class BaseConsole(QFrame):
 
         # if it looks like an error message, then
         # mark the block to be highlighted as an error
+        # [is there a better way to do this?]
         if 'Traceback (most recent call last):' in text or 'SyntaxError:' in text:
             is_error = True
 
