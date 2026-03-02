@@ -19,6 +19,23 @@ In order to start working on the project:
      pip install -e .[dev]
 
 
+Testing
+~~~~~~~
+
+Testing is done through `pytest`.
+Run all the tests by simply executing:
+
+.. code-block::
+
+   pytest
+
+Test coverage can also be checked through:
+
+.. code-block::
+
+   pytest --cov=pyqtconsole
+
+
 Linting and Formatting
 ~~~~~~~~~~~~~~~~~~~~~~
 

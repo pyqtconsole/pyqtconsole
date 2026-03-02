@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - run: pip install build twine pytest pyside6
+      - run: pip install build twine pytest pytest-cov pyside6
       - run: python -m build .
       - run: twine check dist/*
 
@@ -46,12 +46,17 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y libegl1
 
-      - run: pytest
+      - run: pytest --cov=pyqtconsole
 
       - uses: actions/upload-artifact@v6
         with:
           name: dist ${{ matrix.os }} ${{ matrix.python }}
           path: dist/
+
+      - name: Upload code coverage
+        if: matrix.python == '3.13' && matrix.os == 'ubuntu-latest'
+        # Upload needs to be done only once
+        uses: coverallsapp/github-action@v2
 
   deploy:
     needs: [build_and_test, linting]
