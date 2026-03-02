@@ -33,15 +33,18 @@ if __name__ == '__main__':
     layout = QVBoxLayout()
 
     # Create style selector combo box
+    INITIAL_STYLE = 'github-dark'
     style_selector = QComboBox()
     styles = sorted(get_all_styles())
     style_selector.addItems(styles)
-    style_selector.setCurrentText('monokai')
+    style_selector.setCurrentText(INITIAL_STYLE)
 
     # Create console
     console = PythonConsole(shell_cmd_prefix=True,
                             welcome_message=welcome_msg,
-                            pygments_style='monokai')
+                            pygments_style=INITIAL_STYLE,
+                            inprompt=">>>",
+                            outprompt=" ")
     console.push_local_ns('greet', greet)
     console.push_local_ns('style', change_pygments_style)
     console.interpreter.locals["clear"] = console.clear
