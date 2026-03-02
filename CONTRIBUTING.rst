@@ -4,6 +4,7 @@ Contributing
 Contributions are always welcome.
 Either simply reporting bugs or feature suggestions under 'issues' or by making pull-requests.
 
+
 How to develop
 ~~~~~~~~~~~~~~
 
@@ -16,6 +17,23 @@ In order to start working on the project:
   .. code-block::
 
      pip install -e .[dev]
+
+
+Linting and Formatting
+~~~~~~~~~~~~~~~~~~~~~~
+
+Ruff is used for code checking and formatting.
+It is configured from `pyproject.toml`.
+Checking and formatting will be verified in CI.
+
+Run formatting and check on the entire project with:
+
+.. code-block:: bash
+
+   ruff format
+   ruff check [--fix] [--unsafe-fixes]
+
+For ``ruff check``, consider either `fix` option to let it fix issues it sees.
 
 
 Releases
