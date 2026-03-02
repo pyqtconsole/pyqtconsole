@@ -41,14 +41,14 @@ def get_option(key: str, options: dict[str, Any]) -> Any:
 
 
 def columnize(
-        array: Iterable[Any],
-        displaywidth: int = 80,
-        colsep: str = "  ",
-        arrange_vertical: bool = True,
-        ljust: bool = True,
-        lineprefix: str = "",
-        opts: dict[str, Any] | None = None,
-    ) -> str:
+    array: Iterable[Any],
+    displaywidth: int = 80,
+    colsep: str = "  ",
+    arrange_vertical: bool = True,
+    ljust: bool = True,
+    lineprefix: str = "",
+    opts: dict[str, Any] | None = None,
+) -> str:
     """Return a list of strings as a compact set of columns arranged
     horizontally or vertically.
 

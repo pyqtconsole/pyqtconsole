@@ -1,14 +1,14 @@
-from collections.abc import Generator
 import keyword
 import re
+from collections.abc import Generator
 
 from qtpy.QtGui import (
     QColor,
     QFont,
     QSyntaxHighlighter,
     QTextBlockUserData,
-    QTextDocument,
     QTextCharFormat,
+    QTextDocument,
 )
 
 
@@ -30,6 +30,7 @@ def format(color, style="") -> QTextCharFormat:
         _format.setFontItalic(True)
 
     return _format
+
 
 FormatDict = dict[str, QTextCharFormat]
 
@@ -77,10 +78,10 @@ class PythonHighlighter(QSyntaxHighlighter):
     keywords = keyword.kwlist
 
     def __init__(
-            self,
-            document: QTextDocument,
-            formats: FormatDict | None = None,
-            shell_cmd_prefix: str | None = None,
+        self,
+        document: QTextDocument,
+        formats: FormatDict | None = None,
+        shell_cmd_prefix: str | None = None,
     ):
         """Initialize the syntax highlighter.
 
@@ -203,12 +204,12 @@ class PythonHighlighter(QSyntaxHighlighter):
             in_multiline = self.match_multiline(text, *self.tri_double)
 
     def match_multiline(
-            self,
-            text: str,
-            delimiter: re.Pattern[str],
-            in_state: int,
-            style: QTextCharFormat,
-        ) -> bool:
+        self,
+        text: str,
+        delimiter: re.Pattern[str],
+        in_state: int,
+        style: QTextCharFormat,
+    ) -> bool:
         """Do highlighting of multi-line strings. ``delimiter`` should be a
         ``re.Pattern`` for triple-single-quotes or triple-double-quotes, and
         ``in_state`` should be a unique integer to represent the corresponding
