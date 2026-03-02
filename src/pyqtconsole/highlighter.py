@@ -57,6 +57,25 @@ def format(color, style=''):
     return _format
 
 
+# Syntax styles that can be shared by all languages
+STYLES = {
+    'keyword': format('blue', 'bold'),
+    'operator': format('red'),
+    'brace': format('darkGray'),
+    'defclass': format('black', 'bold'),
+    'string': format('magenta'),
+    'string2': format('darkMagenta'),
+    'comment': format('darkGreen', 'italic'),
+    'self': format('black', 'italic'),
+    'numbers': format('brown'),
+    'inprompt': format('darkBlue', 'bold'),
+    'outprompt': format('darkRed', 'bold'),
+    'fstring': format('darkCyan', 'bold'),
+    'escape': format('darkorange', 'bold'),
+    'error': format('red', 'bold')
+}
+
+
 def pygments_style_to_format(style_dict):
     """Convert a Pygments style dictionary entry to QTextCharFormat.
 
@@ -86,24 +105,28 @@ def pygments_style_to_format(style_dict):
     return _format
 
 
-# Syntax styles that can be shared by all languages
-STYLES = {
-    'keyword': format('blue', 'bold'),
-    'operator': format('red'),
-    'brace': format('darkGray'),
-    'defclass': format('black', 'bold'),
-    'string': format('magenta'),
-    'string2': format('darkMagenta'),
-    'comment': format('darkGreen', 'italic'),
-    'self': format('black', 'italic'),
-    'numbers': format('brown'),
-    'inprompt': format('darkBlue', 'bold'),
-    'outprompt': format('darkRed', 'bold'),
-    'fstring': format('darkCyan', 'bold'),
-    'escape': format('darkorange', 'bold'),
-    'error': format('red', 'bold'),
-    'shellcmd': format(None, 'bold'),
-}
+def build_token_style_map(style_name, token_map):
+    """Build a style map from Pygments theme for specific tokens.
+
+    Args:
+        style_name: Name of Pygments style (e.g., 'monokai')
+        token_map: Dict mapping style keys to Token types
+
+    Returns:
+        Dict mapping style keys to QTextCharFormat objects
+    """
+    style = get_style_by_name(style_name)
+    styles = {}
+
+    for key, token_type in token_map.items():
+        style_string = _find_token_style(style, token_type)
+        if style_string:
+            fmt = pygments_style_to_format(style_string)
+            styles[key] = fmt if fmt else STYLES[key]
+        else:
+            styles[key] = STYLES[key]
+
+    return styles
 
 
 class PromptHighlighter(object):
@@ -115,40 +138,13 @@ class PromptHighlighter(object):
             formats: Custom format dictionary (legacy, overrides pygments_style)
             pygments_style: Name of Pygments style to use (e.g., 'monokai')
         """
-        if formats:
-            # Legacy: use custom formats
-            self.styles = dict(STYLES, **formats)
-        elif pygments_style:
+        self.styles = dict(STYLES)
+        if pygments_style:
             # Use Pygments built-in style
-            self.styles = self._build_pygments_styles(pygments_style)
-        else:
-            # Default: use custom STYLES
-            self.styles = dict(STYLES)
-
-    def _build_pygments_styles(self, style_name):
-        """Build styles from Pygments theme.
-
-        Maps inprompt, outprompt prompt elements to
-        appropriate Pygments token types.
-        """
-        style = get_style_by_name(style_name)
-        styles = {}
-
-        # Map prompt types to Pygments tokens
-        token_map = {
-            'inprompt': Token.Comment,
-            'outprompt': Token.Comment,
-        }
-
-        for key, token_type in token_map.items():
-            style_string = _find_token_style(style, token_type)
-            if style_string:
-                fmt = pygments_style_to_format(style_string)
-                styles[key] = fmt if fmt else STYLES[key]
-            else:
-                styles[key] = STYLES[key]
-
-        return styles
+            self.updateStyle(pygments_style)
+        elif formats:
+            # Legacy: use custom formats
+            self.styles.update(formats)
 
     def updateStyle(self, style_name):
         """Change the Pygments color scheme for prompts.
@@ -157,7 +153,11 @@ class PromptHighlighter(object):
             style_name: Name of Pygments style (e.g., 'monokai', 'vim')
         """
         try:
-            self.styles = self._build_pygments_styles(style_name)
+            token_map = {
+                'inprompt': Token.Comment,
+                'outprompt': Token.Comment,
+            }
+            self.styles = build_token_style_map(style_name, token_map)
         except Exception:
             print(f"Error: Pygments style '{style_name}' not found.")
             return
@@ -206,20 +206,16 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         self.lexer = PythonLexer()
 
-        # Always keep a reference to STYLES for fallback formatting
-        self.styles = dict(STYLES)
-
         # Build token formats from Pygments style or custom formats
-        if formats:
-            # Legacy: use custom formats
-            self.styles.update(formats)
-            self.token_formats = self._build_custom_token_formats()
-        elif pygments_style:
+        self.styles = dict(STYLES)
+        if pygments_style:
             # Use Pygments built-in style
             self.token_formats = self._build_pygments_token_formats(
                 pygments_style)
         else:
-            # Default: use custom STYLES
+            if formats:
+                # Legacy: use custom formats
+                self.styles.update(formats)
             self.token_formats = self._build_custom_token_formats()
 
         # Cache tokenized document by content hash
@@ -282,7 +278,7 @@ class PythonHighlighter(QSyntaxHighlighter):
 
         return token_formats
 
-    def setPygmentsStyle(self, style_name):
+    def updateStyle(self, style_name):
         """Change the Pygments color scheme and re-highlight the document.
 
         Args:

@@ -833,7 +833,7 @@ class PythonConsole(BaseConsole):
             style_name: Name of Pygments style (e.g., 'monokai', 'vim')
         """
         # Update code highlighter
-        self.highlighter.setPygmentsStyle(style_name)
+        self.highlighter.updateStyle(style_name)
         # Update prompt highlighter
         self.pbar.highlighter.updateStyle(style_name)
         # Force repaint of prompt area
