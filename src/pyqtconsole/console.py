@@ -122,6 +122,7 @@ class BaseConsole(QFrame):
         self.stdin = Stream()
         self.stdout = Stream()
         self.stdout.write_event.connect(self._stdout_data_handler)
+        self._current_output_is_error = False  # Track if current output is error
 
         # show frame around both child widgets:
         self.setFrameStyle(edit.frameStyle())
@@ -210,6 +211,9 @@ class BaseConsole(QFrame):
 
     @Slot(bool, object)
     def _finish_command(self, executed, result):
+        # Clear the error flag now that command is complete
+        self._current_output_is_error = False
+
         if result is not None:
             self._insert_output_text(repr(result), prompt=self.out_prompt())
             self._insert_output_text("\n")
@@ -220,6 +224,11 @@ class BaseConsole(QFrame):
         self._show_cursor()
         self._update_ps(self._more)
         self._show_ps()
+
+    @Slot()
+    def _error_started(self):
+        """Called when the interpreter is about to write error output."""
+        self._current_output_is_error = True
 
     def _show_ps(self):
         if self._output_inserted and not self._more:
@@ -481,16 +490,6 @@ class BaseConsole(QFrame):
         if keep_buffer:
             self._copy_buffer = self.input_buffer()
 
-        # if it looks like an error message, then
-        # mark the block to be highlighted as an error
-        # [is there a better way to do this?]
-        if (
-            "Traceback (most recent call last):" in text
-            or "SyntaxError:" in text
-            or "IndentationError:" in text
-        ):
-            is_error = True
-
         cursor = self._textCursor()
         cursor.movePosition(QTextCursor.End)
 
@@ -717,7 +716,7 @@ class BaseConsole(QFrame):
             self._show_ps()
 
     def _stdout_data_handler(self, data):
-        self._insert_output_text(data)
+        self._insert_output_text(data, is_error=self._current_output_is_error)
 
         if len(self._copy_buffer) > 0:
             self.insert_input_text(self._copy_buffer)
@@ -836,6 +835,7 @@ class PythonConsole(BaseConsole):
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
+        self.interpreter.error_signal.connect(self._error_started)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
 

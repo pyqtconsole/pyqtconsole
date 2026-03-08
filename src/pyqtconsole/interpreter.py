@@ -11,6 +11,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
     exec_signal = Signal(object)
     done_signal = Signal(bool, object)
     exit_signal = Signal(object)
+    error_signal = Signal()  # Emitted when error output is about to be written
 
     def __init__(self, stdin, stdout, locals=None):
         QObject.__init__(self)
@@ -31,6 +32,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
     def exec_(self, codes):
         self._executing = True
         result = None
+        had_exception = False
 
         # Redirect IO and disable excepthook, this is the only place were we
         # redirect IO, since we don't how IO is handled within the code we
@@ -46,16 +48,18 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         except SystemExit as e:
             self.exit_signal.emit(e)
         except BaseException:
+            had_exception = True
             self.showtraceback()
         finally:
             self._executing = False
-            self.done_signal.emit(True, result)
+            self.done_signal.emit(not had_exception, result)
 
     def write(self, data):
         self.stdout.write(data)
 
     def showtraceback(self):
         type_, value, tb = sys.exc_info()
+        self.error_signal.emit()  # Signal that error output is coming
         self.stdout.write("\n")
 
         if type_ is KeyboardInterrupt:
@@ -65,6 +69,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
                 InteractiveInterpreter.showtraceback(self)
 
     def showsyntaxerror(self, filename=None, **kwargs):
+        self.error_signal.emit()  # Signal that error output is coming
         self.stdout.write("\n")
 
         with disabled_excepthook():
