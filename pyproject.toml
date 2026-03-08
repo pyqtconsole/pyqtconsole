@@ -4,53 +4,55 @@ requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyqtconsole"
-dynamic = ["version", "readme"]
 authors = [
-    {name = "Marcus Oskarsson", email = "marcus.oscarsson@esrf.fr"}
+  {name = "Marcus Oskarsson", email = "marcus.oscarsson@esrf.fr"},
+]
+classifiers = [
+  "Environment :: X11 Applications :: Qt",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Interpreters",
+  "Topic :: Software Development :: User Interfaces",
+]
+dependencies = [
+  "qtpy",
+  "jedi",
+  "pygments",
+  "ipython-pygments-lexers",
 ]
 description = "Light-weight python interpreter, easy to embed into Qt applications"
-requires-python = ">=3.9,<4.0"
+dynamic = ["version", "readme"]
 keywords = ["interactive", "interpreter", "console", "shell", "autocompletion", "jedi", "qt"]
 license = "MIT"
 license-files = ["LICENSE"]
-classifiers = [
-    "Environment :: X11 Applications :: Qt",
-    "Intended Audience :: Developers",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Topic :: Software Development :: Interpreters",
-    "Topic :: Software Development :: User Interfaces",
-]
-dependencies = [
-    "qtpy",
-    "jedi",
-]
+name = "pyqtconsole"
+requires-python = ">=3.9,<4.0"
 
 [project.optional-dependencies]
 dev = [
-    "ruff",
-    "pytest",
+  "ruff",
+  "pytest",
 ]
 
 [project.urls]
 Homepage = "https://github.com/pyqtconsole/pyqtconsole"
 
 [tool.setuptools]
-packages = ["pyqtconsole"]
-package-dir = {"" = "src"}
 include-package-data = true
+package-dir = {"" = "src"}
+packages = ["pyqtconsole"]
 
 [tool.setuptools.dynamic]
-version = {attr = "pyqtconsole.__version__"}
 readme = {file = ["README.rst", "CHANGES.rst"], content-type = "text/x-rst"}
+version = {attr = "pyqtconsole.__version__"}
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle
-    "F",  # Pyflakes
-    "UP",  # pyupgrade
-    "B",  # flake8-bugbear
-    "SIM",  # flake8-simplify
-    "I",  # isort
+  "E", # pycodestyle
+  "F", # Pyflakes
+  "UP", # pyupgrade
+  "B", # flake8-bugbear
+  "SIM", # flake8-simplify
+  "I", # isort
 ]

@@ -51,13 +51,15 @@ class PromptArea(QWidget):
         """Draw the info corresponding to a given block (text line) of the text
         document."""
         pen = painter.pen()
-        text = self.get_text(block.blockNumber())
+        text, is_output = self.get_text(block.blockNumber())
 
         default = self.edit.currentCharFormat()
         formats = [default] * len(text)
         painter.setFont(self.edit.font())
 
-        for index, length, format in self.highlighter.highlight(text):
+        for index, length, format in self.highlighter.highlight(
+            text, is_output=is_output
+        ):
             formats[index : index + length] = [format] * length
 
         for idx, (_char, format) in enumerate(zip(text, formats)):
