@@ -1,22 +1,25 @@
+from bisect import bisect_right
+from contextlib import suppress
+
+from pygments import lex
+from pygments.lexers import PythonLexer
+from pygments.styles import get_style_by_name
+from pygments.token import Token
 from qtpy.QtGui import (
     QColor,
-    QTextCharFormat,
     QFont,
     QSyntaxHighlighter,
     QTextBlockUserData,
+    QTextCharFormat,
 )
 
-from bisect import bisect_right
-from pygments import lex
+# Try to use IPythonLexer if available, since it has better support for IPython syntax
+_IPythonLexer = None
+with suppress(ImportError):
+    from ipython_pygments_lexers import IPythonLexer as _IPythonLexer
 
-try:
-    # we will use this if it is installed,
-    # since it has better support for IPython syntax
-    from ipython_pygments_lexers import IPythonLexer as PythonLexer
-except ImportError:
-    from pygments.lexers import PythonLexer
-from pygments.token import Token
-from pygments.styles import get_style_by_name
+if _IPythonLexer is not None:
+    PythonLexer = _IPythonLexer
 
 
 class NoHighlightData(QTextBlockUserData):
@@ -136,7 +139,7 @@ def build_token_style_map(style_name, token_map):
     return styles
 
 
-class PromptHighlighter(object):
+class PromptHighlighter:
     def __init__(self, formats=None, pygments_style=None):
         """Highlighter for console prompts.
 

@@ -2,16 +2,17 @@
 
 import sys
 
+from pygments.styles import get_all_styles
 from qtpy.QtWidgets import (
     QApplication,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
     QComboBox,
+    QHBoxLayout,
     QLabel,
+    QVBoxLayout,
+    QWidget,
 )
+
 from pyqtconsole.console import PythonConsole
-from pygments.styles import get_all_styles
 
 welcome_msg = """Python Console v1.0
 Commands starting with ! are executed as shell commands

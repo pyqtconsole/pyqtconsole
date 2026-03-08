@@ -7,17 +7,14 @@ from qtpy.QtCore import QEvent, Qt, QThread, Slot
 from qtpy.QtGui import QClipboard, QFontMetrics, QTextCursor
 from qtpy.QtWidgets import QApplication, QFrame, QHBoxLayout, QPlainTextEdit
 
-from .interpreter import PythonInterpreter
-from .stream import Stream
-from .highlighter import (
-    PythonHighlighter,
-    PromptHighlighter,
-    NoHighlightData,
-    ErrorHighlightData,
-)
 from .autocomplete import COMPLETE_MODE, AutoComplete
 from .commandhistory import CommandHistory
-from .highlighter import NoHighlightData, PromptHighlighter, PythonHighlighter
+from .highlighter import (
+    ErrorHighlightData,
+    NoHighlightData,
+    PromptHighlighter,
+    PythonHighlighter,
+)
 from .interpreter import PythonInterpreter
 from .prompt import PromptArea
 from .stream import Stream
@@ -487,7 +484,11 @@ class BaseConsole(QFrame):
         # if it looks like an error message, then
         # mark the block to be highlighted as an error
         # [is there a better way to do this?]
-        if "Traceback (most recent call last):" in text or "SyntaxError:" in text:
+        if (
+            "Traceback (most recent call last):" in text
+            or "SyntaxError:" in text
+            or "IndentationError:" in text
+        ):
             is_error = True
 
         cursor = self._textCursor()
