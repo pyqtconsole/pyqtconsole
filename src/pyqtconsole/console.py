@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
-import threading
 import ctypes
-from abc import abstractmethod
 import subprocess
+import threading
+from abc import abstractmethod
 
-from qtpy.QtCore import Qt, QThread, Slot, QEvent
-from qtpy.QtWidgets import QPlainTextEdit, QApplication, QHBoxLayout, QFrame
-from qtpy.QtGui import QFontMetrics, QTextCursor, QClipboard
+from qtpy.QtCore import QEvent, Qt, QThread, Slot
+from qtpy.QtGui import QClipboard, QFontMetrics, QTextCursor
+from qtpy.QtWidgets import QApplication, QFrame, QHBoxLayout, QPlainTextEdit
 
 from .interpreter import PythonInterpreter
 from .stream import Stream
@@ -16,9 +15,12 @@ from .highlighter import (
     NoHighlightData,
     ErrorHighlightData,
 )
+from .autocomplete import COMPLETE_MODE, AutoComplete
 from .commandhistory import CommandHistory
-from .autocomplete import AutoComplete, COMPLETE_MODE
+from .highlighter import NoHighlightData, PromptHighlighter, PythonHighlighter
+from .interpreter import PythonInterpreter
 from .prompt import PromptArea
+from .stream import Stream
 
 try:
     import jedi

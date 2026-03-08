@@ -1,16 +1,16 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
 
 from gevent import monkey
 
 monkey.patch_all()  # noqa
 
-import gevent
-import sys
+import sys  # noqa: E402
 
-from qtpy.QtCore import QTimer
-from qtpy.QtWidgets import QApplication
-from pyqtconsole.console import PythonConsole
+import gevent  # noqa: E402
+from qtpy.QtCore import QTimer  # noqa: E402
+from qtpy.QtWidgets import QApplication  # noqa: E402
+
+from pyqtconsole.console import PythonConsole  # noqa: E402
 
 
 def greet():

@@ -1,9 +1,9 @@
 #! /usr/bin/env python
-# -*- coding: utf-8 -*-
 
 import sys
 
 from qtpy.QtWidgets import QApplication
+
 from pyqtconsole.console import PythonConsole
 from pyqtconsole.highlighter import format
 

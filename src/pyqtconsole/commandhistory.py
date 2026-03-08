@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 from qtpy.QtCore import QObject
 
 
 class CommandHistory(QObject):
     def __init__(self, parent):
-        super(CommandHistory, self).__init__(parent)
+        super().__init__(parent)
         self._cmd_history = []
         self._idx = 0
         self._pending_input = ""

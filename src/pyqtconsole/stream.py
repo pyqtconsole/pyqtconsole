@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 from threading import Condition
+
 from qtpy.QtCore import QObject, Signal
 
 
@@ -9,7 +9,7 @@ class Stream(QObject):
     close_event = Signal()
 
     def __init__(self):
-        super(Stream, self).__init__()
+        super().__init__()
         self._line_cond = Condition()
         self._buffer = ""
 

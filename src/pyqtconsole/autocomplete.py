@@ -1,18 +1,17 @@
-# -*- coding: utf-8 -*-
-from qtpy.QtCore import Qt, QObject, QEvent
+from qtpy.QtCore import QEvent, QObject, Qt
 from qtpy.QtWidgets import QCompleter
 
 from .text import columnize, long_substr
 
 
-class COMPLETE_MODE(object):
+class COMPLETE_MODE:
     DROPDOWN = 1
     INLINE = 2
 
 
 class AutoComplete(QObject):
     def __init__(self, parent):
-        super(AutoComplete, self).__init__(parent)
+        super().__init__(parent)
         self.mode = COMPLETE_MODE.INLINE
         self.completer = None
         self._last_key = None

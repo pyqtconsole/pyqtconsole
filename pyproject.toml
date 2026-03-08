@@ -30,7 +30,10 @@ name = "pyqtconsole"
 requires-python = ">=3.9,<4.0"
 
 [project.optional-dependencies]
-dev = ["flake8"]
+dev = [
+  "ruff",
+  "pytest",
+]
 
 [project.urls]
 Homepage = "https://github.com/pyqtconsole/pyqtconsole"
@@ -43,3 +46,13 @@ packages = ["pyqtconsole"]
 [tool.setuptools.dynamic]
 readme = {file = ["README.rst", "CHANGES.rst"], content-type = "text/x-rst"}
 version = {attr = "pyqtconsole.__version__"}
+
+[tool.ruff.lint]
+select = [
+  "E", # pycodestyle
+  "F", # Pyflakes
+  "UP", # pyupgrade
+  "B", # flake8-bugbear
+  "SIM", # flake8-simplify
+  "I", # isort
+]
