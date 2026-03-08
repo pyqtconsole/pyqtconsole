@@ -3,8 +3,14 @@
 
 import sys
 
-from qtpy.QtWidgets import (QApplication, QWidget, QVBoxLayout,
-                            QHBoxLayout, QComboBox, QLabel)
+from qtpy.QtWidgets import (
+    QApplication,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QComboBox,
+    QLabel,
+)
 from pyqtconsole.console import PythonConsole
 from pygments.styles import get_all_styles
 
@@ -25,7 +31,7 @@ def change_pygments_style(style):
     console.setPygmentsStyle(style)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication([])
 
     # Create main window with layout
@@ -33,20 +39,22 @@ if __name__ == '__main__':
     layout = QVBoxLayout()
 
     # Create style selector combo box
-    INITIAL_STYLE = 'github-dark'
+    INITIAL_STYLE = "github-dark"
     style_selector = QComboBox()
     styles = sorted(get_all_styles())
     style_selector.addItems(styles)
     style_selector.setCurrentText(INITIAL_STYLE)
 
     # Create console
-    console = PythonConsole(shell_cmd_prefix=True,
-                            welcome_message=welcome_msg,
-                            pygments_style=INITIAL_STYLE,
-                            inprompt=">>>",
-                            outprompt=" ")
-    console.push_local_ns('greet', greet)
-    console.push_local_ns('style', change_pygments_style)
+    console = PythonConsole(
+        shell_cmd_prefix=True,
+        welcome_message=welcome_msg,
+        pygments_style=INITIAL_STYLE,
+        inprompt=">>>",
+        outprompt=" ",
+    )
+    console.push_local_ns("greet", greet)
+    console.push_local_ns("style", change_pygments_style)
     console.interpreter.locals["clear"] = console.clear
     console.eval_in_thread()
 

@@ -12,13 +12,11 @@ def greet():
     print("hello world")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = QApplication([])
 
-    console = PythonConsole(formats={
-        'keyword': format('darkBlue', 'bold')
-    })
-    console.push_local_ns('greet', greet)
+    console = PythonConsole(formats={"keyword": format("darkBlue", "bold")})
+    console.push_local_ns("greet", greet)
     console.show()
 
     console.eval_queued()

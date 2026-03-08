@@ -1,8 +1,14 @@
-from qtpy.QtGui import (QColor, QTextCharFormat, QFont, QSyntaxHighlighter,
-                        QTextBlockUserData)
+from qtpy.QtGui import (
+    QColor,
+    QTextCharFormat,
+    QFont,
+    QSyntaxHighlighter,
+    QTextBlockUserData,
+)
 
 from bisect import bisect_right
 from pygments import lex
+
 try:
     # we will use this if it is installed,
     # since it has better support for IPython syntax
@@ -15,11 +21,13 @@ from pygments.styles import get_style_by_name
 
 class NoHighlightData(QTextBlockUserData):
     """User data to mark blocks that should not be syntax highlighted."""
+
     pass
 
 
 class ErrorHighlightData(QTextBlockUserData):
     """User data to mark blocks that contain errors."""
+
     pass
 
 
@@ -38,20 +46,19 @@ def _find_token_style(style, token_type):
         style_string = style.styles.get(current)
         if style_string:
             return style_string
-        current = getattr(current, 'parent', None)
+        current = getattr(current, "parent", None)
     return None
 
 
-def format(color, style=''):
-    """Return a QTextCharFormat with the given attributes.
-    """
+def format(color, style=""):
+    """Return a QTextCharFormat with the given attributes."""
     _format = QTextCharFormat()
     if color is not None:
         _color = QColor(color)
         _format.setForeground(_color)
-    if 'bold' in style:
+    if "bold" in style:
         _format.setFontWeight(QFont.Bold)
-    if 'italic' in style:
+    if "italic" in style:
         _format.setFontItalic(True)
 
     return _format
@@ -59,20 +66,20 @@ def format(color, style=''):
 
 # Syntax styles that can be shared by all languages
 STYLES = {
-    'keyword': format('blue', 'bold'),
-    'operator': format('red'),
-    'brace': format('darkGray'),
-    'defclass': format('black', 'bold'),
-    'string': format('magenta'),
-    'string2': format('darkMagenta'),
-    'comment': format('darkGreen', 'italic'),
-    'self': format('black', 'italic'),
-    'numbers': format('brown'),
-    'inprompt': format('darkBlue', 'bold'),
-    'outprompt': format('darkRed', 'bold'),
-    'fstring': format('darkCyan', 'bold'),
-    'escape': format('darkorange', 'bold'),
-    'error': format('red', 'bold')
+    "keyword": format("blue", "bold"),
+    "operator": format("red"),
+    "brace": format("darkGray"),
+    "defclass": format("black", "bold"),
+    "string": format("magenta"),
+    "string2": format("darkMagenta"),
+    "comment": format("darkGreen", "italic"),
+    "self": format("black", "italic"),
+    "numbers": format("brown"),
+    "inprompt": format("darkBlue", "bold"),
+    "outprompt": format("darkRed", "bold"),
+    "fstring": format("darkCyan", "bold"),
+    "escape": format("darkorange", "bold"),
+    "error": format("red", "bold"),
 }
 
 
@@ -89,17 +96,17 @@ def pygments_style_to_format(style_dict):
     # Parse the style string
     parts = str(style_dict).split()
     for part in parts:
-        if part.startswith('#'):
+        if part.startswith("#"):
             # Foreground color
             _format.setForeground(QColor(part))
-        elif part.startswith('bg:#'):
+        elif part.startswith("bg:#"):
             # Background color
             _format.setBackground(QColor(part[3:]))
-        elif part == 'bold':
+        elif part == "bold":
             _format.setFontWeight(QFont.Bold)
-        elif part == 'italic':
+        elif part == "italic":
             _format.setFontItalic(True)
-        elif part == 'underline':
+        elif part == "underline":
             _format.setFontUnderline(True)
 
     return _format
@@ -130,7 +137,6 @@ def build_token_style_map(style_name, token_map):
 
 
 class PromptHighlighter(object):
-
     def __init__(self, formats=None, pygments_style=None):
         """Highlighter for console prompts.
 
@@ -154,8 +160,8 @@ class PromptHighlighter(object):
         """
         try:
             token_map = {
-                'inprompt': Token.Comment,
-                'outprompt': Token.Comment,
+                "inprompt": Token.Comment,
+                "outprompt": Token.Comment,
             }
             self.styles = build_token_style_map(style_name, token_map)
         except Exception:
@@ -173,7 +179,7 @@ class PromptHighlighter(object):
             return
 
         # Use outprompt color for output prompts, inprompt for input prompts
-        fmt = self.styles['outprompt'] if is_output else self.styles['inprompt']
+        fmt = self.styles["outprompt"] if is_output else self.styles["inprompt"]
 
         # Return formatting for entire text
         yield (0, len(text), fmt)
@@ -189,8 +195,7 @@ class PythonHighlighter(QSyntaxHighlighter):
                        'vim', 'friendly'). Defaults to custom STYLES.
     """
 
-    def __init__(self, document, formats=None,
-                 pygments_style=None):
+    def __init__(self, document, formats=None, pygments_style=None):
         """Initialize the syntax highlighter.
 
         :param document: The doc to apply syntax highlighting to
@@ -210,8 +215,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         self.styles = dict(STYLES)
         if pygments_style:
             # Use Pygments built-in style
-            self.token_formats = self._build_pygments_token_formats(
-                pygments_style)
+            self.token_formats = self._build_pygments_token_formats(pygments_style)
         else:
             if formats:
                 # Legacy: use custom formats
@@ -226,42 +230,36 @@ class PythonHighlighter(QSyntaxHighlighter):
         """Build token format map from custom STYLES dictionary."""
         styles = self.styles
         return {
-            Token.Keyword: styles['keyword'],
-            Token.Keyword.Constant: styles['keyword'],
-            Token.Keyword.Declaration: styles['keyword'],
-            Token.Keyword.Namespace: styles['keyword'],
-            Token.Keyword.Pseudo: styles['keyword'],
-            Token.Keyword.Reserved: styles['keyword'],
-            Token.Keyword.Type: styles['keyword'],
-            Token.Name.Builtin: styles['keyword'],
-
-            Token.Name.Class: styles['defclass'],
-            Token.Name.Function: styles['defclass'],
-            Token.Name.Decorator: styles['defclass'],
-
-            Token.String: styles['string'],
-            Token.String.Double: styles['string'],
-            Token.String.Single: styles['string'],
-            Token.String.Doc: styles['string2'],
-            Token.String.Escape: styles['escape'],
-            Token.String.Interpol: styles['fstring'],
-            Token.String.Affix: styles['string'],
-
-            Token.Number: styles['numbers'],
-            Token.Number.Integer: styles['numbers'],
-            Token.Number.Float: styles['numbers'],
-            Token.Number.Hex: styles['numbers'],
-            Token.Number.Oct: styles['numbers'],
-            Token.Number.Bin: styles['numbers'],
-
-            Token.Comment: styles['comment'],
-            Token.Comment.Single: styles['comment'],
-            Token.Comment.Multiline: styles['comment'],
-
-            Token.Operator: styles['operator'],
-            Token.Punctuation: styles['brace'],
-
-            Token.Generic.Error: styles['error']
+            Token.Keyword: styles["keyword"],
+            Token.Keyword.Constant: styles["keyword"],
+            Token.Keyword.Declaration: styles["keyword"],
+            Token.Keyword.Namespace: styles["keyword"],
+            Token.Keyword.Pseudo: styles["keyword"],
+            Token.Keyword.Reserved: styles["keyword"],
+            Token.Keyword.Type: styles["keyword"],
+            Token.Name.Builtin: styles["keyword"],
+            Token.Name.Class: styles["defclass"],
+            Token.Name.Function: styles["defclass"],
+            Token.Name.Decorator: styles["defclass"],
+            Token.String: styles["string"],
+            Token.String.Double: styles["string"],
+            Token.String.Single: styles["string"],
+            Token.String.Doc: styles["string2"],
+            Token.String.Escape: styles["escape"],
+            Token.String.Interpol: styles["fstring"],
+            Token.String.Affix: styles["string"],
+            Token.Number: styles["numbers"],
+            Token.Number.Integer: styles["numbers"],
+            Token.Number.Float: styles["numbers"],
+            Token.Number.Hex: styles["numbers"],
+            Token.Number.Oct: styles["numbers"],
+            Token.Number.Bin: styles["numbers"],
+            Token.Comment: styles["comment"],
+            Token.Comment.Single: styles["comment"],
+            Token.Comment.Multiline: styles["comment"],
+            Token.Operator: styles["operator"],
+            Token.Punctuation: styles["brace"],
+            Token.Generic.Error: styles["error"],
         }
 
     def _build_pygments_token_formats(self, style_name):
@@ -287,8 +285,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         try:
             self.token_formats = self._build_pygments_token_formats(style_name)
         except Exception:
-            print(
-                f"Error: Pygments style '{style_name}' not found.")
+            print(f"Error: Pygments style '{style_name}' not found.")
             return
         self._cached_doc_text = None  # Clear cache to force retokenization
         self._line_formats = {}
@@ -301,7 +298,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         (like emoji) take 2 code units. This converts Python string
         indices to UTF-16 positions.
         """
-        return len(text[:position].encode('utf-16-le')) // 2
+        return len(text[:position].encode("utf-16-le")) // 2
 
     def highlightBlock(self, text):
         """Apply syntax highlighting using Pygments."""
@@ -338,7 +335,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         if not text:
             return line_formats
 
-        lines = text.split('\n')
+        lines = text.split("\n")
         line_starts = [0]
         for line in lines[:-1]:
             line_starts.append(line_starts[-1] + len(line) + 1)
@@ -360,29 +357,28 @@ class PythonHighlighter(QSyntaxHighlighter):
             current_line = start_line
             chars_processed = 0
 
-            while (chars_processed < len(token_value) and
-                   current_line < len(lines)):
+            while chars_processed < len(token_value) and current_line < len(lines):
                 line_start_pos = line_starts[current_line]
                 line_text = lines[current_line]
 
                 # Position within current line
-                token_pos_in_line = max(
-                    0, position + chars_processed - line_start_pos)
+                token_pos_in_line = max(0, position + chars_processed - line_start_pos)
 
                 # How many chars of token on this line
                 remaining = len(token_value) - chars_processed
                 chars_on_line = min(remaining, len(line_text) - token_pos_in_line)
 
                 if chars_on_line > 0:
-                    utf16_start = self._to_utf16_offset(
-                        line_text, token_pos_in_line)
+                    utf16_start = self._to_utf16_offset(line_text, token_pos_in_line)
                     utf16_end = self._to_utf16_offset(
-                        line_text, token_pos_in_line + chars_on_line)
+                        line_text, token_pos_in_line + chars_on_line
+                    )
 
                     if current_line not in line_formats:
                         line_formats[current_line] = []
                     line_formats[current_line].append(
-                        (utf16_start, utf16_end - utf16_start, fmt))
+                        (utf16_start, utf16_end - utf16_start, fmt)
+                    )
 
                     chars_processed += chars_on_line
 
@@ -405,5 +401,5 @@ class PythonHighlighter(QSyntaxHighlighter):
             fmt = self.token_formats.get(current_type)
             if fmt:
                 return fmt
-            current_type = getattr(current_type, 'parent', None)
+            current_type = getattr(current_type, "parent", None)
         return None

@@ -7,13 +7,13 @@ class CommandHistory(QObject):
         super(CommandHistory, self).__init__(parent)
         self._cmd_history = []
         self._idx = 0
-        self._pending_input = ''
+        self._pending_input = ""
 
     def add(self, str_):
         if str_:
             self._cmd_history.append(str_)
 
-        self._pending_input = ''
+        self._pending_input = ""
         self._idx = len(self._cmd_history)
 
     def inc(self):

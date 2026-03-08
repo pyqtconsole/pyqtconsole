@@ -4,7 +4,6 @@ from qtpy.QtGui import QPainter
 
 
 class PromptArea(QWidget):
-
     """Widget that displays the prompts on the left of the input area."""
 
     def __init__(self, edit, get_text, highlighter):
@@ -25,8 +24,9 @@ class PromptArea(QWidget):
         first = True
         while block.isValid():
             count += 1
-            block_top = edit.blockBoundingGeometry(block).translated(
-                edit.contentOffset()).top()
+            block_top = (
+                edit.blockBoundingGeometry(block).translated(edit.contentOffset()).top()
+            )
             if not block.isVisible() or block_top > event.rect().bottom():
                 break
             rect = QRect(0, int(block_top), self.width(), height)
@@ -58,19 +58,22 @@ class PromptArea(QWidget):
         painter.setFont(self.edit.font())
 
         for index, length, format in self.highlighter.highlight(
-                text, is_output=is_output):
-            formats[index:index+length] = [format] * length
+            text, is_output=is_output
+        ):
+            formats[index : index + length] = [format] * length
 
         for idx, (char, format) in enumerate(zip(text, formats)):
             rpos = len(text) - idx - 1
             pen.setColor(format.foreground().color())
             painter.setPen(pen)
-            painter.drawText(rect, Qt.AlignRight, text[idx] + ' ' * rpos)
+            painter.drawText(rect, Qt.AlignRight, text[idx] + " " * rpos)
 
 
 def calc_text_width(widget, text):
     """Estimate the width that the given text would take within the widget."""
-    return (widget.fontMetrics().width(text) +
-            widget.fontMetrics().width('M') +
-            widget.contentsMargins().left() +
-            widget.contentsMargins().right())
+    return (
+        widget.fontMetrics().width(text)
+        + widget.fontMetrics().width("M")
+        + widget.contentsMargins().left()
+        + widget.contentsMargins().right()
+    )
