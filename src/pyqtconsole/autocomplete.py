@@ -1,49 +1,57 @@
+from enum import Enum
+from typing import TYPE_CHECKING
+
+from PySide6.QtGui import QKeyEvent
 from qtpy.QtCore import QEvent, QObject, Qt
 from qtpy.QtWidgets import QCompleter
 
 from .text import columnize, long_substr
 
+if TYPE_CHECKING:
+    from .console import BaseConsole
 
-class COMPLETE_MODE:
+
+class CompleteMode(Enum):
     DROPDOWN = 1
     INLINE = 2
 
 
 class AutoComplete(QObject):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.mode = COMPLETE_MODE.INLINE
-        self.completer = None
+    def __init__(self, console: "BaseConsole"):
+        super().__init__(console)
+        self.mode = CompleteMode.INLINE
+        self.completer: QCompleter
         self._last_key = None
+        self._console = console  # Use instead of `parent()` to assist type hinting
 
-        parent.edit.installEventFilter(self)
+        console.edit.installEventFilter(self)
         self.init_completion_list([])
 
-    def eventFilter(self, widget, event):
-        if event.type() == QEvent.KeyPress:
-            return bool(self.key_pressed_handler(event))
+    def eventFilter(self, widget: QObject, event: QEvent) -> bool:
+        if event.type() == QEvent.KeyPress:  # type: ignore
+            return bool(self.key_pressed_handler(event))  # type: ignore
         return False
 
-    def key_pressed_handler(self, event):
+    def key_pressed_handler(self, event: QKeyEvent) -> bool:
         intercepted = False
         key = event.key()
 
-        if key == Qt.Key_Tab:
+        if key == Qt.Key.Key_Tab:
             intercepted = self.handle_tab_key(event)
-        elif key in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Space):
+        elif key in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
             intercepted = self.handle_complete_key(event)
-        elif key == Qt.Key_Escape:
+        elif key == Qt.Key.Key_Escape:
             intercepted = self.hide_completion_suggestions()
 
         self._last_key = key
         return intercepted
 
-    def handle_tab_key(self, event):
-        if self.parent()._textCursor().hasSelection():
+    def handle_tab_key(self, event: QEvent) -> bool:
+        if self._console._textCursor().hasSelection():
             return False
 
-        if self.mode == COMPLETE_MODE.DROPDOWN:
-            if self.parent().input_buffer().split("\n")[-1].strip():
+        if self.mode == CompleteMode.DROPDOWN:
+            if self._console.input_buffer().split("\n")[-1].strip():
                 if self.completing():
                     self.complete()
                 else:
@@ -52,20 +60,24 @@ class AutoComplete(QObject):
                 event.accept()
                 return True
 
-        elif self.mode == COMPLETE_MODE.INLINE:
-            if self._last_key == Qt.Key_Tab:
+        elif self.mode == CompleteMode.INLINE:
+            if self._last_key == Qt.Key.Key_Tab:
                 self.trigger_complete()
 
             event.accept()
             return True
 
-    def handle_complete_key(self, event):
+        return False
+
+    def handle_complete_key(self, event: QEvent) -> bool:
         if self.completing():
             self.complete()
             event.accept()
             return True
 
-    def _get_word_being_completed(self, _buffer):
+        return False
+
+    def _get_word_being_completed(self, _buffer: str) -> str:
         """Extract the word currently being completed from the buffer.
 
         Returns the partial word after the last separator (space or dot).
@@ -87,31 +99,31 @@ class AutoComplete(QObject):
 
         return word_being_completed
 
-    def init_completion_list(self, words):
+    def init_completion_list(self, words: list[str]) -> None:
         # Create a new completer (old one will be garbage collected)
         self.completer = QCompleter(words, self)
 
         # Extract just the word being completed to use as prefix
-        _buffer = self.parent().input_buffer()
+        _buffer = self._console.input_buffer()
         word_being_completed = self._get_word_being_completed(_buffer)
 
         self.completer.setCompletionPrefix(word_being_completed)
-        self.completer.setWidget(self.parent().edit)
-        self.completer.setCaseSensitivity(Qt.CaseSensitive)
-        self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
+        self.completer.setWidget(self._console.edit)
+        self.completer.setCaseSensitivity(Qt.CaseSensitive)  # type: ignore
+        self.completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)  # type: ignore
 
-        if self.mode == COMPLETE_MODE.DROPDOWN:
-            self.completer.setCompletionMode(QCompleter.PopupCompletion)
-            self.completer.activated[str].connect(self.insert_completion)
+        if self.mode == CompleteMode.DROPDOWN:
+            self.completer.setCompletionMode(QCompleter.PopupCompletion)  # type: ignore
+            self.completer.activated[str].connect(self.insert_completion)  # type: ignore
         else:
-            self.completer.setCompletionMode(QCompleter.InlineCompletion)
+            self.completer.setCompletionMode(QCompleter.InlineCompletion)  # type: ignore
 
-    def trigger_complete(self):
-        _buffer = self.parent().input_buffer()
+    def trigger_complete(self) -> None:
+        _buffer = self._console.input_buffer()
         self.show_completion_suggestions(_buffer)
 
-    def show_completion_suggestions(self, _buffer):
-        words = self.parent().get_completions(_buffer)
+    def show_completion_suggestions(self, _buffer: str) -> None:
+        words = self._console.get_completions(_buffer)
 
         # No words to show, just return
         if len(words) == 0:
@@ -119,7 +131,7 @@ class AutoComplete(QObject):
 
         # Close any popups before creating a new one
         if self.completer.popup():
-            self.completer.popup().close()
+            self.completer.popup().close()  # type: ignore
 
         self.init_completion_list(words)
 
@@ -133,49 +145,51 @@ class AutoComplete(QObject):
         if len(words) == 1:
             return
 
-        if self.mode == COMPLETE_MODE.DROPDOWN:
-            cr = self.parent().edit.cursorRect()
-            sbar_w = self.completer.popup().verticalScrollBar()
-            popup_width = self.completer.popup().sizeHintForColumn(0)
+        if self.mode == CompleteMode.DROPDOWN:
+            cr = self._console.edit.cursorRect()
+            sbar_w = self.completer.popup().verticalScrollBar()  # type: ignore
+            popup_width = self.completer.popup().sizeHintForColumn(0)  # type: ignore
             popup_width += sbar_w.sizeHint().width()
             cr.setWidth(popup_width)
             self.completer.complete(cr)
-        elif self.mode == COMPLETE_MODE.INLINE:
+        elif self.mode == CompleteMode.INLINE:
             cl = columnize(words, colsep="  |  ")
-            self.parent()._insert_output_text(
+            self._console._insert_output_text(
                 "\n\n" + cl + "\n", lf=True, keep_buffer=True
             )
 
-    def hide_completion_suggestions(self):
+    def hide_completion_suggestions(self) -> bool:
         if self.completing():
-            self.completer.popup().close()
+            self.completer.popup().close()  # type: ignore
             return True
 
-    def completing(self):
-        if self.mode == COMPLETE_MODE.DROPDOWN:
-            return self.completer.popup() and self.completer.popup().isVisible()
+        return False
+
+    def completing(self) -> bool:
+        if self.mode == CompleteMode.DROPDOWN:
+            return self.completer.popup() and self.completer.popup().isVisible()  # type: ignore
         else:
             return False
 
-    def insert_completion(self, completion):
+    def insert_completion(self, completion: str) -> None:
         # Close the popup first if it's visible
         if self.completing():
-            self.completer.popup().hide()
+            self.completer.popup().hide()  # type: ignore
 
-        _buffer = self.parent().input_buffer()
+        _buffer = self._console.input_buffer()
         word_being_completed = self._get_word_being_completed(_buffer)
 
-        if self.mode == COMPLETE_MODE.DROPDOWN:
+        if self.mode == CompleteMode.DROPDOWN:
             # If we have a partial word, remove it first before inserting
             if len(word_being_completed) > 0:
                 # Remove the partial word by moving cursor back and deleting
-                cursor = self.parent()._textCursor()
+                cursor = self._console._textCursor()
                 for _ in range(len(word_being_completed)):
                     cursor.deletePreviousChar()
 
             # Insert the full completion word
-            self.parent().insert_input_text(completion)
-        elif self.mode == COMPLETE_MODE.INLINE:
+            self._console.insert_input_text(completion)
+        elif self.mode == CompleteMode.INLINE:
             # Preserve the prefix before the word being completed
             _buffer_stripped = _buffer.strip()
             prefix_len = len(_buffer_stripped) - len(word_being_completed)
@@ -186,18 +200,18 @@ class AutoComplete(QObject):
             if len(word_being_completed) == 0 and _buffer.endswith(" "):
                 prefix += " "
 
-            self.parent().clear_input_buffer()
-            self.parent().insert_input_text(prefix + completion)
+            self._console.clear_input_buffer()
+            self._console.insert_input_text(prefix + completion)
 
             # Get completions for the full completed line
-            words = self.parent().get_completions(prefix + completion)
+            words = self._console.get_completions(prefix + completion)
 
             if len(words) == 1:
-                self.parent().insert_input_text(" ")
+                self._console.insert_input_text(" ")
 
-    def complete(self):
-        if self.completing() and self.mode == COMPLETE_MODE.DROPDOWN:
-            index = self.completer.popup().currentIndex()
+    def complete(self) -> None:
+        if self.completing() and self.mode == CompleteMode.DROPDOWN:
+            index = self.completer.popup().currentIndex()  # type: ignore
             model = self.completer.completionModel()
             word = model.itemData(index)[0]
             self.insert_completion(word)
