@@ -25,6 +25,8 @@ classifiers = [
 dependencies = [
     "qtpy",
     "jedi",
+    "pygments",
+    "ipython-pygments-lexers",
 ]
 
 [project.optional-dependencies]

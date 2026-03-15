@@ -9,8 +9,9 @@ from qtpy.QtCore import QObject, Signal, Slot
 
 class PythonInterpreter(QObject, InteractiveInterpreter):
     exec_signal = Signal(object)
-    done_signal = Signal(bool, object)
+    done_signal = Signal(object)
     exit_signal = Signal(object)
+    error_signal = Signal()  # Emitted when error output is about to be written
 
     def __init__(self, stdin, stdout, locals=None):
         QObject.__init__(self)
@@ -49,13 +50,14 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
             self.showtraceback()
         finally:
             self._executing = False
-            self.done_signal.emit(True, result)
+            self.done_signal.emit(result)
 
     def write(self, data):
         self.stdout.write(data)
 
     def showtraceback(self):
         type_, value, tb = sys.exc_info()
+        self.error_signal.emit()  # Signal that error output is coming
         self.stdout.write("\n")
 
         if type_ is KeyboardInterrupt:
@@ -65,12 +67,13 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
                 InteractiveInterpreter.showtraceback(self)
 
     def showsyntaxerror(self, filename=None, **kwargs):
+        self.error_signal.emit()  # Signal that error output is coming
         self.stdout.write("\n")
 
         with disabled_excepthook():
             # It seems Python 3.13 requires **kwargs, older versions don't
             InteractiveInterpreter.showsyntaxerror(self, filename, **kwargs)
-        self.done_signal.emit(False, None)
+        self.done_signal.emit(None)
 
 
 def compile_multi(compiler, source, filename, symbol):

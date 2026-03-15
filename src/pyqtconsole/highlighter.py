@@ -1,6 +1,9 @@
-import keyword
-import re
+from bisect import bisect_right
 
+from ipython_pygments_lexers import IPythonLexer as PythonLexer
+from pygments import lex
+from pygments.styles import get_style_by_name
+from pygments.token import Token
 from qtpy.QtGui import (
     QColor,
     QFont,
@@ -14,6 +17,31 @@ class NoHighlightData(QTextBlockUserData):
     """User data to mark blocks that should not be syntax highlighted."""
 
     pass
+
+
+class ErrorHighlightData(QTextBlockUserData):
+    """User data to mark blocks that contain errors."""
+
+    pass
+
+
+def _find_token_style(style, token_type):
+    """Walk up token hierarchy to find a style string.
+
+    Args:
+        style: Pygments style object
+        token_type: Token type to find style for
+
+    Returns:
+        Style string if found, None otherwise
+    """
+    current = token_type
+    while current:
+        style_string = style.styles.get(current)
+        if style_string:
+            return style_string
+        current = getattr(current, "parent", None)
+    return None
 
 
 def format(color, style=""):
@@ -45,34 +73,123 @@ STYLES = {
     "outprompt": format("darkRed", "bold"),
     "fstring": format("darkCyan", "bold"),
     "escape": format("darkorange", "bold"),
-    "shellcmd": format(None, "bold"),
+    "error": format("red", "bold"),
 }
 
 
-class PromptHighlighter:
-    def __init__(self, formats=None):
-        self.styles = styles = dict(STYLES, **(formats or {}))
-        self.rules = [
-            # Match the prompt incase of a console
-            (re.compile(r"IN[^\:]*"), 0, styles["inprompt"]),
-            (re.compile(r"OUT[^\:]*"), 0, styles["outprompt"]),
-            # Numeric literals
-            (re.compile(r"\b[+-]?[0-9]+\b"), 0, styles["numbers"]),
-        ]
+def pygments_style_to_format(style_dict):
+    """Convert a Pygments style dictionary entry to QTextCharFormat.
 
-    def highlight(self, text):
-        for expression, nth, format in self.rules:
-            for m in expression.finditer(text):
-                yield (m.start(nth), m.end(nth) - m.start(nth), format)
+    Pygments style format: "#rrggbb bg:#rrggbb bold italic underline"
+    """
+    if not style_dict:
+        return None
+
+    _format = QTextCharFormat()
+
+    # Parse the style string
+    parts = str(style_dict).split()
+    for part in parts:
+        if part.startswith("#"):
+            # Foreground color
+            _format.setForeground(QColor(part))
+        elif part.startswith("bg:#"):
+            # Background color
+            _format.setBackground(QColor(part[3:]))
+        elif part == "bold":
+            _format.setFontWeight(QFont.Bold)
+        elif part == "italic":
+            _format.setFontItalic(True)
+        elif part == "underline":
+            _format.setFontUnderline(True)
+
+    return _format
+
+
+def build_token_style_map(style_name, token_map):
+    """Build a style map from Pygments theme for specific tokens.
+
+    Args:
+        style_name: Name of Pygments style (e.g., 'monokai')
+        token_map: Dict mapping style keys to Token types
+
+    Returns:
+        Dict mapping style keys to QTextCharFormat objects
+    """
+    style = get_style_by_name(style_name)
+    styles = {}
+
+    for key, token_type in token_map.items():
+        style_string = _find_token_style(style, token_type)
+        if style_string:
+            fmt = pygments_style_to_format(style_string)
+            styles[key] = fmt if fmt else STYLES[key]
+        else:
+            styles[key] = STYLES[key]
+
+    return styles
+
+
+class PromptHighlighter:
+    def __init__(self, formats=None, pygments_style=None):
+        """Highlighter for console prompts.
+
+        Args:
+            formats: Custom format dictionary (legacy, overrides pygments_style)
+            pygments_style: Name of Pygments style to use (e.g., 'monokai')
+        """
+        self.styles = dict(STYLES)
+        if pygments_style:
+            # Use Pygments built-in style
+            self.updateStyle(pygments_style)
+        elif formats:
+            # Legacy: use custom formats
+            self.styles.update(formats)
+
+    def updateStyle(self, style_name):
+        """Change the Pygments color scheme for prompts.
+
+        Args:
+            style_name: Name of Pygments style (e.g., 'monokai', 'vim')
+        """
+        try:
+            token_map = {
+                "inprompt": Token.Comment,
+                "outprompt": Token.Comment,
+            }
+            self.styles = build_token_style_map(style_name, token_map)
+        except Exception:
+            print(f"Error: Pygments style '{style_name}' not found.")
+            return
+
+    def highlight(self, text, is_output=False):
+        """Apply prompt formatting to entire text.
+
+        Args:
+            text: The prompt text to highlight
+            is_output: True for output prompts, False for input prompts
+        """
+        if not text:
+            return
+
+        # Use outprompt color for output prompts, inprompt for input prompts
+        fmt = self.styles["outprompt"] if is_output else self.styles["inprompt"]
+
+        # Return formatting for entire text
+        yield (0, len(text), fmt)
 
 
 class PythonHighlighter(QSyntaxHighlighter):
-    """Syntax highlighter for the Python language."""
+    """Syntax highlighter for the Python language using Pygments.
 
-    # Python keywords
-    keywords = keyword.kwlist
+    Args:
+        document: The QTextDocument to highlight
+        formats: Custom format dictionary (legacy, overrides pygments_style)
+        pygments_style: Name of Pygments style to use (e.g., 'monokai',
+                       'vim', 'friendly'). Defaults to custom STYLES.
+    """
 
-    def __init__(self, document, formats=None, shell_cmd_prefix=None):
+    def __init__(self, document, formats=None, pygments_style=None):
         """Initialize the syntax highlighter.
 
         :param document: The doc to apply syntax highlighting to
@@ -80,220 +197,222 @@ class PythonHighlighter(QSyntaxHighlighter):
         :param formats: Optional dict mapping style names to QTextCharFormat
                         objects
         :type formats: dict, None
-        :param shell_cmd_prefix: Optional string prefix to identify shell
-                                 command lines
-        :type shell_cmd_prefix: str, None
+        :param pygments_style: Name of Pygments style to use (e.g., 'monokai',
+                       'vim', 'friendly'). Defaults to custom STYLES.
+        :type pygments_style: str, None
         """
         QSyntaxHighlighter.__init__(self, document)
 
-        self.styles = styles = dict(STYLES, **(formats or {}))
-        self.shell_cmd_prefix = shell_cmd_prefix
+        self.lexer = PythonLexer()
 
-        # Multi-line strings (expression, flag, style)
-        # FIXME: The triple-quotes in these two lines will mess up the
-        # syntax highlighting from this point onward
-        self.tri_single = (re.compile("'''"), 1, styles["string2"])
-        self.tri_double = (re.compile('"""'), 2, styles["string2"])
+        # Build token formats from Pygments style or custom formats
+        self.styles = dict(STYLES)
+        if pygments_style:
+            # Use Pygments built-in style
+            self.token_formats = self._build_pygments_token_formats(pygments_style)
+        else:
+            if formats:
+                # Legacy: use custom formats
+                self.styles.update(formats)
+            self.token_formats = self._build_custom_token_formats()
 
-        rules = []
+        # Cache tokenized document by content hash
+        self._cached_doc_text = None
+        self._line_formats = {}
 
-        # Keyword, operator, and brace rules
-        rules += [
-            (rf"\b{w}\b", 0, styles["keyword"]) for w in PythonHighlighter.keywords
-        ]
+    def _build_custom_token_formats(self):
+        """Build token format map from custom STYLES dictionary."""
+        styles = self.styles
+        return {
+            Token.Keyword: styles["keyword"],
+            Token.Keyword.Constant: styles["keyword"],
+            Token.Keyword.Declaration: styles["keyword"],
+            Token.Keyword.Namespace: styles["keyword"],
+            Token.Keyword.Pseudo: styles["keyword"],
+            Token.Keyword.Reserved: styles["keyword"],
+            Token.Keyword.Type: styles["keyword"],
+            Token.Name.Builtin: styles["keyword"],
+            Token.Name.Class: styles["defclass"],
+            Token.Name.Function: styles["defclass"],
+            Token.Name.Decorator: styles["defclass"],
+            Token.String: styles["string"],
+            Token.String.Double: styles["string"],
+            Token.String.Single: styles["string"],
+            Token.String.Doc: styles["string2"],
+            Token.String.Escape: styles["escape"],
+            Token.String.Interpol: styles["fstring"],
+            Token.String.Affix: styles["string"],
+            Token.Number: styles["numbers"],
+            Token.Number.Integer: styles["numbers"],
+            Token.Number.Float: styles["numbers"],
+            Token.Number.Hex: styles["numbers"],
+            Token.Number.Oct: styles["numbers"],
+            Token.Number.Bin: styles["numbers"],
+            Token.Comment: styles["comment"],
+            Token.Comment.Single: styles["comment"],
+            Token.Comment.Multiline: styles["comment"],
+            Token.Operator: styles["operator"],
+            Token.Punctuation: styles["brace"],
+            Token.Generic.Error: styles["error"],
+        }
 
-        # All other rules
-        rules += [
-            # 'self'
-            # (r'\bself\b', 0, STYLES['self']),
-            # Double-quoted string, possibly containing escape sequences
-            (r'"[^"\\]*(\\.[^"\\]*)*"', 0, styles["string"]),
-            # Single-quoted string, possibly containing escape sequences
-            (r"'[^'\\]*(\\.[^'\\]*)*'", 0, styles["string"]),
-            # 'def' followed by an identifier
-            (r"\bdef\b\s*(\w+)", 1, styles["defclass"]),
-            # 'class' followed by an identifier
-            (r"\bclass\b\s*(\w+)", 1, styles["defclass"]),
-            # From '#' until a newline
-            (r"#[^\n]*", 0, styles["comment"]),
-            # Numeric literals
-            (r"\b[+-]?[0-9]+[lL]?\b", 0, styles["numbers"]),
-            (r"\b[+-]?0[xX][0-9A-Fa-f]+[lL]?\b", 0, styles["numbers"]),
-            (r"\b[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?\b", 0, styles["numbers"]),
-        ]
+    def _build_pygments_token_formats(self, style_name):
+        """Build token format map from Pygments style."""
+        style = get_style_by_name(style_name)
+        token_formats = {}
 
-        # Build a regex object for each pattern
-        self.rules = [(re.compile(pat), index, fmt) for (pat, index, fmt) in rules]
+        # Convert each token type in the style
+        # style.styles is a dict: {token_type: style_string}
+        for token_type, style_string in style.styles.items():
+            fmt = pygments_style_to_format(style_string)
+            if fmt:
+                token_formats[token_type] = fmt
 
-        self.fstring_pattern = re.compile(
-            r"[fF][rR]?(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1"
-        )
+        return token_formats
 
-        self.string_pattern = re.compile(r"(['\"])([^'\"\\]*(\\.[^'\"\\]*)*?)\1")
-        self.escape_pattern = re.compile(
-            r"\\(?:[\\\'\"\'abfnrtv0]|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|"
-            r"U[0-9a-fA-F]{8}|N\{[^}]+\}|[0-7]{1,3})"
-        )
+    def updateStyle(self, style_name):
+        """Change the Pygments color scheme and re-highlight the document.
+
+        Args:
+            style_name: Name of Pygments style (e.g., 'monokai', 'vim')
+        """
+        try:
+            self.token_formats = self._build_pygments_token_formats(style_name)
+        except Exception:
+            print(f"Error: Pygments style '{style_name}' not found.")
+            return
+        self._cached_doc_text = None  # Clear cache to force retokenization
+        self._line_formats = {}
+        self.rehighlight()  # Trigger re-highlighting of entire document
 
     def _to_utf16_offset(self, text, position):
         """Convert Python string position to UTF-16 offset for Qt.
 
-        Qt uses UTF-16 encoding internally, where some characters (like emoji)
-        take 2 code units.
-        This converts Python string indices to UTF-16 positions.
+        Qt uses UTF-16 encoding internally, where some characters
+        (like emoji) take 2 code units. This converts Python string
+        indices to UTF-16 positions.
         """
         return len(text[:position].encode("utf-16-le")) // 2
 
     def highlightBlock(self, text):
-        """Apply syntax highlighting to the given block of text."""
-        # Skip highlighting if block is marked as no-highlight
-        if isinstance(self.currentBlockUserData(), NoHighlightData):
+        """Apply syntax highlighting using Pygments."""
+        # Skip highlighting if the block is marked with NoHighlightData
+        if isinstance(self.currentBlock().userData(), NoHighlightData):
+            return
+        if isinstance(self.currentBlock().userData(), ErrorHighlightData):
+            # If block contains an error, apply error formatting to entire block
+            error_fmt = self._get_format_for_token(Token.Generic.Error)
+            if error_fmt:
+                self.setFormat(0, len(text), error_fmt)
             return
 
-        # Check if this is a shell command line
-        if self.shell_cmd_prefix and text.lstrip().startswith(self.shell_cmd_prefix):
-            # Highlight the entire line as a shell command
-            start_utf16 = self._to_utf16_offset(text, 0)
-            end_utf16 = self._to_utf16_offset(text, len(text))
-            self.setFormat(
-                start_utf16, end_utf16 - start_utf16, self.styles["shellcmd"]
-            )
-            self.setCurrentBlockState(0)
+        if not text:
             return
 
-        s = self.styles["string"]
-        # Find all positions inside strings (using Python string indices)
-        string_positions = {
-            pos
-            for expression, nth, fmt in self.rules
-            if fmt == s
-            for m in expression.finditer(text)
-            for pos in range(m.start(nth), m.end(nth))
-        }
+        # Get document text
+        doc_text = self.document().toPlainText()
 
-        # Apply formatting, skipping non-string rules inside strings
-        for expression, nth, format in self.rules:
-            for m in expression.finditer(text):
-                # Skip non-string formatting if it's inside a string
-                # Check using Python string index, not UTF-16 offset
-                if format != s and m.start(nth) in string_positions:
-                    # Skip non-string formatting if it's inside a string
-                    continue
-                start_pos = self._to_utf16_offset(text, m.start(nth))
-                end_pos = self._to_utf16_offset(text, m.end(nth))
-                self.setFormat(start_pos, end_pos - start_pos, format)
+        # Retokenize if document changed
+        if doc_text != self._cached_doc_text:
+            self._cached_doc_text = doc_text
+            self._line_formats = self._tokenize_document(doc_text)
 
-        # Highlight f-string interpolations
-        self.highlight_fstring_interpolations(text)
+        # Apply formatting for current line
+        block_num = self.currentBlock().blockNumber()
+        if block_num in self._line_formats:
+            for start, length, fmt in self._line_formats[block_num]:
+                self.setFormat(start, length, fmt)
 
-        # Highlight escape sequences in strings
-        self.highlight_escape_sequences(text)
+    def _tokenize_document(self, text):
+        """Tokenize entire document, return formatting by line number.
 
-        self.setCurrentBlockState(0)
+        This method is necessary because Pygments requires the entire document
+        for context-aware syntax highlighting. Qt's QSyntaxHighlighter only
+        provides one line at a time via highlightBlock(), but Pygments needs
+        full context to properly handle:
+        - Multi-line strings (triple-quoted strings)
+        - Nested block structures (indentation-based syntax)
+        - Context-dependent tokens (keywords vs identifiers)
 
-        # Do multi-line strings
-        in_multiline = self.match_multiline(text, *self.tri_single)
-        if not in_multiline:
-            in_multiline = self.match_multiline(text, *self.tri_double)
+        We tokenize the entire document once and cache the formatting positions
+        by line number. Each line can then be highlighted independently using
+        the cached token positions.
 
-    def match_multiline(self, text, delimiter, in_state, style):
-        """Do highlighting of multi-line strings. ``delimiter`` should be a
-        ``re.Pattern`` for triple-single-quotes or triple-double-quotes, and
-        ``in_state`` should be a unique integer to represent the corresponding
-        state changes when inside those strings. Returns True if we're still
-        inside a multi-line string when this function is finished.
+        Args:
+            text: The complete document text
+
+        Returns:
+            dict: Maps line numbers to lists of (start, length, format) tuples
         """
-        # If inside triple-single quotes, start at 0
-        if self.previousBlockState() == in_state:
-            start = 0
-            add = 0
-        # Otherwise, look for the delimiter on this line
-        else:
-            m = delimiter.search(text)
-            if m:
-                start = m.start()
-                # Move past this match
-                add = m.end() - m.start()
-            else:
-                start = -1
-                add = -1
+        line_formats = {}
+        if not text:
+            return line_formats
 
-        # As long as there's a delimiter match on this line...
-        while start >= 0:
-            # Look for the ending delimiter
-            m = delimiter.search(text, start + add)
-            # Ending delimiter on this line?
-            if m and (m.start() >= add):
-                # length = end - start + add + m.end() - m.start()
-                length = add + m.end() - start
-                self.setCurrentBlockState(0)
-            # No; multi-line string
-            else:
-                self.setCurrentBlockState(in_state)
-                length = len(text) - start + add
-            # Apply formatting - convert to UTF-16 positions
-            start_utf16 = self._to_utf16_offset(text, start)
-            end_utf16 = self._to_utf16_offset(text, start + length)
-            self.setFormat(start_utf16, end_utf16 - start_utf16, style)
-            # Look for the next match
-            m = delimiter.search(text, start + length)
-            if m:
-                start = m.start()
-            else:
-                break
+        lines = text.split("\n")
+        line_starts = [0]
+        for line in lines[:-1]:
+            line_starts.append(line_starts[-1] + len(line) + 1)
 
-        # Return True if still inside a multi-line string, False otherwise
-        return self.currentBlockState() == in_state
+        position = 0
+        for token_type, token_value in lex(text, self.lexer):
+            if not token_value:
+                continue
 
-    def highlight_fstring_interpolations(self, text):
-        """Highlight f-string interpolations (the {} parts)."""
-        for m in self.fstring_pattern.finditer(text):
-            string_content = m.group(2)
-            ln = len(string_content)
-            content_start = m.start(2)
+            fmt = self._get_format_for_token(token_type)
+            if not fmt:
+                position += len(token_value)
+                continue
 
-            i = 0
-            while i < ln:
-                if string_content[i] == "{":
-                    # Skip escaped braces {{
-                    if i + 1 < ln and string_content[i + 1] == "{":
-                        i += 2
-                        continue
+            # Find which line this token starts on using binary search
+            start_line = bisect_right(line_starts, position) - 1
 
-                    # Find matching closing brace
-                    brace_count = 1
-                    j = i + 1
-                    while j < ln and brace_count > 0:
-                        if string_content[j : j + 2] == "}}":
-                            j += 2  # Skip escaped }}
-                        elif string_content[j] == "{":
-                            brace_count += 1
-                            j += 1
-                        elif string_content[j] == "}":
-                            brace_count -= 1
-                            j += 1
-                        else:
-                            j += 1
+            # Handle tokens across multiple lines
+            current_line = start_line
+            chars_processed = 0
 
-                    if brace_count == 0:
-                        start_utf16 = self._to_utf16_offset(text, content_start + i)
-                        end_utf16 = self._to_utf16_offset(text, content_start + j)
-                        self.setFormat(
-                            start_utf16, end_utf16 - start_utf16, self.styles["fstring"]
-                        )
-                        i = j
-                    else:
-                        i += 1
-                else:
-                    i += 1
+            while chars_processed < len(token_value) and current_line < len(lines):
+                line_start_pos = line_starts[current_line]
+                line_text = lines[current_line]
 
-    def highlight_escape_sequences(self, text):
-        """Highlight escape sequences in strings."""
-        for m in self.string_pattern.finditer(text):
-            content_start = m.start(2)
-            for esc in self.escape_pattern.finditer(m.group(2)):
-                start_utf16 = self._to_utf16_offset(text, content_start + esc.start())
-                end_utf16 = self._to_utf16_offset(text, content_start + esc.end())
-                self.setFormat(
-                    start_utf16, end_utf16 - start_utf16, self.styles["escape"]
-                )
+                # Position within current line
+                token_pos_in_line = max(0, position + chars_processed - line_start_pos)
+
+                # How many chars of token on this line
+                remaining = len(token_value) - chars_processed
+                chars_on_line = min(remaining, len(line_text) - token_pos_in_line)
+
+                if chars_on_line > 0:
+                    utf16_start = self._to_utf16_offset(line_text, token_pos_in_line)
+                    utf16_end = self._to_utf16_offset(
+                        line_text, token_pos_in_line + chars_on_line
+                    )
+
+                    if current_line not in line_formats:
+                        line_formats[current_line] = []
+                    line_formats[current_line].append(
+                        (utf16_start, utf16_end - utf16_start, fmt)
+                    )
+
+                    chars_processed += chars_on_line
+
+                # Skip the newline character
+                if chars_processed < len(token_value):
+                    chars_processed += 1
+                    current_line += 1
+
+            position += len(token_value)
+
+        return line_formats
+
+    def _get_format_for_token(self, token_type):
+        """Find the most specific format for a token type.
+
+        Walks up the token hierarchy until a format is found.
+        """
+        current_type = token_type
+        while current_type:
+            fmt = self.token_formats.get(current_type)
+            if fmt:
+                return fmt
+            current_type = getattr(current_type, "parent", None)
+        return None

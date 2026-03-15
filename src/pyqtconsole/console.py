@@ -9,7 +9,12 @@ from qtpy.QtWidgets import QApplication, QFrame, QHBoxLayout, QPlainTextEdit
 
 from .autocomplete import COMPLETE_MODE, AutoComplete
 from .commandhistory import CommandHistory
-from .highlighter import NoHighlightData, PromptHighlighter, PythonHighlighter
+from .highlighter import (
+    ErrorHighlightData,
+    NoHighlightData,
+    PromptHighlighter,
+    PythonHighlighter,
+)
 from .interpreter import PythonInterpreter
 from .prompt import PromptArea
 from .stream import Stream
@@ -40,6 +45,7 @@ class BaseConsole(QFrame):
         inprompt=None,
         outprompt=None,
         welcome_message=None,
+        pygments_style=None,
     ):
         """
 
@@ -69,12 +75,16 @@ class BaseConsole(QFrame):
                 (Defaults to None). If provided, this message will be
                 displayed before the first prompt. Not syntax highlighted.
         :type welcome_message: str, None
+        :param pygments_style: Name of Pygments style (Defaults to None)
+        :type pygments_style: str, None
         """
         super().__init__(parent)
 
         self.edit = edit = InputArea()
         self.pbar = pbar = PromptArea(
-            edit, self._get_prompt_text, PromptHighlighter(formats=formats)
+            edit,
+            self._get_prompt_text,
+            PromptHighlighter(formats=formats, pygments_style=pygments_style),
         )
 
         layout = QHBoxLayout()
@@ -91,7 +101,13 @@ class BaseConsole(QFrame):
         else:
             self.shell_cmd_prefix = None
 
-        self._prompt_doc = [""]
+        # a list of tuples that tracks the prompt text for each line.
+        # Each tuple is: (prompt_text, is_output), where:
+        #  * `prompt_text` is the text of the prompt
+        #  * `is_output` is a boolean
+        #    indicating whether the line is an output
+        #    line (True) or an input line (False)
+        self._prompt_doc = [("", False)]
         self._prompt_pos = 0
         self._output_inserted = False
         self._tab_chars = 4 * " "
@@ -112,6 +128,7 @@ class BaseConsole(QFrame):
         self.stdin = Stream()
         self.stdout = Stream()
         self.stdout.write_event.connect(self._stdout_data_handler)
+        self._current_output_is_error = False  # Track if current output is error
 
         # show frame around both child widgets:
         self.setFrameStyle(edit.frameStyle())
@@ -198,23 +215,32 @@ class BaseConsole(QFrame):
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * " " + self._ps2
 
-    @Slot(bool, object)
-    def _finish_command(self, executed, result):
+    @Slot(object)
+    def _finish_command(self, result):
+        # Check if there was an error before clearing the flag
+        had_exception = self._current_output_is_error
+        self._current_output_is_error = False
+
         if result is not None:
             self._insert_output_text(repr(result), prompt=self.out_prompt())
             self._insert_output_text("\n")
 
-        if executed and self._last_input:
+        if not had_exception and self._last_input:
             self._current_line += 1
         self._more = False
         self._show_cursor()
         self._update_ps(self._more)
         self._show_ps()
 
+    @Slot()
+    def _error_started(self):
+        """Called when the interpreter is about to write error output."""
+        self._current_output_is_error = True
+
     def _show_ps(self):
         if self._output_inserted and not self._more:
             self._insert_output_text("\n")
-        self._insert_prompt_text(self._ps)
+        self._insert_prompt_text(self._ps, is_output=False)
 
     def _get_key_event_handlers(self):
         return {
@@ -465,17 +491,34 @@ class BaseConsole(QFrame):
         self._setTextCursor(cursor)
         self.ensureCursorVisible()
 
-    def _insert_output_text(self, text, lf=False, keep_buffer=False, prompt=""):
+    def _insert_output_text(
+        self, text, lf=False, keep_buffer=False, prompt="", is_error=False
+    ):
         if keep_buffer:
             self._copy_buffer = self.input_buffer()
 
         cursor = self._textCursor()
         cursor.movePosition(QTextCursor.End)
-        cursor.insertText(text)
+
+        # Insert plain text line by line
+        # Only mark non-empty lines (empty lines are for spacing/input)
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if i > 0:
+                cursor.insertText("\n")
+            cursor.insertText(line)
+            # Mark this block appropriately (only if has content)
+            if line:
+                block = cursor.block()
+                if is_error:
+                    block.setUserData(ErrorHighlightData())
+                else:
+                    block.setUserData(NoHighlightData())
+
         self._prompt_pos = cursor.position()
         self.ensureCursorVisible()
 
-        self._insert_prompt_text(prompt + "\n" * text.count("\n"))
+        self._insert_prompt_text(prompt + "\n" * text.count("\n"), is_output=True)
         self._output_inserted = True
         if lf:
             self.process_input("")
@@ -497,7 +540,7 @@ class BaseConsole(QFrame):
 
         # Clear the current prompt that was shown during init
         self.edit.clear()
-        self._prompt_doc = [""]
+        self._prompt_doc = [("", False)]
         self._prompt_pos = 0
         self._output_inserted = False
 
@@ -528,7 +571,7 @@ class BaseConsole(QFrame):
         newline_count = self._welcome_message.count("\n")
         if not self._welcome_message.endswith("\n"):
             newline_count += 1
-        self._insert_prompt_text("\n" * newline_count)
+        self._insert_prompt_text("\n" * newline_count, is_output=False)
 
         self._output_inserted = True
 
@@ -594,10 +637,10 @@ class BaseConsole(QFrame):
             for _ in range(text.count("\n")):
                 # NOTE: need to insert in two steps, because this internally
                 # uses setAlignment, which affects only the first line:
-                self._insert_prompt_text("\n")
-                self._insert_prompt_text(self._ps)
+                self._insert_prompt_text("\n", is_output=False)
+                self._insert_prompt_text(self._ps, is_output=False)
         elif "\n" in text:
-            self._insert_prompt_text("\n" * text.count("\n"))
+            self._insert_prompt_text("\n" * text.count("\n"), is_output=False)
 
     def set_auto_complete_mode(self, mode):
         if self.auto_complete:
@@ -647,13 +690,20 @@ class BaseConsole(QFrame):
                 output += f"[Exit code: {result.returncode}]\n"
 
             if output:
-                self._insert_output_text(output, prompt=self.out_prompt())
+                # Highlight as error if command failed
+                self._insert_output_text(
+                    output, prompt=self.out_prompt(), is_error=(result.returncode != 0)
+                )
                 self._insert_output_text("\n")
         except subprocess.TimeoutExpired:
-            self._insert_output_text("[Command timed out]\n", prompt=self.out_prompt())
+            self._insert_output_text(
+                "[Command timed out]\n", prompt=self.out_prompt(), is_error=True
+            )
             self._insert_output_text("\n")
         except Exception as e:
-            self._insert_output_text(f"[Error: {str(e)}]\n", prompt=self.out_prompt())
+            self._insert_output_text(
+                f"[Error: {str(e)}]\n", prompt=self.out_prompt(), is_error=True
+            )
             self._insert_output_text("\n")
 
     def _handle_ctrl_c(self):
@@ -673,20 +723,30 @@ class BaseConsole(QFrame):
             self._show_ps()
 
     def _stdout_data_handler(self, data):
-        self._insert_output_text(data)
+        self._insert_output_text(data, is_error=self._current_output_is_error)
 
         if len(self._copy_buffer) > 0:
             self.insert_input_text(self._copy_buffer)
             self._copy_buffer = ""
 
-    def _insert_prompt_text(self, text):
+    def _insert_prompt_text(self, text, is_output=False):
         lines = text.split("\n")
-        self._prompt_doc[-1] += lines[0]
-        self._prompt_doc += lines[1:]
-        for line in self._prompt_doc[-len(lines) :]:
-            self.pbar.adjust_width(line)
+        # Update last entry by appending text
+        last_text, last_is_output = self._prompt_doc[-1]
+        new_is_output = is_output if lines[0] else last_is_output
+        self._prompt_doc[-1] = (last_text + lines[0], new_is_output)
+        # Add new entries for additional lines
+        self._prompt_doc += [(line, is_output) for line in lines[1:]]
+        # Adjust width based on text content
+        for line_text, _ in self._prompt_doc[-len(lines) :]:
+            self.pbar.adjust_width(line_text)
 
     def _get_prompt_text(self, line_number):
+        """Get prompt text and type for a given line number.
+
+        Returns:
+            tuple: (text, is_output) where is_output is True for output prompts
+        """
         return self._prompt_doc[line_number]
 
     def _remove_selected_input(self, cursor):
@@ -717,7 +777,7 @@ class BaseConsole(QFrame):
 
     def clear(self):
         """Clear the console display."""
-        self._prompt_doc = [""]
+        self._prompt_doc = [("", False)]
         self._prompt_pos = 0
         self._output_inserted = False
         self._more = False
@@ -760,6 +820,7 @@ class PythonConsole(BaseConsole):
         inprompt=None,
         outprompt=None,
         welcome_message=None,
+        pygments_style=None,
     ):
         super().__init__(
             parent,
@@ -768,6 +829,7 @@ class PythonConsole(BaseConsole):
             inprompt=inprompt,
             outprompt=outprompt,
             welcome_message=welcome_message,
+            pygments_style=pygments_style,
         )
 
         # Display welcome message before creating highlighter
@@ -775,15 +837,27 @@ class PythonConsole(BaseConsole):
         self._show_welcome_message()
 
         self.highlighter = PythonHighlighter(
-            self.edit.document(),
-            formats=formats,
-            shell_cmd_prefix=self.shell_cmd_prefix,
+            self.edit.document(), formats=formats, pygments_style=pygments_style
         )
         self.interpreter = PythonInterpreter(self.stdin, self.stdout, locals=locals)
         self.interpreter.done_signal.connect(self._finish_command)
         self.interpreter.exit_signal.connect(self.exit)
+        self.interpreter.error_signal.connect(self._error_started)
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
+
+    def set_pygments_style(self, style_name):
+        """Change the Pygments color scheme for both code and prompts.
+
+        Args:
+            style_name: Name of Pygments style (e.g., 'monokai', 'vim')
+        """
+        # Update code highlighter
+        self.highlighter.updateStyle(style_name)
+        # Update prompt highlighter
+        self.pbar.highlighter.updateStyle(style_name)
+        # Force repaint of prompt area
+        self.pbar.update()
 
     def _executing(self):
         return self.interpreter.executing()
