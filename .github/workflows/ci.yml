@@ -29,6 +29,10 @@ jobs:
             python: "3.13"
     runs-on: ${{ matrix.os }}
 
+    env:
+      QT_QPA_PLATFORM: "offscreen"
+      XDG_RUNTIME_DIR: "/tmp/runtime-root"
+
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
@@ -44,7 +48,9 @@ jobs:
 
       - name: Install Qt system dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libegl1
+        run: |
+          sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon-x11-0
+        # We need quite some packages for `pytest-qt` to run without problems
 
       - run: pytest
 
