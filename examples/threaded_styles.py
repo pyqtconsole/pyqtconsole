@@ -60,11 +60,17 @@ if __name__ == "__main__":
     style_selector.currentTextChanged.connect(console.setPygmentsStyle)
 
     # Ensure proper cleanup on window close
-    def on_close():
-        console.exit()
-        main_window.close()
+    def closeEvent(event):
+        """Stop the console's background thread before closing.
 
-    main_window.closeEvent = lambda event: (console.exit(), event.accept())
+        Required because the console runs in a separate thread (via eval_in_thread).
+        Without this cleanup, the thread continues running after the window closes,
+        causing crashes when it tries to access destroyed Qt objects.
+        """
+        console.exit()
+        event.accept()
+
+    main_window.closeEvent = closeEvent
 
     # Add widgets to layout
     style_layout = QHBoxLayout()
