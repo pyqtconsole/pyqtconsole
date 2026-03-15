@@ -215,16 +215,17 @@ class BaseConsole(QFrame):
         else:
             self._ps = (len(self._ps) - len(self._ps2)) * " " + self._ps2
 
-    @Slot(bool, object)
-    def _finish_command(self, executed, result):
-        # Clear the error flag now that command is complete
+    @Slot(object)
+    def _finish_command(self, result):
+        # Check if there was an error before clearing the flag
+        had_exception = self._current_output_is_error
         self._current_output_is_error = False
 
         if result is not None:
             self._insert_output_text(repr(result), prompt=self.out_prompt())
             self._insert_output_text("\n")
 
-        if executed and self._last_input:
+        if not had_exception and self._last_input:
             self._current_line += 1
         self._more = False
         self._show_cursor()

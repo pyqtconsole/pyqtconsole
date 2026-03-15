@@ -9,7 +9,7 @@ from qtpy.QtCore import QObject, Signal, Slot
 
 class PythonInterpreter(QObject, InteractiveInterpreter):
     exec_signal = Signal(object)
-    done_signal = Signal(bool, object)
+    done_signal = Signal(object)
     exit_signal = Signal(object)
     error_signal = Signal()  # Emitted when error output is about to be written
 
@@ -32,7 +32,6 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
     def exec_(self, codes):
         self._executing = True
         result = None
-        had_exception = False
 
         # Redirect IO and disable excepthook, this is the only place were we
         # redirect IO, since we don't how IO is handled within the code we
@@ -48,11 +47,10 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         except SystemExit as e:
             self.exit_signal.emit(e)
         except BaseException:
-            had_exception = True
             self.showtraceback()
         finally:
             self._executing = False
-            self.done_signal.emit(not had_exception, result)
+            self.done_signal.emit(result)
 
     def write(self, data):
         self.stdout.write(data)
@@ -75,7 +73,7 @@ class PythonInterpreter(QObject, InteractiveInterpreter):
         with disabled_excepthook():
             # It seems Python 3.13 requires **kwargs, older versions don't
             InteractiveInterpreter.showsyntaxerror(self, filename, **kwargs)
-        self.done_signal.emit(False, None)
+        self.done_signal.emit(None)
 
 
 def compile_multi(compiler, source, filename, symbol):
