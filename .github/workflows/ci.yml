@@ -21,13 +21,33 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-        os: [ubuntu-latest]
+        # On MacOS the tests are the fastest because no Qt dependencies need to be installed
+        os: [macos-latest]
+        qt: ["PySide6"]
         include:
-          - os: macos-latest
+          # Also try Ubuntu and Windows, but just with the most common options:
+          - os: ubuntu-latest
             python: "3.13"
+            qt: PySide6
           - os: windows-latest
             python: "3.13"
+            qt: PySide6
+          # Also try other Qt packages, but just with the easiest OS and common Python version:
+          - os: macos-latest
+            python: "3.13"
+            qt: "PyQt6"
+          - os: macos-latest
+            python: "3.13"
+            qt: "PyQt5"
+
     runs-on: ${{ matrix.os }}
+
+    env:
+      # Allow Qt to run without rendering anything
+      QT_QPA_PLATFORM: "offscreen"
+      XDG_RUNTIME_DIR: "/tmp/runtime-root"
+      # Force Qt test with a particular version:
+      PYTEST_QT_API: ${{ matrix.qt }}
 
     steps:
       - uses: actions/checkout@v6
@@ -35,7 +55,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - run: pip install build twine pytest pyside6
+      - run: pip install build twine pytest pytest-qt ${{ matrix.qt }}
       - run: python -m build .
       - run: twine check dist/*
 
@@ -44,11 +64,14 @@ jobs:
 
       - name: Install Qt system dependencies
         if: matrix.os == 'ubuntu-latest'
-        run: sudo apt-get update && sudo apt-get install -y libegl1
+        run: |
+          sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon-x11-0
+        # We need quite some packages for `pytest-qt` to run without problems
 
       - run: pytest
 
       - uses: actions/upload-artifact@v6
+        if: matrix.qt == 'PySide6'
         with:
           name: dist ${{ matrix.os }} ${{ matrix.python }}
           path: dist/
