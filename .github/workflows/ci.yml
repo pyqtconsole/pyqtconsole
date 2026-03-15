@@ -22,16 +22,31 @@ jobs:
       matrix:
         python: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         os: [ubuntu-latest]
+        qt: ["PySide6"]
         include:
+          # Also try Mac and Windows, but just with the most common options:
           - os: macos-latest
             python: "3.13"
+            qt: PySide6
           - os: windows-latest
             python: "3.13"
+            qt: PySide6
+          # Also try other Qt packages, but just with the easiest OS and common Python version:
+          - os: ubuntu-latest
+            python: "3.13"
+            qt: "PyQt6"
+          - os: ubuntu-latest
+            python: "3.13"
+            qt: "PyQt5"
+
     runs-on: ${{ matrix.os }}
 
     env:
+      # Allow Qt to run without rendering anything
       QT_QPA_PLATFORM: "offscreen"
       XDG_RUNTIME_DIR: "/tmp/runtime-root"
+      # Force Qt test with a particular version:
+      PYTEST_QT_API: ${{ matrix.qt }}
 
     steps:
       - uses: actions/checkout@v6
@@ -39,7 +54,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - run: pip install build twine pytest pytest-qt pyside6
+      - run: pip install build twine pytest pytest-qt ${{ matrix.qt }}
       - run: python -m build .
       - run: twine check dist/*
 
@@ -55,6 +70,7 @@ jobs:
       - run: pytest
 
       - uses: actions/upload-artifact@v6
+        if: matrix.qt == 'PySide6'
         with:
           name: dist ${{ matrix.os }} ${{ matrix.python }}
           path: dist/
