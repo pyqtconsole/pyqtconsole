@@ -21,21 +21,22 @@ jobs:
       fail-fast: false
       matrix:
         python: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-        os: [ubuntu-latest]
+        # On MacOS the tests are the fastest because no Qt dependencies need to be installed
+        os: [macos-latest]
         qt: ["PySide6"]
         include:
-          # Also try Mac and Windows, but just with the most common options:
-          - os: macos-latest
+          # Also try Ubuntu and Windows, but just with the most common options:
+          - os: ubuntu-latest
             python: "3.13"
             qt: PySide6
           - os: windows-latest
             python: "3.13"
             qt: PySide6
           # Also try other Qt packages, but just with the easiest OS and common Python version:
-          - os: ubuntu-latest
+          - os: macos-latest
             python: "3.13"
             qt: "PyQt6"
-          - os: ubuntu-latest
+          - os: macos-latest
             python: "3.13"
             qt: "PyQt5"
 
