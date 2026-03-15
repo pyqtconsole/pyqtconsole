@@ -324,7 +324,26 @@ class PythonHighlighter(QSyntaxHighlighter):
                 self.setFormat(start, length, fmt)
 
     def _tokenize_document(self, text):
-        """Tokenize entire document, return formatting by line number."""
+        """Tokenize entire document, return formatting by line number.
+
+        This method is necessary because Pygments requires the entire document
+        for context-aware syntax highlighting. Qt's QSyntaxHighlighter only
+        provides one line at a time via highlightBlock(), but Pygments needs
+        full context to properly handle:
+        - Multi-line strings (triple-quoted strings)
+        - Nested block structures (indentation-based syntax)
+        - Context-dependent tokens (keywords vs identifiers)
+
+        We tokenize the entire document once and cache the formatting positions
+        by line number. Each line can then be highlighted independently using
+        the cached token positions.
+
+        Args:
+            text: The complete document text
+
+        Returns:
+            dict: Maps line numbers to lists of (start, length, format) tuples
+        """
         line_formats = {}
         if not text:
             return line_formats
