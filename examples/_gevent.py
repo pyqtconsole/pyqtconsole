@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from gevent import monkey
+from gevent import monkey  # type: ignore
 
 monkey.patch_all()  # noqa
 
