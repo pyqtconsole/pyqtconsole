@@ -101,6 +101,12 @@ class BaseConsole(QFrame):
         else:
             self.shell_cmd_prefix = None
 
+        # a list of tuples that tracks the prompt text for each line.
+        # Each tuple is: (prompt_text, is_output), where:
+        #  * `prompt_text` is the text of the prompt
+        #  * `is_output` is a boolean
+        #    indicating whether the line is an output
+        #    line (True) or an input line (False)
         self._prompt_doc = [("", False)]
         self._prompt_pos = 0
         self._output_inserted = False
