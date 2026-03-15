@@ -845,7 +845,7 @@ class PythonConsole(BaseConsole):
         self.set_auto_complete_mode(COMPLETE_MODE.DROPDOWN)
         self._thread = None
 
-    def setPygmentsStyle(self, style_name):
+    def set_pygments_style(self, style_name):
         """Change the Pygments color scheme for both code and prompts.
 
         Args:

@@ -26,7 +26,7 @@ def change_pygments_style(style):
     Example styles include:
       'default', 'monokai', 'vim', 'friendly', 'colorful',
       'autumn', 'rainbow_dash', and 'paraiso-dark'."""
-    console.setPygmentsStyle(style)
+    console.set_pygments_style(style)
 
 
 if __name__ == "__main__":
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     console.eval_in_thread()
 
     # Connect style selector to console
-    style_selector.currentTextChanged.connect(console.setPygmentsStyle)
+    style_selector.currentTextChanged.connect(console.set_pygments_style)
 
     # Ensure proper cleanup on window close
     def closeEvent(event):
