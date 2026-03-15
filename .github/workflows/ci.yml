@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - run: pip install build twine pytest pyside6
+      - run: pip install build twine pytest pytest-qt pyside6
       - run: python -m build .
       - run: twine check dist/*
 

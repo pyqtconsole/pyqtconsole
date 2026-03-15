@@ -31,6 +31,7 @@ dependencies = [
 dev = [
     "ruff",
     "pytest",
+    "pytest-qt",
 ]
 
 [project.urls]
