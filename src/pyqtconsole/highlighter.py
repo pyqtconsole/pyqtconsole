@@ -1,6 +1,7 @@
 import keyword
 import re
 from collections.abc import Generator
+from typing import Any
 
 from qtpy.QtGui import (
     QColor,
@@ -18,7 +19,7 @@ class NoHighlightData(QTextBlockUserData):
     pass
 
 
-def format(color, style="") -> QTextCharFormat:
+def format(color: Any, style: str = "") -> QTextCharFormat:
     """Return a QTextCharFormat with the given attributes."""
     _format = QTextCharFormat()
     if color is not None:
@@ -151,7 +152,7 @@ class PythonHighlighter(QSyntaxHighlighter):
         """
         return len(text[:position].encode("utf-16-le")) // 2
 
-    def highlightBlock(self, text) -> None:
+    def highlightBlock(self, text: str) -> None:
         """Apply syntax highlighting to the given block of text."""
         # Skip highlighting if block is marked as no-highlight
         if isinstance(self.currentBlockUserData(), NoHighlightData):
@@ -300,7 +301,7 @@ class PythonHighlighter(QSyntaxHighlighter):
                 else:
                     i += 1
 
-    def highlight_escape_sequences(self, text) -> None:
+    def highlight_escape_sequences(self, text: str) -> None:
         """Highlight escape sequences in strings."""
         for m in self.string_pattern.finditer(text):
             content_start = m.start(2)

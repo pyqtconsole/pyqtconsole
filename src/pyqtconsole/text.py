@@ -71,7 +71,7 @@ def columnize(
         raise TypeError("array needs to be an instance of a list or a tuple")
 
     if opts is not None and len(opts.keys()) > 0:
-        o = {key: get_option(key, opts) for key in default_opts}
+        o: dict[str, Any] = {key: get_option(key, opts) for key in default_opts}
         if o["arrange_array"]:
             o.update(
                 {
@@ -106,7 +106,7 @@ def columnize(
     if size == 0:
         return "<empty>\n"
     elif size == 1:
-        return o["array_prefix"] + str(array[0]) + o["array_suffix"] + "\n"
+        return str(o["array_prefix"]) + str(array[0]) + str(o["array_suffix"]) + "\n"
 
     if o["displaywidth"] - len(o["lineprefix"]) < 4:
         o["displaywidth"] = len(o["lineprefix"]) + 4
