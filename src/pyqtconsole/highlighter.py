@@ -1,8 +1,7 @@
 from bisect import bisect_right
-from contextlib import suppress
 
+from ipython_pygments_lexers import IPythonLexer as PythonLexer
 from pygments import lex
-from pygments.lexers import PythonLexer
 from pygments.styles import get_style_by_name
 from pygments.token import Token
 from qtpy.QtGui import (
@@ -12,14 +11,6 @@ from qtpy.QtGui import (
     QTextBlockUserData,
     QTextCharFormat,
 )
-
-# Try to use IPythonLexer if available, since it has better support for IPython syntax
-_IPythonLexer = None
-with suppress(ImportError):
-    from ipython_pygments_lexers import IPythonLexer as _IPythonLexer
-
-if _IPythonLexer is not None:
-    PythonLexer = _IPythonLexer
 
 
 class NoHighlightData(QTextBlockUserData):
